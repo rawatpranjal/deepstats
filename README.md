@@ -6,5 +6,5 @@ Discrete Choice / Classification
 - Deep Multinomial Logit
 
 Regression
-- Partially Linear Model
-- Partially Linear Model with Instruments
+- Deep Linear Model
+- Deep Instrumental Variables
