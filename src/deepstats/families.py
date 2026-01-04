@@ -18,6 +18,7 @@ from scipy.stats import norm
 class BaseFamily(ABC):
     """Abstract base for influence function families."""
     name: str = "base"
+    n_params: int = 2  # Number of structural parameters [α, β] by default
 
     @abstractmethod
     def loss(self, y: torch.Tensor, t: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
@@ -304,6 +305,59 @@ class WeibullFamily(BaseFamily):
 
 
 # =============================================================================
+# Heteroskedastic Linear Family
+# =============================================================================
+
+class HeteroLinearFamily(BaseFamily):
+    """Y ~ N(α + βT, σ²(X)) where σ² = exp(γ). Target: E[σ²(X)].
+
+    Model:
+        Y = α(X) + β(X)T + σ(X)ε, where σ² = exp(γ)
+        θ = [α, β, γ]
+
+    Loss (Gaussian NLL):
+        L = ½γ + (Y - μ)² / (2σ²)
+
+    Target:
+        μ* = E[σ²(X)] = E[exp(γ(X))]
+
+    Influence Score (from Farrell et al. derivation):
+        ψᵢ = 2σ̂² - ε̂²
+
+    This elegant formula corrects for regularization bias when estimating
+    the average variance.
+    """
+    name = "heterolinear"
+    n_params = 3  # [α, β, γ]
+
+    def loss(self, y, t, theta):
+        alpha, beta, gamma = theta[:, 0], theta[:, 1], theta[:, 2]
+        mu = alpha + beta * t
+        gamma_clamp = torch.clamp(gamma, -10, 10)
+        sigma2 = torch.exp(gamma_clamp)
+        # Gaussian NLL: ½log(σ²) + (y-μ)²/(2σ²)
+        return 0.5 * gamma_clamp + 0.5 * (y - mu) ** 2 / sigma2
+
+    def residual(self, y, t, theta):
+        mu = theta[:, 0] + theta[:, 1] * t
+        return y - mu
+
+    def weight(self, t, theta):
+        sigma2 = torch.exp(torch.clamp(theta[:, 2], -10, 10))
+        return 1.0 / sigma2
+
+    def h_value(self, theta):
+        """Target: E[σ²(X)] = E[exp(γ)]."""
+        return torch.exp(torch.clamp(theta[:, 2], -10, 10))
+
+    def influence_score(self, y, t, theta, t_mean, t_var, lambda_inv):
+        """Influence score for variance target: ψᵢ = 2σ̂² - ε̂²."""
+        sigma2 = torch.exp(torch.clamp(theta[:, 2], -10, 10))
+        eps = self.residual(y, t, theta)
+        return 2 * sigma2 - eps ** 2
+
+
+# =============================================================================
 # Factory
 # =============================================================================
 
@@ -316,6 +370,7 @@ FAMILIES = {
     "tobit": TobitFamily,
     "negbin": NegBinFamily,
     "weibull": WeibullFamily,
+    "heterolinear": HeteroLinearFamily,
 }
 
 

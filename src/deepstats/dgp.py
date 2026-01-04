@@ -255,6 +255,43 @@ class WeibullDGP(BaseDGP):
 
 
 # =============================================================================
+# Heteroskedastic Linear DGP
+# =============================================================================
+
+class HeteroLinearDGP(BaseDGP):
+    """Y ~ N(α + βT, σ²(X)) where σ² = exp(X₁). Target: E[σ²(X)].
+
+    This DGP generates data with heteroskedastic errors:
+    - Mean: μ = α(X) + β(X)T
+    - Variance: σ²(X) = exp(X₁) (depends on first covariate)
+    - Y = μ + σ(X) * ε, ε ~ N(0, 1)
+
+    The target is the average variance E[σ²(X)] = E[exp(X₁)].
+    For X₁ ~ Uniform(-1, 1): E[exp(X₁)] = sinh(1) ≈ 1.1752
+    """
+    name = "heterolinear"
+
+    def __init__(self, d: int = 10, seed: int = 42):
+        super().__init__(d, seed)
+        # Cache the true variance mean
+        self._mu_true = (np.exp(1) - np.exp(-1)) / 2  # sinh(1) ≈ 1.1752
+
+    def generate(self, n: int) -> DGPResult:
+        X, T, alpha, beta = self._generate_base_data(n)
+        mu = alpha + beta * T
+        # Variance depends on X₁: σ² = exp(X₁)
+        sigma = np.exp(X[:, 1] / 2)  # σ = exp(X₁/2), so σ² = exp(X₁)
+        Y = mu + sigma * self.rng.normal(0, 1, n)
+        # mu_true for this DGP is E[σ²] = E[exp(X₁)]
+        return DGPResult(X, T, Y, alpha, beta, self._mu_true)
+
+    def compute_true_mu(self, n_mc: int = 100000) -> float:
+        """Override: E[σ²(X)] = E[exp(X₁)] for X₁ ~ U(-1,1) = sinh(1)."""
+        # Analytical solution, no MC needed
+        return self._mu_true
+
+
+# =============================================================================
 # Ground Truth Verification
 # =============================================================================
 
@@ -311,6 +348,7 @@ DGPS = {
     "tobit": TobitDGP,
     "negbin": NegBinDGP,
     "weibull": WeibullDGP,
+    "heterolinear": HeteroLinearDGP,
 }
 
 

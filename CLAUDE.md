@@ -3,6 +3,12 @@
 Influence function validation for neural network inference.
 Implements Farrell, Liang, Misra (2021, 2025) approach.
 
+## Rules for Claude
+
+- NO overrides, placeholders, or deviating from the plan - no matter how hard it gets
+- Follow the plan exactly as specified
+- If something doesn't work, fix it properly instead of using workarounds
+
 ## What This Is
 
 Neural nets output structural parameters directly (NOT DML).

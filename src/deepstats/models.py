@@ -17,18 +17,21 @@ from torch.utils.data import DataLoader, TensorDataset
 # =============================================================================
 
 class StructuralNet(nn.Module):
-    """X → [α(X), β(X)] for the structural model Y = α(X) + β(X)*T + noise."""
+    """X → θ(X) for structural models. Default outputs [α(X), β(X)]."""
 
     def __init__(
         self,
         input_dim: int,
         hidden_dims: List[int] = None,
         dropout: float = 0.1,
+        n_params: int = 2,
     ):
         super().__init__()
 
         if hidden_dims is None:
             hidden_dims = [64, 32]
+
+        self.n_params = n_params
 
         layers = []
         prev_dim = input_dim
@@ -41,7 +44,7 @@ class StructuralNet(nn.Module):
             prev_dim = hidden_dim
 
         self.backbone = nn.Sequential(*layers)
-        self.param_layer = nn.Linear(prev_dim, 2)
+        self.param_layer = nn.Linear(prev_dim, n_params)
         self._init_weights()
 
     def _init_weights(self):
@@ -51,7 +54,7 @@ class StructuralNet(nn.Module):
                 nn.init.zeros_(module.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Returns (batch, 2) where [:, 0]=α, [:, 1]=β."""
+        """Returns (batch, n_params) structural parameters."""
         h = self.backbone(x)
         return self.param_layer(h)
 
@@ -211,7 +214,8 @@ def clone_structural(model: StructuralNet) -> StructuralNet:
         if isinstance(layer, nn.Dropout):
             dropout = layer.p
             break
-    return StructuralNet(input_dim, hidden_dims, dropout)
+    n_params = getattr(model, 'n_params', 2)
+    return StructuralNet(input_dim, hidden_dims, dropout, n_params)
 
 
 def clone_nuisance(model: NuisanceNet) -> NuisanceNet:

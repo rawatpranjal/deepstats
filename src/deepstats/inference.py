@@ -55,6 +55,7 @@ def naive(
         input_dim=X.shape[1],
         hidden_dims=config.hidden_dims,
         dropout=config.dropout,
+        n_params=getattr(family, 'n_params', 2),
     )
 
     train_structural(
@@ -70,10 +71,10 @@ def naive(
     model.eval()
     with torch.no_grad():
         theta = model(torch.FloatTensor(X))
-        beta = theta[:, 1].numpy()
+        target_values = family.h_value(theta).numpy()
 
-    mu_hat = float(np.mean(beta))
-    se = float(np.std(beta, ddof=1) / np.sqrt(n))
+    mu_hat = float(np.mean(target_values))
+    se = float(np.std(target_values, ddof=1) / np.sqrt(n))
 
     return mu_hat, se
 
@@ -119,6 +120,7 @@ def influence(
             input_dim=X.shape[1],
             hidden_dims=config.hidden_dims,
             dropout=config.dropout,
+            n_params=getattr(family, 'n_params', 2),
         )
         train_structural(
             model=struct_model,
@@ -212,6 +214,7 @@ def bootstrap(
         input_dim=X.shape[1],
         hidden_dims=config.hidden_dims,
         dropout=config.dropout,
+        n_params=getattr(family, 'n_params', 2),
     )
     train_structural(
         model=model_full,
@@ -226,7 +229,7 @@ def bootstrap(
     model_full.eval()
     with torch.no_grad():
         theta_full = model_full(torch.FloatTensor(X))
-        mu_hat = float(theta_full[:, 1].numpy().mean())
+        mu_hat = float(family.h_value(theta_full).numpy().mean())
 
     # Bootstrap
     boot_epochs = max(config.epochs // 2, 30)
@@ -240,6 +243,7 @@ def bootstrap(
             input_dim=X.shape[1],
             hidden_dims=config.hidden_dims,
             dropout=config.dropout,
+            n_params=getattr(family, 'n_params', 2),
         )
         train_structural(
             model=model_b,
@@ -254,7 +258,7 @@ def bootstrap(
         model_b.eval()
         with torch.no_grad():
             theta_b = model_b(torch.FloatTensor(X_b))
-            mu_b = float(theta_b[:, 1].numpy().mean())
+            mu_b = float(family.h_value(theta_b).numpy().mean())
 
         bootstrap_mus.append(mu_b)
 

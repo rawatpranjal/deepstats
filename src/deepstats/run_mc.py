@@ -15,11 +15,12 @@ from typing import List
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
-from dgp import get_dgp, DGPS
-from families import get_family, FAMILIES
-from inference import naive, influence, bootstrap, METHODS
-from metrics import compute_metrics, print_table
+from .dgp import get_dgp, DGPS
+from .families import get_family, FAMILIES
+from .inference import naive, influence, bootstrap, METHODS
+from .metrics import compute_metrics, print_table
 
 
 # =============================================================================
@@ -124,6 +125,7 @@ def main():
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--output", type=str, default="mc_results.csv", help="Output CSV")
+    parser.add_argument("--n-jobs", type=int, default=1, help="Parallel jobs (-1 for all cores)")
 
     args = parser.parse_args()
 
@@ -141,6 +143,7 @@ def main():
     print(f"M={config.M}, N={config.N}, epochs={config.epochs}, folds={config.n_folds}")
     print(f"Models: {args.models}")
     print(f"Methods: {args.methods}")
+    print(f"Parallel jobs: {args.n_jobs}")
     print("=" * 60)
 
     all_results = []
@@ -151,9 +154,19 @@ def main():
         mu_true = dgp.compute_true_mu()
         print(f"True μ* = {mu_true:.6f}")
 
-        for sim_id in tqdm(range(config.M), desc=model_name):
-            results = run_one_sim(sim_id, model_name, args.methods, config)
-            all_results.extend(results)
+        if args.n_jobs == 1:
+            # Sequential execution
+            for sim_id in tqdm(range(config.M), desc=model_name):
+                results = run_one_sim(sim_id, model_name, args.methods, config)
+                all_results.extend(results)
+        else:
+            # Parallel execution
+            results_list = Parallel(n_jobs=args.n_jobs, verbose=10)(
+                delayed(run_one_sim)(sim_id, model_name, args.methods, config)
+                for sim_id in range(config.M)
+            )
+            for results in results_list:
+                all_results.extend(results)
 
     # Save raw results
     df = pd.DataFrame(all_results)
