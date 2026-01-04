@@ -1,0 +1,45 @@
+\begin{table}[h]
+\centering
+\caption{Method Comparison: Winner by DGP and Metric}
+\label{tab:rankings}
+\begin{tabular}{llcccc}
+\toprule
+Modality & DGP & ATE Bias & Coverage & ITE RMSE & ITE Corr \\
+\midrule
+graph & centrality & \textbf{D} & C & \textbf{D} & \textbf{D} \\
+graph & density & \textbf{D} & C & \textbf{D} & \textbf{D} \\
+graph & size & \textbf{D} & C & \textbf{D} & \textbf{D} \\
+\midrule
+image & brightness & C & \textbf{D} & L & L \\
+image & color & \textbf{D} & \textbf{D} & L & L \\
+image & complex & C & \textbf{D} & L & L \\
+image & texture & \textbf{D} & \textbf{D} & L & L \\
+\midrule
+multimodal & complex & C & L & L & L \\
+multimodal & image\_dominant & C & L & L & L \\
+multimodal & interaction & C & L & L & L \\
+multimodal & text\_dominant & \textbf{D} & L & L & L \\
+\midrule
+tabular & balanced & L & C & L & C \\
+tabular & confounded & \textbf{D} & \textbf{D} & L & L \\
+tabular & deep\_interaction & \textbf{D} & L & C & C \\
+tabular & high\_noise & \textbf{D} & \textbf{D} & L & L \\
+tabular & mixed & C & C & C & C \\
+tabular & multifreq & C & C & C & C \\
+tabular & overfit & C & L & C & \textbf{D} \\
+tabular & sparse & \textbf{D} & L & C & L \\
+tabular & sparse\_nonlinear & \textbf{D} & L & C & C \\
+tabular & threshold & L & \textbf{D} & C & C \\
+tabular & underfit & C & \textbf{D} & C & C \\
+\midrule
+text & frequency & \textbf{D} & \textbf{D} & L & L \\
+text & length & L & \textbf{D} & L & L \\
+text & pattern & C & \textbf{D} & L & L \\
+\midrule
+timeseries & complex & C & \textbf{D} & L & L \\
+timeseries & seasonality & L & \textbf{D} & L & L \\
+timeseries & trend & C & \textbf{D} & L & L \\
+timeseries & volatility & C & \textbf{D} & L & L \\
+\bottomrule
+\end{tabular}
+\end{table}

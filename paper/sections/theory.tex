@@ -1,0 +1,217 @@
+%------------------------------------------------------------------------------
+\section{Asymptotic Theory}
+\label{sec:theory}
+%------------------------------------------------------------------------------
+
+This section establishes the asymptotic properties of the DeepHTE estimator.
+We prove that cross-fitted neural network estimates of the average treatment
+effect are $\sqrt{n}$-consistent and asymptotically normal, with influence
+function standard errors achieving semiparametric efficiency.
+
+%------------------------------------------------------------------------------
+\subsection{Setup and Assumptions}
+%------------------------------------------------------------------------------
+
+Consider the enriched structural model:
+\begin{equation}
+\label{eq:structural}
+Y_i = a_0(X_i) + b_0(X_i) \cdot T_i + \varepsilon_i, \quad
+E[\varepsilon_i | X_i, T_i] = 0
+\end{equation}
+where $a_0: \mathcal{X} \to \mathbb{R}$ is the baseline function,
+$b_0: \mathcal{X} \to \mathbb{R}$ is the conditional average treatment effect
+(CATE), and $\mathcal{X} \subseteq \mathbb{R}^d$ is the covariate space.
+
+The parameter of interest is the average treatment effect:
+\begin{equation}
+\tau_0 = E[b_0(X)] = E[Y(1) - Y(0)]
+\end{equation}
+
+We estimate $a_0$ and $b_0$ using neural networks $\hat{a}$ and $\hat{b}$
+with cross-fitting, then form the ATE estimator:
+\begin{equation}
+\hat{\tau} = \frac{1}{n} \sum_{i=1}^n \hat{\psi}_i
+\end{equation}
+where $\hat{\psi}_i$ is the influence function evaluated at observation $i$.
+
+\begin{assumption}[Unconfoundedness and Overlap]
+\label{ass:unconfounded}
+\begin{enumerate}[(i)]
+    \item (Unconfoundedness) $(Y(0), Y(1)) \perp T \,|\, X$
+    \item (Overlap) There exists $\delta > 0$ such that $\delta < e_0(X) < 1-\delta$
+          almost surely, where $e_0(X) = P(T=1|X)$
+\end{enumerate}
+\end{assumption}
+
+\begin{assumption}[Boundedness]
+\label{ass:bounded}
+\begin{enumerate}[(i)]
+    \item The covariate space $\mathcal{X}$ is compact
+    \item $|a_0(x)|, |b_0(x)| \leq M$ for all $x \in \mathcal{X}$ and some $M < \infty$
+    \item $E[\varepsilon^4 | X] \leq M$ almost surely
+\end{enumerate}
+\end{assumption}
+
+\begin{assumption}[Smoothness]
+\label{ass:smoothness}
+The functions $a_0, b_0$ belong to a H\"older class $\mathcal{H}^s(\mathcal{X})$
+with smoothness $s > 0$:
+\[
+\mathcal{H}^s = \left\{ f : \sum_{|\alpha| \leq \lfloor s \rfloor}
+\|D^\alpha f\|_\infty + \sum_{|\alpha| = \lfloor s \rfloor}
+\sup_{x \neq y} \frac{|D^\alpha f(x) - D^\alpha f(y)|}{|x-y|^{s-\lfloor s \rfloor}}
+\leq B \right\}
+\]
+\end{assumption}
+
+\begin{assumption}[Neural Network Rate]
+\label{ass:nnrate}
+The neural network estimators $\hat{a}, \hat{b}$ satisfy, for some $\gamma > 1/4$:
+\[
+\|\hat{a} - a_0\|_{L_2} = O_p(n^{-\gamma}), \quad
+\|\hat{b} - b_0\|_{L_2} = O_p(n^{-\gamma})
+\]
+\end{assumption}
+
+Assumption~\ref{ass:nnrate} is satisfied when the neural network architecture
+is appropriately chosen for the smoothness class. By \citet{farrell2021deep},
+networks with depth $L = O(\log n)$ and width $W = O(n^{d/(2s+d)})$ achieve
+$\gamma = s/(2s+d)$, which exceeds $1/4$ when $s > d/2$.
+
+%------------------------------------------------------------------------------
+\subsection{Main Result}
+%------------------------------------------------------------------------------
+
+\begin{theorem}[Asymptotic Normality of Cross-Fitted ATE Estimator]
+\label{thm:main}
+Under Assumptions~\ref{ass:unconfounded}--\ref{ass:nnrate}, the cross-fitted
+DeepHTE estimator with $K \geq 2$ folds satisfies:
+\begin{equation}
+\sqrt{n}(\hat{\tau} - \tau_0) \xrightarrow{d} N(0, V)
+\end{equation}
+where
+\begin{equation}
+V = E[\psi_0(W)^2], \quad
+\psi_0(W) = b_0(X) + \frac{T - e_0(X)}{e_0(X)(1-e_0(X))}
+\left(Y - a_0(X) - b_0(X) T\right) - \tau_0
+\end{equation}
+is the efficient influence function.
+
+Moreover, the variance estimator
+\begin{equation}
+\hat{V} = \frac{1}{n} \sum_{i=1}^n \hat{\psi}_i^2, \quad
+\hat{\psi}_i = \hat{b}(X_i) + \frac{T_i - \hat{e}(X_i)}{\hat{e}(X_i)(1-\hat{e}(X_i))}
+\left(Y_i - \hat{a}(X_i) - \hat{b}(X_i) T_i\right) - \hat{\tau}
+\end{equation}
+is consistent: $\hat{V} \xrightarrow{p} V$.
+\end{theorem}
+
+The variance $V$ equals the semiparametric efficiency bound for estimating
+the ATE under model~\eqref{eq:structural}. Thus, the DeepHTE estimator is
+\textit{asymptotically efficient}.
+
+%------------------------------------------------------------------------------
+\subsection{Proof Sketch}
+%------------------------------------------------------------------------------
+
+The proof follows the general framework of \citet{chernozhukov2018double}
+adapted to neural network nuisance estimation.
+
+\paragraph{Step 1: Influence Function Representation.}
+Define the oracle influence function:
+\[
+\psi_0(W) = b_0(X) - \tau_0 + \frac{T - e_0(X)}{e_0(X)(1-e_0(X))}
+\left(Y - a_0(X) - b_0(X) T\right)
+\]
+By construction, $E[\psi_0(W)] = 0$ and $E[\psi_0(W)^2] = V$.
+
+\paragraph{Step 2: Neyman Orthogonality.}
+The score $\psi$ satisfies Neyman orthogonality:
+\[
+\left.\frac{\partial}{\partial r} E[\psi(W; \eta_0 + r(\eta - \eta_0), \tau_0)]
+\right|_{r=0} = 0
+\]
+for all directions $\eta - \eta_0$ in the nuisance parameter space
+$\eta = (a, b, e)$. This orthogonality ensures that first-order errors in
+nuisance estimation have no first-order effect on the estimator.
+
+\paragraph{Step 3: Cross-Fitting Decomposition.}
+Let $\mathcal{I}_k$ denote fold $k$ and $\hat{\eta}^{(-k)} = (\hat{a}^{(-k)},
+\hat{b}^{(-k)}, \hat{e}^{(-k)})$ denote nuisance estimates from observations
+not in fold $k$. The cross-fitted estimator admits the decomposition:
+\[
+\sqrt{n}(\hat{\tau} - \tau_0) = \frac{1}{\sqrt{n}} \sum_{i=1}^n \psi_0(W_i)
++ R_n
+\]
+where the remainder $R_n$ satisfies $R_n = o_p(1)$.
+
+\paragraph{Step 4: Remainder Bound.}
+The remainder decomposes as:
+\begin{align*}
+R_n &= \underbrace{\frac{1}{\sqrt{n}} \sum_k \sum_{i \in \mathcal{I}_k}
+\left[\psi(W_i; \hat{\eta}^{(-k)}, \tau_0) - \psi_0(W_i)\right]}_{R_{n,1}}
++ \underbrace{\sqrt{n}(\hat{\tau} - \tau_0 - \bar{\psi})}_{R_{n,2}}
+\end{align*}
+
+By Neyman orthogonality and the product rate condition
+$\|\hat{a} - a_0\| \cdot \|\hat{b} - b_0\| = O_p(n^{-2\gamma}) = o_p(n^{-1/2})$,
+we have $R_{n,1} = o_p(1)$.
+
+By the $\sqrt{n}$-rate for the sample average, $R_{n,2} = o_p(1)$.
+
+\paragraph{Step 5: CLT Application.}
+By the central limit theorem:
+\[
+\frac{1}{\sqrt{n}} \sum_{i=1}^n \psi_0(W_i) \xrightarrow{d} N(0, V)
+\]
+Combined with $R_n = o_p(1)$, this yields the result. \qed
+
+%------------------------------------------------------------------------------
+\subsection{Confidence Intervals}
+%------------------------------------------------------------------------------
+
+Theorem~\ref{thm:main} immediately yields asymptotically valid confidence
+intervals:
+\begin{equation}
+\text{CI}_{1-\alpha} = \left[\hat{\tau} - z_{\alpha/2} \frac{\sqrt{\hat{V}}}{\sqrt{n}},
+\; \hat{\tau} + z_{\alpha/2} \frac{\sqrt{\hat{V}}}{\sqrt{n}}\right]
+\end{equation}
+where $z_{\alpha/2}$ is the $(1-\alpha/2)$ quantile of the standard normal.
+
+For quantile treatment effects $Q_q = \text{quantile}_q(\{b_0(X_i)\})$, the
+influence function approach does not directly apply. We recommend bootstrap
+inference:
+\begin{enumerate}
+    \item Draw $B$ bootstrap samples of size $n$ with replacement
+    \item For each bootstrap sample $b$, compute $\hat{Q}_q^{(b)}$ from the
+          cross-fitted ITE estimates
+    \item Construct percentile intervals:
+          $[\hat{Q}_q^{(\alpha/2)}, \hat{Q}_q^{(1-\alpha/2)}]$
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+\subsection{Comparison to Related Theory}
+%------------------------------------------------------------------------------
+
+\paragraph{Double/Debiased Machine Learning.}
+Our theoretical framework builds directly on \citet{chernozhukov2018double}.
+The key extension is using neural networks for the nuisance functions rather
+than more traditional machine learning methods (random forests, LASSO). The
+rate conditions in Assumption~\ref{ass:nnrate} are satisfied by the neural
+network approximation results of \citet{farrell2021deep}.
+
+\paragraph{Causal Forest.}
+The asymptotic normality of Causal Forest estimators is established in
+\citet{wager2018estimation}. The key difference is that Causal Forest
+constructs confidence intervals via the infinitesimal jackknife, which can
+be conservative in practice. Our influence-function-based approach achieves
+the semiparametric efficiency bound.
+
+\paragraph{Deep Learning without Cross-Fitting.}
+Methods such as TARNet \citep{shalit2017estimating} and DragonNet
+\citep{shi2019adapting} estimate treatment effects via neural networks but
+do not employ cross-fitting. Without sample splitting, these methods lack
+the theoretical guarantees for valid asymptotic inference on the ATE.
+Point estimates may be consistent, but confidence intervals are not
+justified by theory.
+

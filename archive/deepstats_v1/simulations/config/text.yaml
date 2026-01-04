@@ -1,0 +1,30 @@
+# Text simulation configuration
+
+inherit: base.yaml
+
+modality: text
+
+dgp:
+  scenarios:
+    - length
+    - frequency
+    - pattern
+
+  vocab_size: 1000
+  seq_length: 50
+
+  length:
+    heterogeneity: length
+
+  frequency:
+    heterogeneity: frequency
+
+  pattern:
+    heterogeneity: pattern
+
+deephte:
+  backbone: lstm
+  epochs: 100
+  hidden_dims: [128, 64]
+  batch_size: 64
+  embedding_dim: 64

@@ -1,0 +1,110 @@
+%------------------------------------------------------------------------------
+\section{Introduction}
+\label{sec:intro}
+%------------------------------------------------------------------------------
+
+Estimating heterogeneous treatment effects (HTE) is central to personalized
+decision-making across medicine, policy, and business. The fundamental challenge
+lies in flexibly modeling how treatment effects vary with individual
+characteristics while maintaining valid statistical inference---not just for
+population-level averages, but for the distribution of individual effects
+across subgroups.
+
+\paragraph{The Problem.}
+Modern applications increasingly feature high-dimensional or unstructured
+covariates: medical images in clinical trials, text reviews in marketing
+experiments, social network structure in policy evaluations. Standard methods
+require researchers to first extract features from such data, introducing
+potential information loss and researcher degrees of freedom. An end-to-end
+approach that estimates treatment effects directly from raw data while
+providing valid confidence intervals remains elusive.
+
+\paragraph{Limitations of Existing Methods.}
+The current landscape of HTE estimators faces a fundamental trade-off between
+flexibility and statistical validity.
+
+\textit{Double Machine Learning} \citep{chernozhukov2018double} provides
+semiparametric efficiency and valid confidence intervals through Neyman
+orthogonality and cross-fitting. However, standard implementations such as
+LinearDML assume a \emph{linear} conditional average treatment effect (CATE):
+$\tau(X) = X'\beta$. This linearity assumption can severely misspecify
+heterogeneity involving thresholds, interactions, or smooth nonlinearities.
+
+\textit{Causal Forest} \citep{athey2019generalized,wager2018estimation} offers
+nonparametric heterogeneity discovery through adaptive partitioning.
+Yet tree-based methods face challenges with truly high-dimensional raw inputs:
+applying Causal Forest to images requires first extracting features, and the
+extracted representation may not preserve treatment-relevant variation.
+Moreover, the frequentist confidence intervals from Causal Forest can be
+conservative (overcoverage) or unreliable in complex settings
+\citep{nie2021quasi}.
+
+\textit{Deep learning methods} such as TARNet \citep{shalit2017estimating} and
+DragonNet \citep{shi2019adapting} offer end-to-end learning from raw data.
+However, these methods typically lack the theoretical grounding for valid
+asymptotic inference. Point predictions may be reasonable, but confidence
+intervals are either unavailable or ad-hoc.
+
+\paragraph{Our Approach.}
+We build on the \emph{enriched structural models} framework of
+\citet{farrell2021deep} and \citet{farrell2023deep}. The key insight is that
+neural networks can serve as nonparametric estimators of structural parameters
+within a well-defined statistical model:
+\[
+Y_i = a(X_i) + b(X_i) \cdot T_i + \varepsilon_i
+\]
+where $a(\cdot)$ captures baseline effects and $b(\cdot)$ captures the
+conditional average treatment effect $\tau(X) = E[Y(1) - Y(0) | X]$. Both
+functions are estimated by neural networks with appropriate architecture for
+the covariate modality.
+
+Under standard regularity conditions, cross-fitting removes first-order bias,
+yielding $\sqrt{n}$-consistent and asymptotically normal estimators for
+functionals such as the average treatment effect $\tau = E[b(X)]$. The
+influence function provides valid standard errors without bootstrap.
+
+\paragraph{Contributions.}
+This paper makes three contributions:
+
+\begin{enumerate}
+    \item \textbf{Multimodal HTE estimation.} We extend the enriched structural
+    model framework to handle images (CNN backbone), text (Transformer backbone),
+    graphs (GNN backbone), and time series (LSTM backbone). This enables
+    end-to-end estimation of heterogeneous treatment effects from raw,
+    unstructured data without manual feature engineering.
+
+    \item \textbf{Valid inference via cross-fitting.} We implement the
+    cross-fitting procedure of \citet{chernozhukov2018double} within the neural
+    network framework, providing asymptotically valid confidence intervals for
+    the ATE and influence-function-based standard errors. Monte Carlo
+    simulations confirm 90--95\% coverage across diverse settings.
+
+    \item \textbf{Open-source software.} We release \texttt{deepstats}, a Python
+    package with an R-style formula interface. Researchers specify models as
+    \texttt{"Y $\sim$ a(X1 + X2) + b(X1 + X2) * T"}, and the package handles
+    network architecture, cross-fitting, and inference automatically.
+\end{enumerate}
+
+\paragraph{Relationship to Prior Work.}
+Our approach differs from existing methods in two key dimensions. First, unlike
+LinearDML, we place no parametric restrictions on the CATE function. Second,
+unlike TARNet and DragonNet, we provide valid asymptotic inference grounded in
+semiparametric efficiency theory. We thus occupy a distinct position:
+\textbf{flexible nonparametric estimation with valid inference.}
+
+Compared to Causal Forest, the neural network approach offers natural handling
+of multimodal data through specialized architectures. Our simulations show
+that while Causal Forest often achieves lower ITE RMSE on tabular data with
+hand-crafted DGPs, DeepHTE dominates on graph-structured data where the GNN
+backbone captures structural heterogeneity that extracted features miss.
+
+\paragraph{Organization.}
+Section~\ref{sec:model} presents the enriched structural model and assumptions.
+Section~\ref{sec:estimation} describes the cross-fitting procedure and
+estimators. Section~\ref{sec:theory} establishes asymptotic normality.
+Section~\ref{sec:simulations} reports Monte Carlo results across 29 DGPs
+spanning tabular, image, text, graph, and multimodal settings.
+Section~\ref{sec:application} applies the method to the IHDP and Jobs
+benchmarks. Section~\ref{sec:software} describes the software implementation.
+Section~\ref{sec:conclusion} concludes.
+

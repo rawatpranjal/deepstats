@@ -1,0 +1,141 @@
+%------------------------------------------------------------------------------
+\section{Estimation}
+\label{sec:estimation}
+%------------------------------------------------------------------------------
+
+This section details the estimation procedure for the enriched structural model,
+including the training algorithm, cross-fitting for debiasing, and the
+construction of treatment effect estimates.
+
+\subsection{Cross-Fitting Procedure}
+
+To achieve valid asymptotic inference, we employ sample splitting through
+$K$-fold cross-fitting \citep{chernozhukov2018double}. This procedure removes
+the first-order bias that arises from using the same data to estimate nuisance
+functions and the target parameter.
+
+\begin{algorithm}[H]
+\caption{Cross-Fitted DeepHTE Estimation}
+\label{alg:crossfit}
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} Data $(Y_i, T_i, X_i)_{i=1}^n$, number of folds $K$
+\STATE Randomly partition $\{1, \ldots, n\}$ into $K$ folds $\mathcal{I}_1, \ldots, \mathcal{I}_K$
+\FOR{$k = 1$ to $K$}
+    \STATE Let $\mathcal{I}_{-k} = \{1, \ldots, n\} \setminus \mathcal{I}_k$ (training set)
+    \STATE Train neural network on $\{(Y_i, T_i, X_i) : i \in \mathcal{I}_{-k}\}$
+    \STATE Obtain $\hat{a}_{-k}(\cdot)$ and $\hat{b}_{-k}(\cdot)$
+    \FOR{$i \in \mathcal{I}_k$}
+        \STATE Compute $\hat{\tau}_i = \hat{b}_{-k}(X_i)$
+        \STATE Compute influence function $\hat{\psi}_i$
+    \ENDFOR
+\ENDFOR
+\STATE \textbf{Output:} ITEs $\{\hat{\tau}_i\}_{i=1}^n$, influence functions $\{\hat{\psi}_i\}_{i=1}^n$
+\end{algorithmic}
+\end{algorithm}
+
+The cross-fitting procedure ensures that predictions $\hat{b}(X_i)$ are made
+using a model trained on data excluding observation $i$, breaking the
+dependence that would otherwise invalidate the asymptotic approximation.
+
+\subsection{Training Objective}
+
+For exponential family outcomes, the neural network parameters
+$\theta = (\theta_a, \theta_b)$ are estimated by minimizing the negative
+log-likelihood:
+\[
+\hat{\theta} = \arg\min_\theta \sum_{i \in \mathcal{I}_{-k}}
+  -\ell(Y_i; a_\theta(X_i) + b_\theta(X_i) \cdot T_i)
+\]
+where $\ell(y; \eta)$ is the log-likelihood of observation $y$ given linear
+predictor $\eta$.
+
+Training proceeds using stochastic gradient descent with the Adam optimizer.
+We employ the following regularization strategies to prevent overfitting:
+
+\begin{itemize}
+    \item \textbf{Dropout}: Applied to hidden layers with rate $p = 0.1$
+    \item \textbf{Weight decay}: L2 regularization with $\lambda = 10^{-4}$
+    \item \textbf{Early stopping}: Based on validation loss with patience
+\end{itemize}
+
+These hyperparameters were selected through preliminary simulations and are the
+defaults used throughout this paper.
+
+\subsection{Average Treatment Effect Estimation}
+
+The average treatment effect (ATE) is estimated using the doubly robust
+influence function approach. Under the enriched structural model:
+\[
+\tau = E[b(X)] = E[E[Y(1) - Y(0) | X]]
+\]
+
+The doubly robust estimator is:
+\begin{equation}
+\label{eq:ate}
+\hat{\tau}_{\text{ATE}} = \frac{1}{n}\sum_{i=1}^n \hat{\psi}_i
+\end{equation}
+where the influence function for observation $i$ is:
+\[
+\hat{\psi}_i = \hat{b}(X_i) + \frac{T_i - \hat{e}(X_i)}{\hat{e}(X_i)(1 - \hat{e}(X_i))}
+  (Y_i - \hat{a}(X_i) - \hat{b}(X_i) T_i)
+\]
+with $\hat{e}(X_i) = P(T_i = 1 | X_i)$ the estimated propensity score. When
+treatment is randomized with known probability $p$, we set $\hat{e}(X_i) = p$.
+
+The standard error is computed as:
+\begin{equation}
+\label{eq:se}
+\widehat{\text{SE}}(\hat{\tau}_{\text{ATE}}) = \sqrt{\frac{1}{n(n-1)}
+  \sum_{i=1}^n (\hat{\psi}_i - \hat{\tau}_{\text{ATE}})^2}
+\end{equation}
+
+This variance estimator is consistent under the conditions of Theorem~\ref{thm:main}.
+
+\subsection{Individual Treatment Effect Estimation}
+
+Individual treatment effects (ITEs) are obtained directly from the neural
+network output:
+\[
+\hat{\tau}(x) = \hat{b}(x)
+\]
+
+For a new observation with covariates $x^*$, the estimated ITE is
+$\hat{\tau}(x^*) = \hat{b}(x^*)$. This can be computed by evaluating the
+trained network at $x^*$.
+
+\subsection{Quantile Treatment Effects}
+
+Treatment effect heterogeneity is characterized through quantiles of the ITE
+distribution. For quantile $q \in (0, 1)$:
+\[
+\hat{Q}_q = \text{quantile}_q(\{\hat{\tau}_i\}_{i=1}^n)
+\]
+
+Confidence intervals for quantiles are obtained via bootstrap resampling:
+
+\begin{enumerate}
+    \item Draw $B$ bootstrap samples of size $n$ with replacement
+    \item For each sample $b$, compute $\hat{Q}_q^{(b)}$
+    \item Construct percentile interval: $[\hat{Q}_q^{(\alpha/2)}, \hat{Q}_q^{(1-\alpha/2)}]$
+\end{enumerate}
+
+The quantiles provide interpretable summaries of heterogeneity. For instance,
+$\hat{Q}_{0.9} - \hat{Q}_{0.1}$ measures the spread of treatment effects across
+the population.
+
+\subsection{Implementation Details}
+
+The estimation procedure is implemented in the \texttt{deepstats} Python
+package. The default configuration uses:
+
+\begin{itemize}
+    \item Cross-fitting with $K = 5$ folds
+    \item MLP backbone with hidden dimensions $[256, 128, 64]$
+    \item Adam optimizer with learning rate $0.001$
+    \item Maximum 200 epochs with early stopping (patience 20)
+    \item Batch size 256
+\end{itemize}
+
+For multimodal data, the MLP backbone is replaced with appropriate
+architectures: CNN for images, Transformer for text, and GNN for graphs.
+The formula interface remains identical regardless of the backbone choice.

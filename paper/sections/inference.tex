@@ -1,0 +1,41 @@
+%------------------------------------------------------------------------------
+\section{Inference}
+\label{sec:inference}
+%------------------------------------------------------------------------------
+
+\subsection{Average Treatment Effect}
+
+The average treatment effect is the population mean of the conditional average
+treatment effect:
+\[
+\tau = E[b(X)] = E[E[Y(1) - Y(0) | X]]
+\]
+
+Under the enriched structural model, the ATE is estimated as:
+\[
+\hat{\tau} = \frac{1}{n}\sum_{i=1}^n \hat{\psi}_i
+\]
+where $\hat{\psi}_i$ is the doubly robust influence function evaluated at
+observation $i$ using cross-fitted nuisance estimates.
+
+The standard error is computed as:
+\[
+\widehat{\text{SE}}(\hat{\tau}) = \sqrt{\frac{1}{n^2}\sum_{i=1}^n (\hat{\psi}_i - \hat{\tau})^2}
+\]
+
+\subsection{Individual Treatment Effects}
+
+Individual treatment effects are directly available as the neural network
+output:
+\[
+\hat{\tau}_i = \hat{b}(X_i)
+\]
+
+The distribution of ITEs characterizes treatment effect heterogeneity.
+Quantiles of this distribution are estimated as:
+\[
+\hat{Q}_q = \text{quantile}_q(\{\hat{b}(X_i)\}_{i=1}^n)
+\]
+
+Bootstrap resampling provides confidence intervals for these quantiles,
+accounting for the estimation uncertainty in $\hat{b}$.

@@ -1,76 +1,40 @@
-"""
-deepstats: Production-grade econometrics with neural networks.
+"""deepstats: Influence function validation for neural network inference.
 
-This package bridges the predictive flexibility of machine learning (scikit-learn)
-with the statistical rigor of traditional econometrics (Stata/statsmodels).
+Implements the Farrell, Liang, Misra (2021, 2025) approach for valid inference
+with neural network estimators. NOT DML - neural nets output structural
+parameters directly and influence functions correct for regularization bias.
 
-Key Features
-------------
-- sklearn-compatible estimators (fit/predict interface)
-- Robust standard errors (HC0, HC1, HC2, HC3, cluster)
-- Statistical inference (summary tables, confidence intervals, p-values)
-- Causal inference with Double Machine Learning
-- Cross-fitting for valid inference
+Usage:
+    from deepstats import get_dgp, get_family, naive, influence, bootstrap
 
-Basic Usage
------------
->>> import deepstats as ds
->>> from deepstats.estimators import DeepOLS, DoubleMachineLearning
->>>
->>> # Deep regression with robust SEs
->>> model = DeepOLS(robust_se="HC1", epochs=100)
->>> result = model.fit(X, y)
->>> print(result.summary())
->>>
->>> # Causal inference
->>> dml = DoubleMachineLearning(n_folds=5)
->>> result = dml.fit(Y=Y, T=treatment, X=confounders)
->>> print(f"ATE: {result.ate:.4f} ({result.ate_se:.4f})")
+    # Generate data
+    dgp = get_dgp("linear")
+    data = dgp.generate(1000)
 
-References
-----------
-- Farrell, Liang, Misra (2021). "Deep Neural Networks for Estimation and Inference"
-- Chernozhukov et al. (2018). "Double/Debiased Machine Learning"
+    # Get family for loss/residual/weights
+    family = get_family("linear")
+
+    # Run inference
+    mu_hat, se = influence(data.X, data.T, data.Y, family, config)
 """
 
-__version__ = "0.1.0"
-
-# Main estimators
-from .estimators.deep_ols import DeepOLS
-from .estimators.dml import CausalResults, DoubleMachineLearning
-
-# Results
-from .results.deep_results import DeepResults
-
-# Networks
-from .networks.mlp import MLP, MLPClassifier, create_network
-
-# Inference
-from .inference.standard_errors import (
-    compute_vcov,
-    compute_vcov_hc0,
-    compute_vcov_hc1,
-    compute_vcov_hc2,
-    compute_vcov_hc3,
-)
+from .dgp import get_dgp, DGPS, verify_ground_truth
+from .families import get_family, FAMILIES
+from .models import StructuralNet, NuisanceNet, train_structural, train_nuisance
+from .inference import naive, influence, bootstrap, METHODS
+from .metrics import compute_metrics, print_table
 
 __all__ = [
-    # Version
-    "__version__",
-    # Estimators
-    "DeepOLS",
-    "DoubleMachineLearning",
-    # Results
-    "DeepResults",
-    "CausalResults",
-    # Networks
-    "MLP",
-    "MLPClassifier",
-    "create_network",
+    # DGP
+    "get_dgp", "DGPS", "verify_ground_truth",
+    # Families
+    "get_family", "FAMILIES",
+    # Models
+    "StructuralNet", "NuisanceNet", "train_structural", "train_nuisance",
     # Inference
-    "compute_vcov",
-    "compute_vcov_hc0",
-    "compute_vcov_hc1",
-    "compute_vcov_hc2",
-    "compute_vcov_hc3",
+    "naive", "influence", "bootstrap", "METHODS",
+    # Metrics
+    "compute_metrics", "print_table",
 ]
+
+__version__ = "2.0.0"

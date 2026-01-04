@@ -1,0 +1,35 @@
+%------------------------------------------------------------------------------
+\section{Comparison Methods}
+\label{sec:comparison}
+%------------------------------------------------------------------------------
+
+\subsection{Double Machine Learning}
+
+Double Machine Learning \citep{chernozhukov2018double} estimates the partially
+linear model:
+\[
+Y = \theta(X) \cdot T + g(X) + \varepsilon
+\]
+
+The LinearDML implementation assumes $\theta(X) = X'\beta$, a linear function of
+covariates. This specification provides consistent estimation when the
+conditional average treatment effect is indeed linear in $X$, but may exhibit
+bias when true heterogeneity involves nonlinear patterns such as higher-order
+interactions, threshold effects, or periodic components.
+
+\subsection{Causal Forests}
+
+Causal Forests \citep{athey2019generalized} estimate heterogeneous treatment
+effects using a forest of honest regression trees. Each tree partitions the
+covariate space adaptively, estimating local treatment effects within each leaf.
+The method provides confidence intervals based on the infinitesimal jackknife
+but requires the effect function to be well-approximated by piecewise constant
+functions on rectangular partitions.
+
+\subsection{Quantile Forests}
+
+For comparison of treatment effect distribution estimation, we also consider
+Quantile Forests that estimate conditional quantiles of the potential outcomes.
+By fitting separate forests for treated and control outcomes, one can estimate
+quantiles of the treatment effect distribution, providing a nonparametric
+benchmark for our quantile estimates.

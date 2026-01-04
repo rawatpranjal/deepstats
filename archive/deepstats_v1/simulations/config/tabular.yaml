@@ -1,0 +1,37 @@
+# Tabular simulation configuration
+
+inherit: base.yaml
+
+modality: tabular
+
+dgp:
+  scenarios:
+    - mixed
+    - sparse_nonlinear
+    - overfit
+    - underfit
+    - high_dimensional
+
+  mixed:
+    n_covariates: 10
+    signal_pattern: mixed
+
+  sparse_nonlinear:
+    n_covariates: 50
+    sparsity: 0.1
+    signal_pattern: nonlinear
+
+  overfit:
+    n_samples: 100
+    n_covariates: 50
+
+  underfit:
+    n_samples: 5000
+    complexity: high
+
+  high_dimensional:
+    n_covariates: 100
+    n_samples: 1000
+
+deephte:
+  formula_template: "Y ~ a({covs}) + b({covs}) * T"

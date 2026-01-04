@@ -1,0 +1,30 @@
+# Graph simulation configuration
+
+inherit: base.yaml
+
+modality: graph
+
+dgp:
+  scenarios:
+    - density
+    - size
+    - centrality
+
+  min_nodes: 10
+  max_nodes: 50
+  node_feature_dim: 8
+
+  density:
+    heterogeneity: density
+
+  size:
+    heterogeneity: size
+
+  centrality:
+    heterogeneity: centrality
+
+deephte:
+  backbone: gnn
+  epochs: 100
+  hidden_dims: [64, 32]
+  batch_size: 32

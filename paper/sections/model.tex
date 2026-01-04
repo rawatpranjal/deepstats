@@ -1,0 +1,55 @@
+%------------------------------------------------------------------------------
+\section{Model Specification}
+\label{sec:model}
+%------------------------------------------------------------------------------
+
+\subsection{General Framework}
+
+DeepHTE implements the enriched structural model through a formula interface
+that separates baseline and treatment effect components. The formula
+specification:
+\[
+\texttt{Y \textasciitilde{} a(covariates) + b(covariates) * T}
+\]
+defines the structural equation where the \texttt{a()} term specifies covariates
+entering the baseline function and the \texttt{b()} term specifies covariates
+entering the treatment effect function. The network architecture uses a shared
+backbone with separate output heads for each parameter function.
+
+\subsection{Exponential Family Extension}
+
+The framework extends to any exponential family distribution through the
+specification of appropriate link functions and log-likelihood objectives.
+
+For the normal family with identity link, the outcome model is
+$Y \sim N(a(X) + b(X) \cdot T, \sigma^2)$ with log-likelihood
+$\ell = -\frac{1}{2\sigma^2}(y - \eta)^2$.
+
+For the Bernoulli family with logit link, the outcome model is
+$Y \sim \text{Bernoulli}(\sigma(a(X) + b(X) \cdot T))$ with log-likelihood
+$\ell = y \log(\sigma(\eta)) + (1-y) \log(1 - \sigma(\eta))$.
+
+For the Poisson family with log link, the outcome model is
+$Y \sim \text{Poisson}(\exp(a(X) + b(X) \cdot T))$ with log-likelihood
+$\ell = y \eta - \exp(\eta)$.
+
+For the Gamma family with log link, the outcome model is
+$Y \sim \text{Gamma}(\alpha, \exp(a(X) + b(X) \cdot T))$ with log-likelihood
+$\ell = \alpha \eta - \alpha \exp(-\eta) y$.
+
+This unified framework enables treatment effect estimation for continuous,
+binary, count, and duration outcomes using the same estimation machinery.
+
+\subsection{Network Architecture}
+
+The default architecture consists of a multi-layer perceptron backbone with
+ReLU activations, followed by separate linear heads for the $a$ and $b$
+parameter functions. For specialized covariate structures, the backbone can be
+replaced with convolutional networks for images, recurrent networks for
+sequences, or graph neural networks for relational data.
+
+Training proceeds by minimizing the negative log-likelihood of the specified
+family using stochastic gradient descent with adaptive learning rates.
+Regularization through early stopping based on validation loss prevents
+overfitting while allowing the network to capture complex heterogeneity
+patterns.

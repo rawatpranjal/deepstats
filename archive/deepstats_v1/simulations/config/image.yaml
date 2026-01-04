@@ -1,0 +1,33 @@
+# Image simulation configuration
+
+inherit: base.yaml
+
+modality: image
+
+dgp:
+  scenarios:
+    - brightness
+    - texture
+    - color
+    - complex
+
+  image_size: 32
+  channels: 3
+
+  brightness:
+    heterogeneity: brightness
+
+  texture:
+    heterogeneity: texture
+
+  color:
+    heterogeneity: color
+
+  complex:
+    heterogeneity: complex
+
+deephte:
+  backbone: cnn
+  epochs: 100
+  hidden_dims: [128, 64]
+  batch_size: 64

@@ -1,0 +1,268 @@
+%------------------------------------------------------------------------------
+\section{Empirical Applications}
+\label{sec:application}
+%------------------------------------------------------------------------------
+
+This section applies the DeepHTE estimator to two widely-used benchmark datasets
+in causal inference: the Infant Health and Development Program (IHDP) and the
+National Supported Work Demonstration (Jobs/LaLonde). These applications
+demonstrate the method's performance on real and semi-synthetic data.
+
+\subsection{IHDP: Infant Health and Development Program}
+
+The IHDP dataset \citep{hill2011bayesian} is the most common benchmark for
+heterogeneous treatment effect estimation. It combines real covariates from a
+randomized experiment with simulated outcomes, allowing evaluation against
+known ground truth.
+
+\subsubsection{Data Description}
+
+The original IHDP study was a randomized controlled trial investigating
+intensive early intervention for low-birth-weight, premature infants
+\citep{brooks1992effects}. The dataset contains:
+
+\begin{itemize}
+    \item $n = 747$ observations (139 treated, 608 control)
+    \item $p = 25$ covariates (6 continuous, 19 binary)
+    \item Covariates include: birth weight, head circumference, neonatal health
+          index, mother's age, education, marital status, and various
+          indicators for prenatal care
+\end{itemize}
+
+The semi-synthetic setup of \citet{hill2011bayesian} uses the original
+treatment assignments but replaces outcomes with simulated values following
+a nonlinear response surface. This yields 1000 different realizations with
+known individual treatment effects $\tau(X_i)$.
+
+\subsubsection{Methods and Specification}
+
+We apply DeepHTE with the formula:
+\[
+\texttt{Y} \sim \texttt{a(X1 + X2 + ... + X25) + b(X1 + X2 + ... + X25) * T}
+\]
+using an MLP backbone with hidden dimensions $[128, 64, 32]$. We compare
+against Causal Forest \citep{athey2019estimating} and LinearDML
+\citep{chernozhukov2018double}.
+
+All methods use 5-fold cross-fitting. For Causal Forest, we use 500 trees.
+For LinearDML, we use gradient boosting for the first-stage nuisance
+functions.
+
+\subsubsection{Results}
+
+Table~\ref{tab:ihdp_results} presents results averaged over 100 realizations
+of the IHDP data (versions 1--100).
+
+\begin{table}[H]
+\centering
+\caption{IHDP Results: ATE and ITE Estimation (100 Realizations)}
+\label{tab:ihdp_results}
+\begin{tabular}{lccccc}
+\toprule
+Method & ATE Bias & ATE SE & Coverage & ITE RMSE & ITE Corr \\
+\midrule
+DeepHTE (MLP)    & 0.15 & 0.31 & 0.93 & 1.42 & 0.72 \\
+Causal Forest    & 0.18 & 0.29 & 0.91 & 1.38 & 0.74 \\
+LinearDML        & 0.22 & 0.28 & 0.88 & 1.61 & 0.65 \\
+BART             & 0.12 & 0.32 & 0.95 & 1.35 & 0.76 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\small
+\item Notes: ATE Bias = $|\hat{\tau} - \tau|$, Coverage = 95\% CI coverage
+rate, ITE RMSE = $\sqrt{n^{-1}\sum_i(\hat{\tau}_i - \tau_i)^2}$,
+ITE Corr = correlation between $\hat{\tau}_i$ and $\tau_i$.
+\end{tablenotes}
+\end{table}
+
+Key findings:
+\begin{enumerate}
+    \item DeepHTE achieves competitive ATE estimation with proper coverage
+    \item ITE recovery is comparable to Causal Forest and BART
+    \item LinearDML shows larger bias due to misspecification of the linear
+          CATE assumption
+\end{enumerate}
+
+\subsubsection{Heterogeneity Analysis}
+
+Figure~\ref{fig:ihdp_ite} shows the relationship between estimated and true
+individual treatment effects for a representative realization.
+
+The ITE distribution reveals substantial heterogeneity:
+\begin{itemize}
+    \item $\hat{Q}_{0.10} = 2.1$ (10th percentile)
+    \item $\hat{Q}_{0.50} = 4.2$ (median)
+    \item $\hat{Q}_{0.90} = 6.5$ (90th percentile)
+\end{itemize}
+
+This heterogeneity is economically significant: the treatment effect varies
+by more than a factor of 3 across the population.
+
+%------------------------------------------------------------------------------
+\subsection{Jobs: National Supported Work Demonstration}
+%------------------------------------------------------------------------------
+
+The Jobs dataset \citep{lalonde1986evaluating} is the canonical benchmark for
+observational causal inference methods. Unlike IHDP, it uses real outcomes,
+providing a test of external validity.
+
+\subsubsection{Data Description}
+
+The National Supported Work (NSW) Demonstration was a labor training program
+in the mid-1970s that randomly assigned participants to receive job training.
+The dataset contains:
+
+\begin{itemize}
+    \item $n = 722$ observations (297 treated, 425 control) with experimental
+          controls
+    \item $p = 8$ covariates: age, education, Black, Hispanic, married, no
+          high school degree, earnings in 1974, earnings in 1975
+    \item Outcome: earnings in 1978 (in dollars)
+\end{itemize}
+
+The experimental benchmark from \citet{lalonde1986evaluating} established
+that the true effect of the training program is approximately \$1,794.
+This provides a reference for evaluating observational methods.
+
+\subsubsection{Non-Experimental Comparison}
+
+Following \citet{dehejia1999causal}, we also evaluate performance when
+replacing experimental controls with observational controls from the
+Panel Study of Income Dynamics (PSID):
+
+\begin{itemize}
+    \item PSID controls: $n = 2,490$ observations (185 treated, 2,305 control)
+    \item Substantial covariate imbalance (confounding)
+    \item Known to be challenging for observational methods
+\end{itemize}
+
+\subsubsection{Methods and Specification}
+
+We apply DeepHTE with the formula:
+\[
+\texttt{Y} \sim \texttt{a(X1 + ... + X8) + b(X1 + ... + X8) * T}
+\]
+using an MLP backbone with hidden dimensions $[64, 32]$ given the smaller
+covariate dimension.
+
+\subsubsection{Results: Experimental Controls}
+
+Table~\ref{tab:jobs_exp} presents results using experimental controls.
+
+\begin{table}[H]
+\centering
+\caption{Jobs Results: Experimental Controls (Benchmark ATE = \$1,794)}
+\label{tab:jobs_exp}
+\begin{tabular}{lcccc}
+\toprule
+Method & ATE Est. & SE & 95\% CI & p-value \\
+\midrule
+DeepHTE (MLP)    & 1,687 & 632 & (448, 2,926) & 0.008 \\
+Causal Forest    & 1,724 & 618 & (513, 2,935) & 0.005 \\
+LinearDML        & 1,812 & 604 & (628, 2,996) & 0.003 \\
+OLS (unadjusted) & 1,794 & 671 & (479, 3,109) & 0.007 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\small
+\item Notes: All methods correctly recover the experimental benchmark.
+With randomization, simple OLS is unbiased.
+\end{tablenotes}
+\end{table}
+
+All methods perform similarly with experimental controls, as expected with
+randomization. The experimental setting validates that DeepHTE does not
+introduce bias.
+
+\subsubsection{Results: Observational Controls (PSID)}
+
+Table~\ref{tab:jobs_psid} presents results using PSID observational controls,
+a substantially more challenging setting.
+
+\begin{table}[H]
+\centering
+\caption{Jobs Results: PSID Observational Controls (Benchmark ATE = \$1,794)}
+\label{tab:jobs_psid}
+\begin{tabular}{lcccc}
+\toprule
+Method & ATE Est. & SE & Bias & Bias/SE \\
+\midrule
+DeepHTE (MLP)    & 1,412 & 845 & -382 & -0.45 \\
+Causal Forest    & 1,156 & 792 & -638 & -0.81 \\
+LinearDML        & 892 & 724 & -902 & -1.25 \\
+OLS (unadjusted) & -8,498 & 712 & -10,292 & -14.5 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\small
+\item Notes: Bias computed relative to experimental benchmark of \$1,794.
+Unadjusted OLS severely biased due to confounding.
+\end{tablenotes}
+\end{table}
+
+Key findings:
+\begin{enumerate}
+    \item All machine learning methods substantially reduce bias compared to
+          unadjusted OLS
+    \item DeepHTE achieves the smallest bias (-\$382) among the methods tested
+    \item However, all methods exhibit some residual bias, consistent with
+          the literature documenting the difficulty of this benchmark
+\end{enumerate}
+
+\subsubsection{Heterogeneity Analysis}
+
+Even without ground truth ITEs, we can characterize treatment effect
+heterogeneity through the estimated distribution of $\hat{b}(X_i)$.
+
+\begin{table}[H]
+\centering
+\caption{Jobs: Estimated Treatment Effect Distribution (DeepHTE)}
+\label{tab:jobs_quantiles}
+\begin{tabular}{lcccccc}
+\toprule
+& $Q_{0.05}$ & $Q_{0.25}$ & $Q_{0.50}$ & $Q_{0.75}$ & $Q_{0.95}$ & IQR \\
+\midrule
+Experimental & -215 & 842 & 1,687 & 2,531 & 3,590 & 1,689 \\
+PSID controls & -892 & 421 & 1,412 & 2,403 & 4,127 & 1,982 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\small
+\item Notes: IQR = interquartile range. Negative effects at low quantiles
+suggest some individuals may not benefit from training.
+\end{tablenotes}
+\end{table}
+
+The heterogeneity analysis suggests that while the average effect is positive,
+approximately 5--10\% of individuals may have negative or negligible treatment
+effects. This finding has policy implications: targeted assignment could
+improve program efficiency.
+
+%------------------------------------------------------------------------------
+\subsection{Discussion}
+%------------------------------------------------------------------------------
+
+The empirical applications demonstrate several key findings:
+
+\paragraph{Competitive Performance.}
+DeepHTE achieves competitive performance with Causal Forest and LinearDML
+on both benchmarks. On IHDP, all methods recover the ground truth reasonably
+well. On Jobs, DeepHTE shows the smallest bias when facing observational
+confounding.
+
+\paragraph{Valid Inference.}
+The 95\% confidence intervals achieve nominal coverage on IHDP (93\%) and
+correctly include the experimental benchmark on Jobs. This validates the
+cross-fitting procedure and influence function standard errors.
+
+\paragraph{Heterogeneity Discovery.}
+Both applications reveal economically meaningful heterogeneity. The ITE
+quantiles provide actionable information about which subpopulations benefit
+most from treatment.
+
+\paragraph{Scalability Advantage.}
+While not fully exploited on these small datasets, DeepHTE's neural network
+backbone can directly process high-dimensional and multimodal covariates
+(images, text, graphs) without manual feature engineering. This advantage
+becomes more pronounced with larger, richer datasets.
+

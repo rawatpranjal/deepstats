@@ -1,0 +1,119 @@
+\documentclass[11pt]{article}
+
+% Packages
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{threeparttable}  % For table notes
+\usepackage{enumerate}       % For numbered assumptions
+\usepackage{float}           % For H placement
+
+% Table notes environment
+\newenvironment{tablenotes}{\par\footnotesize}{\par}
+
+% Code styling
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{orange},
+    showstringspaces=false,
+    frame=single,
+    breaklines=true,
+}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{assumption}{Assumption}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+% Title
+\title{Deep Learning for Heterogeneous Treatment Effects:\\
+Enriched Structural Models with Valid Inference}
+
+\author{
+  Author Name\\
+  \texttt{author@email.com}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present DeepHTE, a framework for heterogeneous treatment effect (HTE)
+estimation using enriched structural models where neural network outputs serve
+as parameter functions. The key innovation is combining the flexibility of deep
+learning with the statistical rigor of semiparametric efficiency theory.
+Cross-fitting removes first-order bias, yielding $\sqrt{n}$-consistent and
+asymptotically normal estimators for the average treatment effect (ATE), with
+influence-function-based standard errors that achieve the semiparametric
+efficiency bound.
+
+Unlike Linear Double Machine Learning (DML), our approach places no parametric
+restrictions on the conditional average treatment effect (CATE) function.
+Unlike existing deep learning methods such as TARNet and DragonNet, we provide
+valid asymptotic inference. The method naturally handles multimodal covariates
+through specialized neural network architectures: MLP for tabular data, CNN for
+images, Transformer for text, and GNN for graphs.
+
+Monte Carlo simulations across 29 data generating processes spanning six
+modalities demonstrate competitive ATE estimation with 90--95\% coverage. On
+graph-structured data, DeepHTE achieves the lowest individual treatment effect
+(ITE) RMSE, outperforming Causal Forest and Linear DML. We validate the method
+on the IHDP and Jobs benchmarks, showing competitive performance with proper
+inference. The \texttt{deepstats} Python package provides an R-style formula
+interface for applied researchers.
+\end{abstract}
+
+%------------------------------------------------------------------------------
+% Sections (ordered per econometrics journal structure)
+%------------------------------------------------------------------------------
+
+% Section 1: Introduction (problem, limitations, contributions, organization)
+\input{sections/introduction}
+
+% Section 2: Model and Assumptions
+\input{sections/model}
+
+% Section 3: Estimation (cross-fitting, training, ATE/ITE estimation)
+\input{sections/estimation}
+
+% Section 4: Asymptotic Theory (main theorem, proof sketch)
+\input{sections/theory}
+
+% Section 5: Monte Carlo Simulations
+\input{sections/simulations}
+
+% Section 6: Empirical Applications (IHDP, Jobs)
+\input{sections/application}
+
+% Section 7: Software
+\input{sections/software}
+
+% Section 8: Conclusion
+\input{sections/conclusion}
+
+%------------------------------------------------------------------------------
+% References
+%------------------------------------------------------------------------------
+\bibliographystyle{apalike}
+\bibliography{references}
+
+\end{document}

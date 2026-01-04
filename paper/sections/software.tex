@@ -1,0 +1,43 @@
+%------------------------------------------------------------------------------
+\section{Software}
+\label{sec:software}
+%------------------------------------------------------------------------------
+
+\subsection{Installation}
+
+\begin{lstlisting}
+pip install deepstats
+\end{lstlisting}
+
+\subsection{Basic Usage}
+
+\begin{lstlisting}
+import deepstats as ds
+
+# Load A/B test data
+data = pd.read_csv("ab_test.csv")
+
+# Fit enriched structural model
+model = ds.DeepHTE(
+    formula="Y ~ a(X1 + X2 + X3) + b(X1 + X2 + X3) * T",
+    family="normal",
+    epochs=200,
+)
+result = model.fit(data)
+
+# Results
+print(f"ATE: {result.ate:.3f} (SE: {result.ate_se:.3f})")
+print(result.summary())
+\end{lstlisting}
+
+\subsection{API Reference}
+
+The main estimator class is DeepHTE, which accepts a formula string, family
+specification, and training hyperparameters. The fit method returns a results
+object containing the estimated ATE with standard error, individual treatment
+effects, and methods for prediction on new data.
+
+For simulation studies, the package provides the comparison module with
+wrappers for EconML's LinearDML and CausalForestDML, as well as QuantileForest
+for distribution comparison. The simulations module provides organized
+runners for reproducible Monte Carlo studies across data modalities.
