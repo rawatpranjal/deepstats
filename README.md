@@ -76,13 +76,18 @@ The package abstracts the math of influence functions. You simply select the fam
 ## Methodological Details
 
 ### 1. The Enriched Model
-We replace fixed parameters $\theta$ with neural networks $\theta(X)$.
-$$ \hat{\theta}(\cdot) = \arg \min_{\theta \in \mathcal{F}_{DNN}} \sum \ell(y_i, t_i, \theta(x_i)) $$
+We replace fixed parameters $\theta$ with neural networks $\theta(X)$:
+
+```math
+\hat{\theta}(\cdot) = \arg \min_{\theta \in \mathcal{F}_{DNN}} \sum \ell(y_i, t_i, \theta(x_i))
+```
 
 ### 2. The Influence Function Correction
 Naive averaging of $\hat{\theta}(X)$ yields biased inference. We construct a Neyman-Orthogonal score $\psi$ using the **Influence Function**:
 
-$$ \psi(z) = H(\hat{\theta}) + \nabla_\theta H \cdot \Lambda(x)^{-1} \cdot \nabla_\theta \ell(z, \hat{\theta}) $$
+```math
+\psi(z) = H(\hat{\theta}) + \nabla_\theta H \cdot \Lambda(x)^{-1} \cdot \nabla_\theta \ell(z, \hat{\theta})
+```
 
 Where $\Lambda(x) = \mathbb{E}[\nabla^2 \ell \mid X=x]$ is the conditional Hessian.
 *   **Automatic Differentiation:** `deepstats` uses PyTorch Autograd to compute exact Jacobians and Hessians for any model family.
