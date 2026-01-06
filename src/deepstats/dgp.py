@@ -19,13 +19,39 @@ import numpy as np
 # =============================================================================
 
 def alpha_star(X: np.ndarray) -> np.ndarray:
-    """True baseline: sin(pi*X_1) + X_2^2 + exp(X_3/2)."""
-    return np.sin(np.pi * X[:, 0]) + X[:, 1]**2 + np.exp(X[:, 2] / 2)
+    """True baseline: complex nonlinear function.
+
+    α*(X) = sin(2πX₁) + X₂³ - 2cos(πX₃) + exp(X₄/3)·I(X₄>0) + 0.5·X₅·X₆
+
+    Features:
+    - Higher frequency sine (2π instead of π)
+    - Cubic term (X₂³)
+    - Cosine interaction
+    - Indicator-weighted exponential
+    - Covariate interaction (X₅·X₆)
+    """
+    return (np.sin(2 * np.pi * X[:, 0])
+            + X[:, 1]**3
+            - 2 * np.cos(np.pi * X[:, 2])
+            + np.exp(X[:, 3] / 3) * (X[:, 3] > 0).astype(float)
+            + 0.5 * X[:, 4] * X[:, 5])
 
 
 def beta_star(X: np.ndarray) -> np.ndarray:
-    """True CATE: cos(pi*X_1) * I(X_4 > 0) + 0.5*X_5."""
-    return np.cos(np.pi * X[:, 0]) * (X[:, 3] > 0).astype(float) + 0.5 * X[:, 4]
+    """True CATE: complex heterogeneous treatment effect.
+
+    β*(X) = cos(2πX₁)·sin(πX₂) + 0.8·tanh(3X₃) - 0.5·X₄² + 0.3·X₅·I(X₆>0)
+
+    Features:
+    - Product of trig functions (highly nonlinear)
+    - Tanh saturation effect
+    - Quadratic term
+    - Indicator interaction
+    """
+    return (np.cos(2 * np.pi * X[:, 0]) * np.sin(np.pi * X[:, 1])
+            + 0.8 * np.tanh(3 * X[:, 2])
+            - 0.5 * X[:, 3]**2
+            + 0.3 * X[:, 4] * (X[:, 5] > 0).astype(float))
 
 
 def generate_treatment(X: np.ndarray, beta: np.ndarray, rng: np.random.Generator) -> np.ndarray:
@@ -191,18 +217,56 @@ class LogitDGP(BaseDGP):
 
 
 class TobitDGP(BaseDGP):
-    """Y = max(0, alpha + beta*T + epsilon) - censored at 0."""
+    """Y = max(0, alpha + beta*T + epsilon) - censored at 0.
+
+    Supports two ground truth estimands:
+    - 'latent': E[β(X)] - effect on latent Y*
+    - 'observed': E[β(X)·Φ(z)] - effect on observed E[Y|X,T]
+
+    where z = (α + βT)/σ.
+    """
     name = "tobit"
 
     def __init__(self, d: int = 10, sigma: float = 1.0, seed: int = 42):
         super().__init__(d, seed)
         self.sigma = sigma
+        self._mu_true_latent = None
+        self._mu_true_observed = None
 
     def generate(self, n: int) -> DGPResult:
         X, T, alpha, beta = self._generate_base_data(n)
         Y_star = alpha + beta * T + self.rng.normal(0, self.sigma, n)
         Y = np.maximum(0, Y_star)
         return DGPResult(X, T, Y, alpha, beta, self.compute_true_mu())
+
+    def compute_true_mu(self, target: str = "latent", n_mc: int = 100000) -> float:
+        """Compute true E[β] or E[β·Φ(z)] via Monte Carlo.
+
+        Args:
+            target: 'latent' for E[β], 'observed' for E[β·Φ(z)]
+            n_mc: Number of Monte Carlo samples
+
+        Returns:
+            Ground truth value
+        """
+        from scipy.stats import norm as scipy_norm
+
+        if target == "latent":
+            if self._mu_true_latent is None:
+                self._mu_true_latent = compute_true_mu(n_mc, seed=self.seed + 999999)
+            return self._mu_true_latent
+        else:  # observed
+            if self._mu_true_observed is None:
+                rng = np.random.default_rng(self.seed + 999998)
+                X = rng.uniform(-1, 1, (n_mc, self.d))
+                alpha = alpha_star(X)
+                beta = beta_star(X)
+                T = generate_treatment(X, beta, rng)
+                mu = alpha + beta * T
+                z = mu / self.sigma
+                Phi_z = scipy_norm.cdf(z)
+                self._mu_true_observed = float(np.mean(beta * Phi_z))
+            return self._mu_true_observed
 
 
 class NegBinDGP(BaseDGP):
@@ -302,19 +366,32 @@ def verify_ground_truth(n_mc: int = 1_000_000, seed: int = 42) -> dict:
     Returns dict mapping model name to computed μ*.
 
     The ground truth is:
-    - Linear/Gumbel/Tobit: μ* = E[β*(X)] (no scaling)
+    - Linear/Gumbel: μ* = E[β*(X)] (no scaling)
+    - Tobit (latent): μ* = E[β*(X)]
+    - Tobit (observed): μ* = E[β*(X)·Φ(z)] where z = (α + βT)/σ
     - Gamma/Poisson/NegBin/Weibull: μ* = E[0.3 × β*(X)] (log-link scaling)
     - Logit: μ* = E[0.5 × β*(X)] (logit scaling)
     """
+    from scipy.stats import norm as scipy_norm
+
     rng = np.random.default_rng(seed)
     X = rng.uniform(-1, 1, (n_mc, 10))
-    beta = beta_star(X)  # cos(πX₁)·I(X₄>0) + 0.5·X₅
+    alpha = alpha_star(X)
+    beta = beta_star(X)
+
+    # For tobit observed, need T as well
+    T = generate_treatment(X, beta, rng)
+    mu_tobit = alpha + beta * T
+    sigma = 1.0  # Default DGP sigma
+    z = mu_tobit / sigma
+    Phi_z = scipy_norm.cdf(z)
 
     results = {
         # Linear models (no scaling)
         "linear": float(np.mean(beta)),
         "gumbel": float(np.mean(beta)),
-        "tobit": float(np.mean(beta)),
+        "tobit_latent": float(np.mean(beta)),
+        "tobit_observed": float(np.mean(beta * Phi_z)),
 
         # Log-link models (0.3 scaling)
         "gamma": float(np.mean(beta * 0.3)),
@@ -329,7 +406,7 @@ def verify_ground_truth(n_mc: int = 1_000_000, seed: int = 42) -> dict:
     print("Ground Truth Verification (N=1,000,000)")
     print("=" * 50)
     for model, mu in results.items():
-        print(f"{model:12s}: μ* = {mu:.6f}")
+        print(f"{model:16s}: μ* = {mu:.6f}")
     print("=" * 50)
 
     return results

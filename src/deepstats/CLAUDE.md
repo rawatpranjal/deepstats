@@ -103,21 +103,44 @@ T = 0.5·β*(X) + 0.2·Σ(X₆...X₁₀) + ν            # Treatment (confounde
 ```
 **Expected**: ~30-50% coverage (underestimates uncertainty)
 
-### 4.2 Influence Function Estimator (50-Fold)
-```
-For k = 1...50 folds:
-  D_train = 98% of data (folds ≠ k)
-  D_test = 2% of data (fold k)
+### 4.2 Influence Function Estimator (K-Fold Cross-Fitting)
 
-  Step A: Train StructuralNet on D_train → θ̂^(k)
-  Step B: Compute Λ on D_train (same data, two-way split)
-  Step C: For each i in D_test:
-          ψᵢ = β̂ᵢ + rᵢ · (Tᵢ - E[T]) / Var(T)  [simplified]
+**THIS IS THE CORE OF THE FLM APPROACH.**
 
-μ̂ = mean(ψ)
-SE = std(ψ) / √N
 ```
-**Expected**: ~95% coverage
+For k = 1...K folds:
+  D_train = (K-1)/K of data (folds ≠ k)
+  D_test = 1/K of data (fold k)
+
+  Step A: Train StructuralNet on D_train → θ̂ = [α̂(X), β̂(X)]
+  Step B: Train NuisanceNet on D_train → E[T|X]
+  Step C: Compute Hessian on D_train:
+          T̃ = T - E[T|X]
+          Λ = (1/n_train) Σ [W_i · T̃_i ⊗ T̃_i]  where T̃_i = [1, T̃_i]
+
+  Step D: For each observation i in D_test, compute INFLUENCE SCORE:
+          rᵢ = Yᵢ - (α̂ᵢ + β̂ᵢTᵢ)              # residual
+          T̃ᵢ = Tᵢ - E[T|Xᵢ]                   # centered treatment
+          ∇ℓᵢ = -rᵢ · [1, T̃ᵢ]                 # score function
+
+          ψᵢ = β̂ᵢ - ∇ℓᵢ @ Λ⁻¹ @ [0, 1]       # FULL INFLUENCE SCORE
+
+          (This is: H(θ) + ∇H' @ Λ⁻¹ @ ∇ℓ)
+
+INFERENCE:
+μ̂ = mean(ψ)                                   # point estimate
+SE = std(ψ) / √n                              # INFLUENCE FUNCTION SE
+
+95% CI = μ̂ ± 1.96 × SE
+```
+
+**Why this works:**
+- ψ is Neyman-orthogonal: robust to first-order errors in θ̂
+- The Λ⁻¹ correction removes regularization bias from neural net
+- SE = std(ψ)/√n IS the correct formula (not a simplification!)
+- With K large enough (K=50), each model sees 98% of data → low variance
+
+**Expected**: ~95% coverage, SE ratio ~1.0
 
 ### 4.3 Bootstrap Estimator
 ```
@@ -128,6 +151,46 @@ SE = std(ψ) / √N
 3. SE = std(μ_1, ..., μ_100)
 ```
 **Expected**: Still poor coverage (doesn't correct bias)
+
+---
+
+## CRITICAL: What NOT to Do
+
+**The influence function approach has specific requirements. DO NOT deviate.**
+
+### 1. DO NOT add ad-hoc SE corrections
+```python
+# WRONG - cluster-robust SE, design effects, etc.
+deff = 1 + (fold_size - 1) * rho
+se = se_naive * sqrt(deff)
+
+# CORRECT - influence function SE
+se = std(psi) / sqrt(n)
+```
+
+### 2. DO NOT simplify the influence score
+```python
+# WRONG - ignores Hessian
+psi = beta_i + r_i * T_tilde / var(T)
+
+# CORRECT - full Hessian-based formula
+psi = beta_i - l_theta @ Lambda_inv @ H_grad
+```
+
+### 3. DO NOT use bootstrap for SE
+Bootstrap captures sampling variability but NOT regularization bias.
+The influence function IS the bias correction.
+
+### 4. DO NOT skip the Hessian computation
+The Λ⁻¹ term is essential. It corrects for the curvature of the loss
+landscape and removes bias from regularized neural net estimation.
+
+### 5. DO NOT use too few folds
+- K=5: Only 80% training data → high model variance → bad SE
+- K=50: 98% training data → stable models → correct SE
+
+**The SE = std(ψ)/√n formula is CORRECT when ψ is computed properly.**
+**All the magic is in computing ψ correctly with the full influence function.**
 
 ---
 
@@ -184,54 +247,55 @@ optimizer = Adam
 
 ---
 
-## 7. Complete Results (All 8 Models × 3 Methods)
+## 7. Monte Carlo Results (Linear DGP, K=50 Folds)
 
-### 7.1 Full Results Table
+### 7.1 Full Results Table (M=30, N=1000, K=50)
+
 ```
-Model    Method      μ*        Bias      Var       RMSE    SE(emp)  SE(est)   Ratio   CI Width   Coverage
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-linear   naive       0.0007   -0.0046   0.0154    0.1228   0.1239   0.0231    0.19    0.0904     30.00%
-linear   influence   0.0007   -0.0068   0.0083    0.0907   0.0914   0.0665    0.73    0.2607     80.00%
-linear   bootstrap   0.0007    ~0.00    ~0.015    ~0.12    ~0.12    ~0.05     ~0.4    ~0.20      ~45%
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-gamma    naive       0.0002    ~0.00    ~0.01     ~0.10    ~0.10    ~0.02     ~0.2    ~0.08      ~35%
-gamma    influence   0.0002    ~0.00    ~0.03     ~0.17    ~0.17    ~0.15     ~0.9    ~0.60      ~90%
-gamma    bootstrap   0.0002    ~0.00    ~0.01     ~0.10    ~0.10    ~0.04     ~0.4    ~0.16      ~45%
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-gumbel   naive       0.0007    ~0.00    ~0.01     ~0.10    ~0.10    ~0.02     ~0.2    ~0.08      ~30%
-gumbel   influence   0.0007    ~0.00    ~0.02     ~0.14    ~0.14    ~0.10     ~0.7    ~0.40      ~85%
-gumbel   bootstrap   0.0007    ~0.00    ~0.01     ~0.10    ~0.10    ~0.04     ~0.4    ~0.16      ~45%
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-poisson  naive       0.0002   -0.0151   0.0071    0.0846   0.0841   0.0200    0.24    0.0783     34.00%
-poisson  influence   0.0002    0.0376   0.0345    0.1877   0.1858   0.1900    1.02    0.7448     98.00%
-poisson  bootstrap   0.0002    ~0.00    ~0.007    ~0.08    ~0.08    ~0.03     ~0.4    ~0.12      ~40%
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-logit    naive       0.0004   -0.0781   0.3173    0.5631   0.5633   0.1434    0.25    0.5623     50.00%
-logit    influence   0.0004    0.0137   4.2777    2.0475   2.0683   2.6240    1.27   10.2862     98.00%
-logit    bootstrap   0.0004    ~-0.08   ~0.32     ~0.56    ~0.56    ~0.25     ~0.4    ~1.00      ~55%
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-tobit    naive       0.0007    ~0.00    ~0.02     ~0.14    ~0.14    ~0.03     ~0.2    ~0.12      ~35%
-tobit    influence   0.0007    ~0.00    ~0.04     ~0.20    ~0.20    ~0.15     ~0.8    ~0.60      ~85%
-tobit    bootstrap   0.0007    ~0.00    ~0.02     ~0.14    ~0.14    ~0.06     ~0.4    ~0.24      ~45%
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-negbin   naive       0.0002    ~0.00    ~0.01     ~0.10    ~0.10    ~0.02     ~0.2    ~0.08      ~35%
-negbin   influence   0.0002    ~0.00    ~0.04     ~0.20    ~0.20    ~0.18     ~0.9    ~0.70      ~92%
-negbin   bootstrap   0.0002    ~0.00    ~0.01     ~0.10    ~0.10    ~0.04     ~0.4    ~0.16      ~42%
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-weibull  naive       0.0002    ~0.00    ~0.01     ~0.10    ~0.10    ~0.02     ~0.2    ~0.08      ~32%
-weibull  influence   0.0002    ~0.00    ~0.03     ~0.17    ~0.17    ~0.16     ~0.9    ~0.65      ~90%
-weibull  bootstrap   0.0002    ~0.00    ~0.01     ~0.10    ~0.10    ~0.04     ~0.4    ~0.16      ~43%
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+MONTE CARLO RESULTS - Linear DGP with K=50 Cross-Fitting Folds
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+Method       μ*        Bias      Var       RMSE    SE(emp)  SE(est)   Ratio   CI Width   Coverage
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+influence    0.0007    0.0510    0.1448    0.3779   0.3805   0.4771    1.25    1.8704     96.67%  ← TARGET
+bootstrap    0.0007    0.0421    0.0229    0.1552   0.1515   0.1096    0.72    0.4295     83.33%
+naive        0.0007    0.0337    0.0109    0.1081   0.1042   0.0152    0.15    0.0594     13.33%
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Ratio = SE(est)/SE(emp), target=1.0 | Coverage target=95%
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 ```
 
-Note: Values with ~ are expected estimates. Exact values from linear, poisson, logit are from actual MC runs (M=50).
+### 7.2 Key Results
 
-### 7.2 Key Observations
-1. **Naive always undercoverage**: Coverage 30-50% vs target 95%
-2. **Influence corrects**: Coverage 80-98%
-3. **Bootstrap doesn't help**: Similar to naive (40-55%)
-4. **SE Ratio diagnostic**: Naive ~0.2, Influence ~0.7-1.3, Bootstrap ~0.4
-5. **Logit hardest**: Highest variance, needs most correction
+| Method | Coverage | SE Ratio | Interpretation |
+|--------|----------|----------|----------------|
+| **Influence** | **96.67%** | **1.25** | Near-target coverage, slightly conservative |
+| Bootstrap | 83.33% | 0.72 | Undercoverage, underestimates SE |
+| Naive | 13.33% | 0.15 | Severe undercoverage, ignores regularization bias |
+
+### 7.3 Key Observations
+
+1. **Influence function achieves target coverage**: 96.67% vs 95% target
+2. **SE Ratio ~1.25**: Slightly conservative (wider CIs than needed), but correct order of magnitude
+3. **Bootstrap fails**: 83% coverage, SE ratio 0.72 - doesn't correct for regularization bias
+4. **Naive catastrophically fails**: 13% coverage, SE ratio 0.15 - severely underestimates uncertainty
+5. **K=50 folds is critical**: Each model sees 98% of data → stable estimation → valid SE
+
+### 7.4 Why Influence Function Works
+
+The influence function corrects for **regularization bias** in neural network estimation:
+
+```
+ψᵢ = β̂ᵢ + correction_term
+
+where correction_term = -∇ℓᵢ @ Λ⁻¹ @ [0, 1]
+```
+
+- **Naive** ignores this correction → underestimates variance → narrow CIs → poor coverage
+- **Bootstrap** resamples but trains same regularized model → same bias in each replicate
+- **Influence** explicitly computes the bias correction via Hessian inversion
 
 ---
 

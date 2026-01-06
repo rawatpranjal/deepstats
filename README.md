@@ -87,33 +87,67 @@ All nuisance functions are estimated on separate folds using K-fold cross-fittin
 
 The `family` parameter defines the structural loss, gradient, and Hessian.
 
-| Family | Model Equation | Loss Function $\ell$ | Use Case |
-| :--- | :--- | :--- | :--- |
-| **Linear** | $Y = \alpha + \beta T + \varepsilon$ | $(Y - \mu)^2$ | Continuous outcomes |
-| **Logit** | $P(Y=1) = \sigma(\alpha + \beta T)$ | Binary Cross-Entropy | Binary choice |
-| **Poisson** | $Y \sim \text{Pois}(\exp(\alpha + \beta T))$ | $\lambda - Y \ln \lambda$ | Count data |
-| **Gamma** | $Y \sim \text{Gamma}(k, \mu/k)$ | $Y/\mu + \ln \mu$ | Positive skewed data |
-| **Gumbel** | $Y \sim \text{Gumbel}(\alpha + \beta T, s)$ | $(Y-\mu)/s + e^{-(Y-\mu)/s}$ | Maxima, durations |
-| **Tobit** | $Y = \max(0, \alpha + \beta T + \varepsilon)$ | Censored NLL | Censored data |
-| **NegBin** | $Y \sim \text{NB}(\mu, r)$ | Negative Binomial NLL | Overdispersed counts |
-| **Weibull** | $Y \sim \text{Weibull}(k, \lambda)$ | Weibull NLL | Survival analysis |
+| Family | Example Y | Domain | Model |
+|--------|-----------|--------|-------|
+| **Linear** | Wages ($), Test scores | Labor, Education | $Y = \alpha + \beta T + \varepsilon$ |
+| **Logit** | Purchase (0/1), Default | Marketing, Credit | $P(Y=1) = \sigma(\alpha + \beta T)$ |
+| **Poisson** | Doctor visits, Patents | Healthcare, Innovation | $Y \sim \text{Pois}(\exp(\alpha + \beta T))$ |
+| **Gamma** | Medical spending, Claims | Health economics | $Y \sim \text{Gamma}(k, \mu/k)$ |
+| **Gumbel** | Max temperature, Winning bid | Climate, Auctions | $Y \sim \text{Gumbel}(\mu, s)$ |
+| **Tobit** | Hours worked (≥0), Donations | Labor, Nonprofits | $Y = \max(0, \alpha + \beta T + \varepsilon)$ |
+| **NegBin** | ER visits, Crime counts | Public health, Criminology | $Y \sim \text{NB}(\mu, r)$ |
+| **Weibull** | Time to churn, Failure time | Customer analytics, Reliability | $Y \sim \text{Weibull}(k, \lambda)$ |
 
-## Monte Carlo Validation
+## What Are Covariates $X$?
 
-Run simulations to validate coverage:
+The covariate vector $X$ represents observable characteristics that may influence both the treatment effect and baseline outcome. Examples:
 
-```bash
-python -m src.deepstats.run_mc --M 50 --N 1000 --epochs 100 \
-    --models linear poisson logit \
-    --methods naive influence
-```
+| Domain | Example Covariates |
+|--------|-------------------|
+| Labor | Age, education, experience, industry, region |
+| Healthcare | Age, BMI, prior diagnoses, insurance type |
+| Marketing | Purchase history, demographics, engagement score |
+| Finance | Credit score, income, debt ratio, employment |
 
-Expected results:
+The neural network learns $\alpha(X)$ and $\beta(X)$ as flexible functions of these covariates, capturing heterogeneous treatment effects across individuals.
 
-| Method | SE Ratio | Coverage |
-| :--- | :--- | :--- |
-| Naive | ~0.2-0.3 | 30-50% |
-| Influence | ~0.9-1.1 | 85-98% |
+## Monte Carlo Study
+
+M=30 simulations, N=10,000 observations. Target: 95% coverage, SE ratio ≈ 1.0.
+
+### Linear Model
+
+![Linear Results](logs/kde_money_slide.png)
+
+| Config | K | Network | Coverage | SE Ratio | RMSE | Bias²/MSE |
+|--------|---|---------|----------|----------|------|-----------|
+| **Best** | 50 | [64,32] | **93.3%** | 1.03 | **0.032** | 22% |
+| Deep | 20 | [128,64,32] | 93.3% | 1.02 | 0.033 | 21% |
+| E=100 | 20 | [64,32] | 90.0% | 0.90 | 0.036 | 18% |
+| Separate | 20 | [128,64,32]×2 | 80.0% | 0.82 | 0.036 | 14% |
+| Naive | — | — | 10% | 0.09 | 0.083 | 1% |
+
+**Finding:** K=50 folds achieves best coverage and lowest RMSE. Separate networks don't help.
+
+### Logit Model
+
+![Logit Results](logs/logit_stress_test/logit_results.png)
+
+Target: E[β(X)] = average log-odds ratio
+
+| Method | Coverage | SE Ratio | RMSE | Hessian min λ |
+|--------|----------|----------|------|---------------|
+| **Influence** | **90.0%** | 0.93 | **0.054** | 0.051 |
+| Naive | 3.3% | 0.03 | 0.108 | — |
+
+### Summary
+
+| Model | Target | Naive Cov | IF Cov | RMSE Improvement |
+|-------|--------|-----------|--------|------------------|
+| Linear | E[β(X)] | 10% | **93%** | 2.6× |
+| Logit | E[β(X)] | 3% | **90%** | 2.0× |
+| Poisson | E[β(X)] | TBD | TBD | — |
+| Gamma | E[β(X)] | TBD | TBD | — |
 
 ## Repository Structure
 
