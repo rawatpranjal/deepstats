@@ -1,0 +1,163 @@
+================================================================================
+FLM VALIDATION REPORT
+Generated: 2026-01-06T06:45:39.878280
+================================================================================
+
+## CONFIGURATION
+{
+  "M": 30,
+  "N": 10000,
+  "n_folds": 20,
+  "epochs": 50,
+  "hidden_dims": [
+    128,
+    64,
+    32
+  ],
+  "lr": 0.01,
+  "batch_size": 64,
+  "dropout": 0.1,
+  "weight_decay": 0.0001,
+  "seed": 42,
+  "early_stopping": true,
+  "patience": 10,
+  "val_split": 0.1
+}
+
+## DGP SPECIFICATION
+{
+  "alpha_star": "sin(2piX1) + X2^3 - 2cos(piX3) + exp(X4/3)*I(X4>0) + 0.5*X5*X6",
+  "beta_star": "cos(2piX1)*sin(piX2) + 0.8*tanh(3X3) - 0.5*X4^2 + 0.3*X5*I(X6>0)",
+  "mu_true": -0.16818094145857462
+}
+
+## PHASE 1: PARAMETER RECOVERY
+{
+  "influence": {
+    "rmse_alpha": 0.28535702578475525,
+    "rmse_beta": 0.1988489446573164,
+    "corr_alpha": 0.8514938913166138,
+    "corr_beta": 0.681818460602692,
+    "r2_alpha": 0.7250418469495093,
+    "r2_beta": 0.4648764132186247
+  },
+  "naive": {
+    "rmse_alpha": 0.2799133862362556,
+    "rmse_beta": 0.19338302562973683,
+    "corr_alpha": 0.8663398450922853,
+    "corr_beta": 0.7028565693689119,
+    "r2_alpha": 0.7505447271945249,
+    "r2_beta": 0.4940073571050361
+  }
+}
+
+## PHASE 2: INFERENCE VALIDITY
+{
+  "influence": {
+    "mu_true": -0.05045428243757239,
+    "mu_hat_mean": -0.060866465337475806,
+    "bias": -0.010412182899903415,
+    "variance": 0.0003052400568509561,
+    "mse": 0.00041365360959199715,
+    "bias_ratio": 0.26208777157287144,
+    "rmse_mu": 0.020011970690175667,
+    "empirical_se": 0.01747112065240682,
+    "estimated_se": 0.021010885965377746,
+    "se_ratio": 1.2026066549133063,
+    "ci_width": 0.08236267298428077,
+    "coverage": 0.9333333333333333,
+    "n_sims": 30
+  },
+  "naive": {
+    "mu_true": -0.05045428243757239,
+    "mu_hat_mean": -0.05237780098961863,
+    "bias": -0.001923518552046244,
+    "variance": 0.0015014571358099814,
+    "mse": 0.0015051570594300475,
+    "bias_ratio": 0.002458164479836487,
+    "rmse_mu": 0.037945221148888576,
+    "empirical_se": 0.03874864043821385,
+    "estimated_se": 0.002307947228352229,
+    "se_ratio": 0.05956201823473876,
+    "ci_width": 0.009047153135140738,
+    "coverage": 0.0,
+    "n_sims": 30
+  }
+}
+
+## PHASE 3: TRAINING DIAGNOSTICS
+{
+  "influence": {
+    "final_grad_norm": 0.5534757592945856,
+    "final_beta_std": 0.23621038948496184,
+    "overfit_rate": 0.0,
+    "mean_best_epoch": 9.126666666666667,
+    "correction_ratio": 0.6461443429698177,
+    "min_hessian_eig": 0.391188956151406,
+    "hessian_condition": 4.074328861294284
+  },
+  "naive": {
+    "final_grad_norm": 0.5520226939211982,
+    "final_beta_std": 0.2143803482254346,
+    "overfit_rate": 0.0,
+    "mean_best_epoch": 9.433333333333334
+  }
+}
+
+## TRAINING QUALITY (NN Model Fit)
+{
+  "influence": {
+    "final_train_loss": 0.6652847145915882,
+    "final_val_loss": 0.6531785342097282,
+    "train_val_gap": -0.012106180381860046,
+    "mean_best_epoch": 9.126666666666667,
+    "overfit_rate": 0.0
+  },
+  "naive": {
+    "final_train_loss": 0.6637801252214859,
+    "final_val_loss": 0.6544868131478627,
+    "train_val_gap": -0.009293312073623146,
+    "mean_best_epoch": 9.433333333333334,
+    "overfit_rate": 0.0
+  }
+}
+
+## VALIDATION SCORECARD
+{
+  "influence_method": {
+    "grade": "WARNING",
+    "coverage": 0.9333333333333333,
+    "se_ratio": 1.2026066549133063,
+    "bias_ratio": 0.26208777157287144,
+    "r2_beta": 0.4648764132186247,
+    "notes": "Coverage acceptable but SEs may be conservative."
+  },
+  "naive_method": {
+    "grade": "FAIL (CRITICAL)",
+    "coverage": 0.0,
+    "se_ratio": 0.05956201823473876,
+    "bias_ratio": 0.002458164479836487,
+    "r2_beta": 0.4940073571050361,
+    "notes": "Severe under-coverage. Underestimates SE by 94%."
+  },
+  "cross_method": {
+    "violation_rate": 0.9333333333333333,
+    "bias_shift": 0.008488664347857174,
+    "bias_reduction": -4.413092007262893
+  },
+  "overall_grade": "WARNING"
+}
+
+## TIMING
+{
+  "total_seconds": 838.7509450912476,
+  "per_sim_seconds": 27.95836483637492,
+  "start_time": "2026-01-06T06:31:41",
+  "end_time": "2026-01-06T06:45:39"
+}
+
+## RAW DATA: 60 records
+
+================================================================================
+END REPORT
+================================================================================

@@ -18,22 +18,39 @@ def compute_violation_rate(df: pd.DataFrame) -> float:
     Low rate (~0%) = Bias correction negligible
     Very high (~100%) = NN heavily biased
     """
-    naive_df = df[df["method"] == "naive"].set_index("sim_id")
-    inf_df = df[df["method"] == "influence"].set_index("sim_id")
+    # Handle target column if present (need to match by sim_id AND target)
+    has_target = "target" in df.columns
+
+    naive_df = df[df["method"] == "naive"]
+    inf_df = df[df["method"] == "influence"]
 
     if len(naive_df) == 0 or len(inf_df) == 0:
         return np.nan
 
-    # Match by sim_id
+    if has_target:
+        # Set multi-index for matching
+        naive_df = naive_df.set_index(["sim_id", "target"])
+        inf_df = inf_df.set_index(["sim_id", "target"])
+    else:
+        naive_df = naive_df.set_index("sim_id")
+        inf_df = inf_df.set_index("sim_id")
+
+    # Match by index
     common_ids = naive_df.index.intersection(inf_df.index)
     if len(common_ids) == 0:
         return np.nan
 
     violations = 0
-    for sim_id in common_ids:
-        mu_naive = naive_df.loc[sim_id, "mu_hat"]
-        se_naive = naive_df.loc[sim_id, "se"]
-        mu_inf = inf_df.loc[sim_id, "mu_hat"]
+    for idx in common_ids:
+        mu_naive = naive_df.loc[idx, "mu_hat"]
+        se_naive = naive_df.loc[idx, "se"]
+        mu_inf = inf_df.loc[idx, "mu_hat"]
+
+        # Handle case where loc returns Series (shouldn't happen with proper index)
+        if hasattr(mu_naive, '__len__') and not isinstance(mu_naive, str):
+            mu_naive = mu_naive.iloc[0]
+            se_naive = se_naive.iloc[0]
+            mu_inf = mu_inf.iloc[0]
 
         # Check if influence estimate is outside naive CI
         if abs(mu_inf - mu_naive) > 1.96 * se_naive:
@@ -143,10 +160,14 @@ def compute_metrics(df: pd.DataFrame) -> pd.DataFrame:
         agg_dict["excess_loss_ratio"] = "mean"
         agg_dict["smoothness_ratio"] = "mean"
 
-    summary = df_clean.groupby(["model", "method"]).agg(agg_dict).reset_index()
+    # Check if target column exists (for multi-target models like tobit)
+    has_target = "target" in df_clean.columns
+    group_cols = ["model", "method", "target"] if has_target else ["model", "method"]
+
+    summary = df_clean.groupby(group_cols).agg(agg_dict).reset_index()
 
     # Build column names dynamically
-    base_cols = ["model", "method", "mu_true", "bias_mean", "bias_std",
+    base_cols = group_cols + ["mu_true", "bias_mean", "bias_std",
                  "empirical_se", "se_mean", "coverage", "n_sims"]
     if has_recovery:
         base_cols.extend(["rmse_alpha", "rmse_beta", "corr_alpha", "corr_beta"])
@@ -166,11 +187,11 @@ def compute_metrics(df: pd.DataFrame) -> pd.DataFrame:
     def rmse_func(group):
         return np.sqrt(np.mean(group["bias"]**2))
 
-    rmse_by_group = df_clean.groupby(["model", "method"]).apply(
+    rmse_by_group = df_clean.groupby(group_cols).apply(
         rmse_func, include_groups=False
     ).reset_index(name="rmse_mu")
 
-    summary = summary.merge(rmse_by_group, on=["model", "method"])
+    summary = summary.merge(rmse_by_group, on=group_cols)
 
     # Derived metrics
     summary["se_ratio"] = summary["se_mean"] / summary["empirical_se"]
@@ -197,7 +218,7 @@ def compute_metrics(df: pd.DataFrame) -> pd.DataFrame:
     summary["bias_reduction"] = bias_reduction
 
     # Order columns
-    cols = ["model", "method"]
+    cols = list(group_cols)  # ["model", "method"] or ["model", "method", "target"]
     if has_recovery:
         cols.extend(["rmse_alpha", "rmse_beta", "corr_alpha", "corr_beta", "r2_alpha", "r2_beta"])
     cols.extend([
@@ -540,6 +561,43 @@ def print_table(metrics_df: pd.DataFrame) -> str:
         lines.append(f"  Bias Shift: {bias_shift:.4f}")
 
     lines.append("=" * 100)
+
+    # ==========================================================================
+    # TLDR (Quick Summary)
+    # ==========================================================================
+    lines.append("")
+    lines.append("╔" + "═" * 98 + "╗")
+    lines.append("║" + " TLDR ".center(98) + "║")
+    lines.append("╠" + "═" * 98 + "╣")
+
+    # Get key metrics for TLDR
+    tldr_parts = []
+    if len(inf_row) > 0:
+        inf_cov = inf_row["coverage"].iloc[0]
+        inf_ratio = inf_row["se_ratio"].iloc[0]
+        if 0.93 <= inf_cov <= 0.97 and 0.9 <= inf_ratio <= 1.2:
+            tldr_parts.append(f"║  INFLUENCE: {inf_cov:.0%} coverage, SE ratio {inf_ratio:.2f} → PASS ✓".ljust(99) + "║")
+        elif inf_cov >= 0.85:
+            tldr_parts.append(f"║  INFLUENCE: {inf_cov:.0%} coverage, SE ratio {inf_ratio:.2f} → WARNING".ljust(99) + "║")
+        else:
+            tldr_parts.append(f"║  INFLUENCE: {inf_cov:.0%} coverage, SE ratio {inf_ratio:.2f} → FAIL ✗".ljust(99) + "║")
+
+    if len(naive_row) > 0:
+        naive_cov = naive_row["coverage"].iloc[0]
+        naive_ratio = naive_row["se_ratio"].iloc[0]
+        tldr_parts.append(f"║  NAIVE: {naive_cov:.0%} coverage, SE ratio {naive_ratio:.2f} → FAIL (expected)".ljust(99) + "║")
+
+    # Add violation rate interpretation
+    if not pd.isna(violation_rate) and len(inf_row) > 0:
+        if violation_rate >= 0.5:
+            tldr_parts.append(f"║  IF correction is SIGNIFICANT ({violation_rate:.0%} violation rate)".ljust(99) + "║")
+        else:
+            tldr_parts.append(f"║  IF correction is MODEST ({violation_rate:.0%} violation rate)".ljust(99) + "║")
+
+    for part in tldr_parts:
+        lines.append(part)
+
+    lines.append("╚" + "═" * 98 + "╝")
 
     output = "\n".join(lines)
     print(output)

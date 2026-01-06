@@ -3,53 +3,84 @@
 \label{sec:model}
 %------------------------------------------------------------------------------
 
-\subsection{General Framework}
+\subsection{Enriched Structural Model}
 
-DeepHTE implements the enriched structural model through a formula interface
-that separates baseline and treatment effect components. The formula
-specification:
-\[
-\texttt{Y \textasciitilde{} a(covariates) + b(covariates) * T}
-\]
-defines the structural equation where the \texttt{a()} term specifies covariates
-entering the baseline function and the \texttt{b()} term specifies covariates
-entering the treatment effect function. The network architecture uses a shared
-backbone with separate output heads for each parameter function.
+We consider the enriched structural model of \citet{farrell2021deep}:
+\begin{equation}
+\label{eq:structural_model}
+Y_i = \alpha(X_i) + \beta(X_i) \cdot T_i + \varepsilon_i, \quad E[\varepsilon_i | X_i, T_i] = 0
+\end{equation}
+where $\alpha: \mathcal{X} \to \mathbb{R}$ captures baseline effects,
+$\beta: \mathcal{X} \to \mathbb{R}$ captures the conditional average treatment
+effect (CATE), $T_i \in \{0, 1\}$ is the binary treatment indicator, and
+$X_i \in \mathcal{X} \subseteq \mathbb{R}^d$ are covariates.
+
+The target parameter is the average treatment effect:
+\begin{equation}
+\mu^* = E[\beta(X)]
+\end{equation}
+
+Both $\alpha(\cdot)$ and $\beta(\cdot)$ are estimated using neural networks.
+The key challenge is that neural network regularization (weight decay, dropout,
+early stopping) introduces bias that must be corrected for valid inference.
 
 \subsection{Exponential Family Extension}
 
-The framework extends to any exponential family distribution through the
-specification of appropriate link functions and log-likelihood objectives.
+The framework extends to exponential family distributions through appropriate
+link functions. Table~\ref{tab:families} summarizes the nine families
+implemented in the \texttt{deepstats} package.
 
-For the normal family with identity link, the outcome model is
-$Y \sim N(a(X) + b(X) \cdot T, \sigma^2)$ with log-likelihood
-$\ell = -\frac{1}{2\sigma^2}(y - \eta)^2$.
+\begin{table}[h]
+\centering
+\caption{Implemented Exponential Family Models}
+\label{tab:families}
+\begin{tabular}{llll}
+\toprule
+Family & Distribution & Link & Conditional Mean \\
+\midrule
+\texttt{linear} & $Y \sim N(\mu, \sigma^2)$ & Identity & $\mu = \alpha + \beta T$ \\
+\texttt{gamma} & $Y \sim \text{Gamma}(k, \mu/k)$ & Log & $\mu = \exp(\alpha + \beta T)$ \\
+\texttt{gumbel} & $Y \sim \text{Gumbel}(\mu, s)$ & Identity & $\mu = \alpha + \beta T$ \\
+\texttt{poisson} & $Y \sim \text{Poisson}(\lambda)$ & Log & $\lambda = \exp(\alpha + \beta T)$ \\
+\texttt{logit} & $Y \sim \text{Bernoulli}(p)$ & Logit & $p = \sigma(\alpha + \beta T)$ \\
+\texttt{tobit} & $Y = \max(0, Y^*)$ & Identity & $Y^* = \alpha + \beta T + \varepsilon$ \\
+\texttt{negbin} & $Y \sim \text{NegBin}(\mu, r)$ & Log & $\mu = \exp(\alpha + \beta T)$ \\
+\texttt{weibull} & $Y \sim \text{Weibull}(k, \lambda)$ & Log & $\lambda = \exp(\alpha + \beta T)$ \\
+\texttt{heterolinear} & $Y \sim N(\mu, \sigma^2(X))$ & Identity & $\mu = \alpha + \beta T$ \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\small
+\item Notes: For logit, $\sigma(\cdot)$ is the sigmoid function. For tobit,
+$Y^* = \alpha + \beta T + \varepsilon$ is the latent outcome. The heterolinear
+family estimates heteroskedastic variance $\sigma^2(X)$ as a third parameter.
+\end{tablenotes}
+\end{table}
 
-For the Bernoulli family with logit link, the outcome model is
-$Y \sim \text{Bernoulli}(\sigma(a(X) + b(X) \cdot T))$ with log-likelihood
-$\ell = y \log(\sigma(\eta)) + (1-y) \log(1 - \sigma(\eta))$.
-
-For the Poisson family with log link, the outcome model is
-$Y \sim \text{Poisson}(\exp(a(X) + b(X) \cdot T))$ with log-likelihood
-$\ell = y \eta - \exp(\eta)$.
-
-For the Gamma family with log link, the outcome model is
-$Y \sim \text{Gamma}(\alpha, \exp(a(X) + b(X) \cdot T))$ with log-likelihood
-$\ell = \alpha \eta - \alpha \exp(-\eta) y$.
-
-This unified framework enables treatment effect estimation for continuous,
-binary, count, and duration outcomes using the same estimation machinery.
+Each family specifies:
+\begin{itemize}
+    \item \textbf{Loss function}: Negative log-likelihood for training
+    \item \textbf{Residual}: For influence function computation
+    \item \textbf{Hessian weight}: For the $\Lambda$ matrix in influence scores
+    \item \textbf{Target functional}: $H(\theta) = \beta$ for most families
+\end{itemize}
 
 \subsection{Network Architecture}
 
-The default architecture consists of a multi-layer perceptron backbone with
-ReLU activations, followed by separate linear heads for the $a$ and $b$
-parameter functions. For specialized covariate structures, the backbone can be
-replaced with convolutional networks for images, recurrent networks for
-sequences, or graph neural networks for relational data.
+The \texttt{StructuralNet} architecture consists of:
+\begin{enumerate}
+    \item A shared multi-layer perceptron (MLP) backbone with ReLU activations
+    \item Separate linear output heads for $\alpha(X)$ and $\beta(X)$
+\end{enumerate}
 
-Training proceeds by minimizing the negative log-likelihood of the specified
-family using stochastic gradient descent with adaptive learning rates.
-Regularization through early stopping based on validation loss prevents
-overfitting while allowing the network to capture complex heterogeneity
-patterns.
+Default configuration: hidden layers $[64, 32]$, dropout $p = 0.1$, weight
+decay $\lambda = 10^{-4}$.
+
+For treatment effect estimation, the network is trained by minimizing the
+negative log-likelihood of the specified family. Regularization through early
+stopping based on validation loss prevents overfitting while allowing the
+network to capture complex heterogeneity patterns in $\beta(X)$.
+
+A separate \texttt{NuisanceNet} estimates the propensity score
+$e(X) = P(T=1|X)$ and treatment variance $\text{Var}(T|X)$ for use in the
+influence function correction.

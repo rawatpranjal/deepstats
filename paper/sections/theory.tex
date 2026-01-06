@@ -3,10 +3,10 @@
 \label{sec:theory}
 %------------------------------------------------------------------------------
 
-This section establishes the asymptotic properties of the DeepHTE estimator.
-We prove that cross-fitted neural network estimates of the average treatment
-effect are $\sqrt{n}$-consistent and asymptotically normal, with influence
-function standard errors achieving semiparametric efficiency.
+This section establishes the asymptotic properties of the cross-fitted
+neural network estimator following \citet{farrell2021deep}. The key result
+is that influence function corrections yield $\sqrt{n}$-consistent and
+asymptotically normal estimators for the average treatment effect.
 
 %------------------------------------------------------------------------------
 \subsection{Setup and Assumptions}
@@ -85,7 +85,7 @@ $\gamma = s/(2s+d)$, which exceeds $1/4$ when $s > d/2$.
 \begin{theorem}[Asymptotic Normality of Cross-Fitted ATE Estimator]
 \label{thm:main}
 Under Assumptions~\ref{ass:unconfounded}--\ref{ass:nnrate}, the cross-fitted
-DeepHTE estimator with $K \geq 2$ folds satisfies:
+estimator with $K \geq 2$ folds satisfies:
 \begin{equation}
 \sqrt{n}(\hat{\tau} - \tau_0) \xrightarrow{d} N(0, V)
 \end{equation}
@@ -107,15 +107,14 @@ is consistent: $\hat{V} \xrightarrow{p} V$.
 \end{theorem}
 
 The variance $V$ equals the semiparametric efficiency bound for estimating
-the ATE under model~\eqref{eq:structural}. Thus, the DeepHTE estimator is
-\textit{asymptotically efficient}.
+the ATE under model~\eqref{eq:structural}. Thus, the cross-fitted estimator
+is \textit{asymptotically efficient}.
 
 %------------------------------------------------------------------------------
 \subsection{Proof Sketch}
 %------------------------------------------------------------------------------
 
-The proof follows the general framework of \citet{chernozhukov2018double}
-adapted to neural network nuisance estimation.
+The proof follows \citet{farrell2021deep}.
 
 \paragraph{Step 1: Influence Function Representation.}
 Define the oracle influence function:
@@ -189,29 +188,4 @@ inference:
           $[\hat{Q}_q^{(\alpha/2)}, \hat{Q}_q^{(1-\alpha/2)}]$
 \end{enumerate}
 
-%------------------------------------------------------------------------------
-\subsection{Comparison to Related Theory}
-%------------------------------------------------------------------------------
-
-\paragraph{Double/Debiased Machine Learning.}
-Our theoretical framework builds directly on \citet{chernozhukov2018double}.
-The key extension is using neural networks for the nuisance functions rather
-than more traditional machine learning methods (random forests, LASSO). The
-rate conditions in Assumption~\ref{ass:nnrate} are satisfied by the neural
-network approximation results of \citet{farrell2021deep}.
-
-\paragraph{Causal Forest.}
-The asymptotic normality of Causal Forest estimators is established in
-\citet{wager2018estimation}. The key difference is that Causal Forest
-constructs confidence intervals via the infinitesimal jackknife, which can
-be conservative in practice. Our influence-function-based approach achieves
-the semiparametric efficiency bound.
-
-\paragraph{Deep Learning without Cross-Fitting.}
-Methods such as TARNet \citep{shalit2017estimating} and DragonNet
-\citep{shi2019adapting} estimate treatment effects via neural networks but
-do not employ cross-fitting. Without sample splitting, these methods lack
-the theoretical guarantees for valid asymptotic inference on the ATE.
-Point estimates may be consistent, but confidence intervals are not
-justified by theory.
 

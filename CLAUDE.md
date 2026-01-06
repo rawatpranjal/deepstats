@@ -1,5 +1,17 @@
 # deepstats
 
+# Core Rules
+
+**Always follow these rules:**
+
+1. **Always `git push` when done** - Push changes after completing work
+2. **Never remove content** - Content removed is content lost
+   - If something seems outdated, find a new home for it
+   - Archive to `data/archive/` rather than delete
+3. **Update `CHANGELOG.md`** after making changes - 1-2 line summary per day
+
+---
+
 Influence function validation for neural network inference.
 Implements Farrell, Liang, Misra (2021, 2025) approach.
 

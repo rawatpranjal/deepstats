@@ -84,6 +84,39 @@ class DGPResult:
     mu_true: float
 
 
+@dataclass
+class MultinomialLogitResult:
+    """Extended result container for conditional logit DGP.
+
+    Stores the full conditional logit data structure with compatibility
+    properties for the existing inference pipeline.
+
+    Attributes:
+        W: Individual characteristics (N, d_w) - drives heterogeneous params
+        X_alt: Alternative-specific attributes (N, J, K)
+        Y: Chosen alternative (N,) as integer 0..J-1
+        alpha_true: True intercepts (N, J-1)
+        beta_true: True coefficients (N, K)
+        mu_true: Ground truth E[β_k(W)] for target coefficient
+    """
+    W: np.ndarray           # (N, d_w)
+    X_alt: np.ndarray       # (N, J, K)
+    Y: np.ndarray           # (N,) integer choices
+    alpha_true: np.ndarray  # (N, J-1)
+    beta_true: np.ndarray   # (N, K)
+    mu_true: float          # E[β_target_idx(W)]
+
+    @property
+    def X(self) -> np.ndarray:
+        """Compatibility: individual characteristics as X."""
+        return self.W
+
+    @property
+    def T(self) -> np.ndarray:
+        """Compatibility: packed X_alt as T (N, J*K)."""
+        return self.X_alt.reshape(len(self.W), -1)
+
+
 class BaseDGP(ABC):
     """Abstract base for DGPs."""
     name: str = "base"
@@ -197,8 +230,18 @@ class PoissonDGP(BaseDGP):
 
 
 class LogitDGP(BaseDGP):
-    """Y ~ Bernoulli(p) where p = sigmoid(alpha + beta*T)."""
+    """Y ~ Bernoulli(p) where p = sigmoid(alpha + beta*T).
+
+    Supports two ground truth estimands:
+    - 'beta': E[β(X)] - latent log-odds effect
+    - 'ame': E[p(1-p)β(X)] - average marginal effect on probability
+    """
     name = "logit"
+
+    def __init__(self, d: int = 10, seed: int = 42):
+        super().__init__(d, seed)
+        self._mu_true_beta = None
+        self._mu_true_ame = None
 
     def generate(self, n: int) -> DGPResult:
         X, T, alpha, beta = self._generate_base_data(n)
@@ -206,14 +249,38 @@ class LogitDGP(BaseDGP):
         eta = alpha_s + beta_s * T
         p = 1 / (1 + np.exp(-np.clip(eta, -20, 20)))
         Y = self.rng.binomial(1, p).astype(float)
-        return DGPResult(X, T, Y, alpha_s, beta_s, self._scaled_mu(0.5))
+        return DGPResult(X, T, Y, alpha_s, beta_s, self.compute_true_mu(target="beta"))
 
-    def _scaled_mu(self, scale: float) -> float:
-        if self._mu_true is None:
-            rng = np.random.default_rng(self.seed + 999999)
-            X = rng.uniform(-1, 1, (100000, self.d))
-            self._mu_true = float(np.mean(beta_star(X) * scale))
-        return self._mu_true
+    def compute_true_mu(self, target: str = "beta", n_mc: int = 100000) -> float:
+        """Compute true E[β] or E[p(1-p)β] via Monte Carlo.
+
+        Args:
+            target: 'beta' for E[β], 'ame' for E[p(1-p)β]
+            n_mc: Monte Carlo samples
+
+        Returns:
+            True population parameter
+        """
+        if target == "beta":
+            if self._mu_true_beta is None:
+                rng = np.random.default_rng(self.seed + 999999)
+                X = rng.uniform(-1, 1, (n_mc, self.d))
+                self._mu_true_beta = float(np.mean(beta_star(X) * 0.5))
+            return self._mu_true_beta
+        elif target == "ame":
+            if self._mu_true_ame is None:
+                rng = np.random.default_rng(self.seed + 999999)
+                X = rng.uniform(-1, 1, (n_mc, self.d))
+                beta_s = beta_star(X) * 0.5
+                T = generate_treatment(X, beta_s * 2, rng)  # Use unscaled beta for treatment
+                alpha_s = alpha_star(X) * 0.5
+                eta = alpha_s + beta_s * T
+                p = 1 / (1 + np.exp(-np.clip(eta, -20, 20)))
+                # AME = E[p(1-p)β]
+                self._mu_true_ame = float(np.mean(p * (1 - p) * beta_s))
+            return self._mu_true_ame
+        else:
+            raise ValueError(f"target must be 'beta' or 'ame', got '{target}'")
 
 
 class TobitDGP(BaseDGP):
@@ -356,6 +423,151 @@ class HeteroLinearDGP(BaseDGP):
 
 
 # =============================================================================
+# Multinomial Logit (Conditional Logit) DGP
+# =============================================================================
+
+class MultinomialLogitDGP(BaseDGP):
+    """Conditional Logit DGP with heterogeneous coefficients.
+
+    Generates choice data where:
+    - W ~ Uniform(-1, 1)^d (individual characteristics)
+    - X_alt ~ Uniform(-1, 1)^{J×K} (alternative-specific attributes)
+    - α_j(W): alternative-specific intercepts (J-1 free, α_0=0)
+    - β(W): generic coefficients for attributes (K coefficients)
+    - V_ij = α_j(W) + X_alt[j] @ β(W) (utility)
+    - Y = argmax_j(V_j + ε_j) where ε ~ Gumbel(0, 1)
+
+    Target: E[β_k(W)] for specified coefficient k.
+    """
+    name = "multinomial_logit"
+
+    def __init__(
+        self,
+        J: int = 4,
+        K: int = 3,
+        d: int = 10,
+        target_idx: int = 0,
+        seed: int = 42
+    ):
+        """Initialize MultinomialLogitDGP.
+
+        Args:
+            J: Number of alternatives
+            K: Number of continuous attributes per alternative
+            d: Dimension of individual characteristics W
+            target_idx: Which β_k to use for ground truth (0..K-1)
+            seed: Random seed
+        """
+        super().__init__(d, seed)
+        self.J = J
+        self.K = K
+        self.target_idx = target_idx
+        self._mu_true_cache = None
+
+    def alpha_star_j(self, W: np.ndarray, j: int) -> np.ndarray:
+        """True alternative-specific intercept α_j(W).
+
+        α_j(W) = sin(2πW_0) * j/J + W_1² * (-1)^j * 0.5 + 0.3*W_2*I(j>J/2)
+
+        Args:
+            W: Individual characteristics (N, d)
+            j: Alternative index (0..J-1)
+
+        Returns:
+            α_j values (N,)
+        """
+        if j == 0:
+            return np.zeros(len(W))  # Normalized to 0
+
+        return (np.sin(2 * np.pi * W[:, 0]) * j / self.J
+                + W[:, 1]**2 * ((-1)**j) * 0.5
+                + 0.3 * W[:, 2] * (j > self.J // 2))
+
+    def beta_star(self, W: np.ndarray) -> np.ndarray:
+        """True generic coefficients β(W).
+
+        β_k(W) = cos(2πW_0) * (k+1)/(K+1) + 0.8*tanh(2*W_3) - 0.5*W_4²
+               + 0.3*W_5*I(W_6>0)
+
+        Returns:
+            β values (N, K)
+        """
+        N = len(W)
+        beta = np.zeros((N, self.K))
+
+        for k in range(self.K):
+            # Base component varying by k
+            beta[:, k] = (
+                np.cos(2 * np.pi * W[:, 0]) * (k + 1) / (self.K + 1)
+                + 0.8 * np.tanh(2 * W[:, 3])
+                - 0.5 * W[:, 4]**2
+                + 0.3 * W[:, min(5, self.d - 1)] * (W[:, min(6, self.d - 1)] > 0)
+            )
+
+        return beta
+
+    def generate(self, n: int) -> MultinomialLogitResult:
+        """Generate conditional logit data.
+
+        Args:
+            n: Number of observations
+
+        Returns:
+            MultinomialLogitResult with W, X_alt, Y, true parameters
+        """
+        # Individual characteristics
+        W = self.rng.uniform(-1, 1, (n, self.d))
+
+        # Alternative-specific attributes
+        X_alt = self.rng.uniform(-1, 1, (n, self.J, self.K))
+
+        # True parameters
+        alpha_true = np.zeros((n, self.J - 1))
+        for j in range(1, self.J):
+            alpha_true[:, j - 1] = self.alpha_star_j(W, j)
+
+        beta_true = self.beta_star(W)  # (N, K)
+
+        # Compute utilities: V_ij = α_j + X_alt[j] @ β
+        V = np.zeros((n, self.J))
+        for j in range(self.J):
+            V[:, j] = self.alpha_star_j(W, j) + np.einsum('nk,nk->n', X_alt[:, j, :], beta_true)
+
+        # Add Gumbel noise and choose maximum utility alternative
+        epsilon = self.rng.gumbel(0, 1, (n, self.J))
+        U = V + epsilon
+        Y = np.argmax(U, axis=1).astype(float)
+
+        # Ground truth: E[β_target_idx(W)]
+        mu_true = self.compute_true_mu()
+
+        return MultinomialLogitResult(
+            W=W,
+            X_alt=X_alt,
+            Y=Y,
+            alpha_true=alpha_true,
+            beta_true=beta_true,
+            mu_true=mu_true,
+        )
+
+    def compute_true_mu(self, n_mc: int = 100000) -> float:
+        """Compute E[β_k(W)] for target coefficient via Monte Carlo.
+
+        Args:
+            n_mc: Number of Monte Carlo samples
+
+        Returns:
+            Ground truth E[β_target_idx(W)]
+        """
+        if self._mu_true_cache is None:
+            rng = np.random.default_rng(self.seed + 999999)
+            W = rng.uniform(-1, 1, (n_mc, self.d))
+            beta = self.beta_star(W)
+            self._mu_true_cache = float(np.mean(beta[:, self.target_idx]))
+        return self._mu_true_cache
+
+
+# =============================================================================
 # Ground Truth Verification
 # =============================================================================
 
@@ -426,6 +638,7 @@ DGPS = {
     "negbin": NegBinDGP,
     "weibull": WeibullDGP,
     "heterolinear": HeteroLinearDGP,
+    "multinomial_logit": MultinomialLogitDGP,
 }
 
 

@@ -1,31 +1,8 @@
 \begin{thebibliography}{}
 
-\bibitem[Angrist and Pischke, 2009]{angrist2009mostly}
-Angrist, J.~D. and Pischke, J.-S. (2009).
-\newblock {\em Mostly harmless econometrics: An empiricist's companion}.
-\newblock Princeton University Press.
-
-\bibitem[Athey et~al., 2019]{athey2019generalized}
-Athey, S., Tibshirani, J., and Wager, S. (2019).
-\newblock Generalized random forests.
-\newblock {\em The Annals of Statistics}, 47(2):1148--1178.
-
-\bibitem[Chernozhukov et~al., 2018]{chernozhukov2018double}
-Chernozhukov, V., Chetverikov, D., Demirer, M., Duflo, E., Hansen, C., Newey,
-  W., and Robins, J. (2018).
-\newblock Double/debiased machine learning for treatment and structural
-  parameters.
-\newblock {\em The Econometrics Journal}, 21(1):C1--C68.
-
 \bibitem[Farrell et~al., 2021]{farrell2021deep}
 Farrell, M.~H., Liang, T., and Misra, S. (2021).
 \newblock Deep neural networks for estimation and inference.
 \newblock {\em Econometrica}, 89(1):181--213.
-
-\bibitem[Farrell et~al., 2023]{farrell2023deep}
-Farrell, M.~H., Liang, T., and Misra, S. (2023).
-\newblock Deep learning for individual heterogeneity: An automatic inference
-  framework.
-\newblock {\em arXiv preprint arXiv:2010.14694}.
 
 \end{thebibliography}

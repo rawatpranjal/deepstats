@@ -3,139 +3,112 @@
 \label{sec:estimation}
 %------------------------------------------------------------------------------
 
-This section details the estimation procedure for the enriched structural model,
-including the training algorithm, cross-fitting for debiasing, and the
-construction of treatment effect estimates.
+This section details the estimation procedure, including cross-fitting,
+training, and influence function computation.
 
 \subsection{Cross-Fitting Procedure}
 
-To achieve valid asymptotic inference, we employ sample splitting through
-$K$-fold cross-fitting \citep{chernozhukov2018double}. This procedure removes
-the first-order bias that arises from using the same data to estimate nuisance
-functions and the target parameter.
+We use $K$-fold cross-fitting to ensure out-of-sample predictions. Each fold's
+model is trained on $(K-1)/K$ of the data, then predictions and influence
+scores are computed on the held-out $1/K$. With $K=50$ folds, each model sees
+98\% of the data, yielding stable estimates while maintaining independence
+between training and evaluation.
 
 \begin{algorithm}[H]
-\caption{Cross-Fitted DeepHTE Estimation}
+\caption{Influence Function Estimation with Cross-Fitting}
 \label{alg:crossfit}
 \begin{algorithmic}[1]
 \STATE \textbf{Input:} Data $(Y_i, T_i, X_i)_{i=1}^n$, number of folds $K$
-\STATE Randomly partition $\{1, \ldots, n\}$ into $K$ folds $\mathcal{I}_1, \ldots, \mathcal{I}_K$
+\STATE Partition $\{1, \ldots, n\}$ into $K$ folds $\mathcal{I}_1, \ldots, \mathcal{I}_K$
 \FOR{$k = 1$ to $K$}
     \STATE Let $\mathcal{I}_{-k} = \{1, \ldots, n\} \setminus \mathcal{I}_k$ (training set)
-    \STATE Train neural network on $\{(Y_i, T_i, X_i) : i \in \mathcal{I}_{-k}\}$
-    \STATE Obtain $\hat{a}_{-k}(\cdot)$ and $\hat{b}_{-k}(\cdot)$
+    \STATE Train \texttt{StructuralNet} on $\{(Y_i, T_i, X_i) : i \in \mathcal{I}_{-k}\}$
+    \STATE Train \texttt{NuisanceNet} on $\{(T_i, X_i) : i \in \mathcal{I}_{-k}\}$
+    \STATE Compute Hessian: $\Lambda_k = \frac{1}{|\mathcal{I}_{-k}|} \sum_{j \in \mathcal{I}_{-k}} W_j \tilde{T}_j^{\otimes 2}$
     \FOR{$i \in \mathcal{I}_k$}
-        \STATE Compute $\hat{\tau}_i = \hat{b}_{-k}(X_i)$
-        \STATE Compute influence function $\hat{\psi}_i$
+        \STATE Compute $\hat{\theta}_i = [\hat{\alpha}(X_i), \hat{\beta}(X_i)]$
+        \STATE Compute influence score: $\psi_i = H(\hat{\theta}_i) - \nabla\ell_i^\top \Lambda_k^{-1} \nabla H$
     \ENDFOR
 \ENDFOR
-\STATE \textbf{Output:} ITEs $\{\hat{\tau}_i\}_{i=1}^n$, influence functions $\{\hat{\psi}_i\}_{i=1}^n$
+\STATE \textbf{Output:} $\hat{\mu} = \frac{1}{n}\sum_i \psi_i$, $\text{SE} = \text{std}(\psi) / \sqrt{n}$
 \end{algorithmic}
 \end{algorithm}
 
-The cross-fitting procedure ensures that predictions $\hat{b}(X_i)$ are made
-using a model trained on data excluding observation $i$, breaking the
-dependence that would otherwise invalidate the asymptotic approximation.
+Key notation:
+\begin{itemize}
+    \item $W_i$: Hessian weight from family (e.g., $W_i = 1$ for linear, $W_i = p_i(1-p_i)$ for logit)
+    \item $\tilde{T}_i = [1, T_i - \bar{T}]$: Centered treatment vector
+    \item $H(\theta) = \beta$: Target functional (the treatment effect parameter)
+    \item $\nabla\ell_i$: Gradient of loss with respect to $\theta$ at observation $i$
+    \item $\nabla H = [0, 1]$: Gradient of target with respect to $\theta$
+\end{itemize}
+
+The recommended setting is $K = 50$ folds, which ensures 98\% of data is used
+for training each model while maintaining independence between training and
+evaluation.
 
 \subsection{Training Objective}
 
-For exponential family outcomes, the neural network parameters
-$\theta = (\theta_a, \theta_b)$ are estimated by minimizing the negative
-log-likelihood:
+For exponential family outcomes, the neural network parameters are estimated
+by minimizing the negative log-likelihood:
 \[
 \hat{\theta} = \arg\min_\theta \sum_{i \in \mathcal{I}_{-k}}
-  -\ell(Y_i; a_\theta(X_i) + b_\theta(X_i) \cdot T_i)
+  -\ell(Y_i; \alpha_\theta(X_i), \beta_\theta(X_i), T_i)
 \]
-where $\ell(y; \eta)$ is the log-likelihood of observation $y$ given linear
-predictor $\eta$.
+where $\ell$ is the family-specific log-likelihood.
 
-Training proceeds using stochastic gradient descent with the Adam optimizer.
-We employ the following regularization strategies to prevent overfitting:
-
+Training uses the Adam optimizer with the following regularization:
 \begin{itemize}
-    \item \textbf{Dropout}: Applied to hidden layers with rate $p = 0.1$
-    \item \textbf{Weight decay}: L2 regularization with $\lambda = 10^{-4}$
-    \item \textbf{Early stopping}: Based on validation loss with patience
+    \item \textbf{Dropout}: Rate $p = 0.1$ on hidden layers
+    \item \textbf{Weight decay}: L2 regularization $\lambda = 10^{-4}$
+    \item \textbf{Early stopping}: Patience of 10 epochs based on validation loss
 \end{itemize}
 
-These hyperparameters were selected through preliminary simulations and are the
-defaults used throughout this paper.
+\subsection{Influence Function}
+
+The influence function for estimating $\mu^* = E[\beta(X)]$ takes the form:
+\begin{equation}
+\label{eq:influence}
+\psi_i = H(\hat{\theta}_i) - \nabla\ell_i^\top \Lambda^{-1} \nabla H
+\end{equation}
+
+For the linear family with target $H(\theta) = \beta$:
+\begin{itemize}
+    \item $\nabla\ell_i = (Y_i - \hat{\alpha}_i - \hat{\beta}_i T_i) \cdot [1, \tilde{T}_i]$
+    \item $\Lambda = \frac{1}{n}\sum_j \tilde{T}_j^{\otimes 2}$
+    \item $\nabla H = [0, 1]$
+\end{itemize}
+
+The Hessian correction term $\nabla\ell_i^\top \Lambda^{-1} \nabla H$ accounts
+for the bias introduced by regularization. Without this correction, standard
+errors are severely underestimated.
 
 \subsection{Average Treatment Effect Estimation}
 
-The average treatment effect (ATE) is estimated using the doubly robust
-influence function approach. Under the enriched structural model:
+The ATE estimator and its standard error are:
+\begin{align}
+\hat{\mu} &= \frac{1}{n}\sum_{i=1}^n \psi_i \label{eq:ate} \\
+\widehat{\text{SE}}(\hat{\mu}) &= \frac{1}{\sqrt{n}} \sqrt{\frac{1}{n-1}
+  \sum_{i=1}^n (\psi_i - \hat{\mu})^2} \label{eq:se}
+\end{align}
+
+The 95\% confidence interval is:
 \[
-\tau = E[b(X)] = E[E[Y(1) - Y(0) | X]]
+\text{CI}_{95\%} = \left[\hat{\mu} - 1.96 \cdot \widehat{\text{SE}}, \;
+\hat{\mu} + 1.96 \cdot \widehat{\text{SE}}\right]
 \]
-
-The doubly robust estimator is:
-\begin{equation}
-\label{eq:ate}
-\hat{\tau}_{\text{ATE}} = \frac{1}{n}\sum_{i=1}^n \hat{\psi}_i
-\end{equation}
-where the influence function for observation $i$ is:
-\[
-\hat{\psi}_i = \hat{b}(X_i) + \frac{T_i - \hat{e}(X_i)}{\hat{e}(X_i)(1 - \hat{e}(X_i))}
-  (Y_i - \hat{a}(X_i) - \hat{b}(X_i) T_i)
-\]
-with $\hat{e}(X_i) = P(T_i = 1 | X_i)$ the estimated propensity score. When
-treatment is randomized with known probability $p$, we set $\hat{e}(X_i) = p$.
-
-The standard error is computed as:
-\begin{equation}
-\label{eq:se}
-\widehat{\text{SE}}(\hat{\tau}_{\text{ATE}}) = \sqrt{\frac{1}{n(n-1)}
-  \sum_{i=1}^n (\hat{\psi}_i - \hat{\tau}_{\text{ATE}})^2}
-\end{equation}
-
-This variance estimator is consistent under the conditions of Theorem~\ref{thm:main}.
-
-\subsection{Individual Treatment Effect Estimation}
-
-Individual treatment effects (ITEs) are obtained directly from the neural
-network output:
-\[
-\hat{\tau}(x) = \hat{b}(x)
-\]
-
-For a new observation with covariates $x^*$, the estimated ITE is
-$\hat{\tau}(x^*) = \hat{b}(x^*)$. This can be computed by evaluating the
-trained network at $x^*$.
-
-\subsection{Quantile Treatment Effects}
-
-Treatment effect heterogeneity is characterized through quantiles of the ITE
-distribution. For quantile $q \in (0, 1)$:
-\[
-\hat{Q}_q = \text{quantile}_q(\{\hat{\tau}_i\}_{i=1}^n)
-\]
-
-Confidence intervals for quantiles are obtained via bootstrap resampling:
-
-\begin{enumerate}
-    \item Draw $B$ bootstrap samples of size $n$ with replacement
-    \item For each sample $b$, compute $\hat{Q}_q^{(b)}$
-    \item Construct percentile interval: $[\hat{Q}_q^{(\alpha/2)}, \hat{Q}_q^{(1-\alpha/2)}]$
-\end{enumerate}
-
-The quantiles provide interpretable summaries of heterogeneity. For instance,
-$\hat{Q}_{0.9} - \hat{Q}_{0.1}$ measures the spread of treatment effects across
-the population.
 
 \subsection{Implementation Details}
 
-The estimation procedure is implemented in the \texttt{deepstats} Python
-package. The default configuration uses:
-
+The default configuration in \texttt{deepstats}:
 \begin{itemize}
-    \item Cross-fitting with $K = 5$ folds
-    \item MLP backbone with hidden dimensions $[256, 128, 64]$
-    \item Adam optimizer with learning rate $0.001$
-    \item Maximum 200 epochs with early stopping (patience 20)
-    \item Batch size 256
+    \item Cross-fitting with $K = 50$ folds
+    \item MLP backbone: hidden layers $[64, 32]$
+    \item Adam optimizer: learning rate $0.01$
+    \item Maximum 100 epochs with early stopping (patience 10)
+    \item Batch size 64
+    \item Validation split 10\%
 \end{itemize}
 
-For multimodal data, the MLP backbone is replaced with appropriate
-architectures: CNN for images, Transformer for text, and GNN for graphs.
-The formula interface remains identical regardless of the backbone choice.
+A separate \texttt{NuisanceNet} estimates $E[T|X]$ for centering the treatment
+in the Hessian computation: $\tilde{T}_i = T_i - E[T|X_i]$.

@@ -3,24 +3,8 @@
 \label{sec:conclusion}
 %------------------------------------------------------------------------------
 
-DeepHTE provides a principled integration of deep learning with causal
-inference through the enriched structural models framework. By treating
-neural network outputs as parameter functions within a well-defined statistical
-model, the approach achieves the flexibility of deep learning while maintaining
-the inferential rigor of structural econometrics.
-
-Monte Carlo simulations demonstrate that the method outperforms alternatives
-with linear CATE assumptions when true heterogeneity is nonlinear. The key
-advantage is individual treatment effect recovery, which is essential for
-personalized decision-making. The approach extends naturally to non-tabular
-covariates through appropriate neural network architectures.
-
-Future work includes extensions to instrumental variables settings, panel data
-with individual fixed effects, and dynamic treatment regimes. The theoretical
-framework also admits extensions to more complex structural models beyond
-treatment effects.
-
-\paragraph{Availability}
-DeepHTE is available at \url{https://github.com/rawatpranjal/deepstats} under
-the MIT license. The simulations package provides fully reproducible code for
-all experiments in this paper.
+We implement and validate the FLM influence function approach for neural
+network inference. Monte Carlo simulations confirm that influence function
+corrections achieve 90--93\% coverage, while naive estimation fails
+catastrophically (3--10\% coverage). The \texttt{deepstats} package provides
+this framework for nine exponential family models.

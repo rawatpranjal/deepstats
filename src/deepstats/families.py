@@ -579,6 +579,334 @@ class WeibullFamily(BaseFamily):
 
 
 # =============================================================================
+# Multinomial Logit (Conditional Logit) Family
+# =============================================================================
+
+class MultinomialLogitFamily(BaseFamily):
+    """Conditional Logit (McFadden's Choice Model) with alternative-specific attributes.
+
+    Choice probability:
+        P(Y_ij=1 | x_i, w_i) = exp(V_ij) / Σ_m exp(V_im)
+        V_ij = α_j(W_i) + x'_{i,j} β(W_i)
+
+    Parameters:
+        - α_j(W): J-1 alternative-specific intercepts (j=0 normalized to 0)
+        - β(W): K generic coefficients for continuous attributes
+        - Total: (J-1) + K parameters
+
+    Data structure:
+        - t: packed X_alt tensor of shape (N, J*K), unpacked to (N, J, K)
+        - y: chosen alternative (integer 0...J-1)
+        - theta: (N, (J-1)+K) structural parameters
+
+    Targets:
+        - 'beta': E[β_k(W)] for k-th coefficient
+        - 'choice_prob': E[P(Y=j|W,X)] average choice probability
+
+    Following FLM paper formulas:
+        - Gradient: ℓ_δ = [c_{i,1}..c_{i,J-1}, c̃_{i,1}..c̃_{i,K}]
+        - Hessian: Λ = E[X̃' Ġ X̃] where Ġ has diag p(1-p), off-diag -p_j*p_m
+    """
+    name = "multinomial_logit"
+
+    def __init__(self, J: int, K: int, target: str = "beta", target_idx: int = 0):
+        """Initialize MultinomialLogitFamily.
+
+        Args:
+            J: Number of alternatives
+            K: Number of continuous attributes per alternative
+            target: 'beta' (average coefficient) or 'choice_prob' (average choice probability)
+            target_idx: Which coefficient (0..K-1) or alternative (0..J-1) to target
+        """
+        if J < 2:
+            raise ValueError(f"J must be >= 2, got {J}")
+        if K < 1:
+            raise ValueError(f"K must be >= 1, got {K}")
+        if target not in ("beta", "choice_prob"):
+            raise ValueError(f"target must be 'beta' or 'choice_prob', got '{target}'")
+
+        self.J = J
+        self.K = K
+        self.n_params = (J - 1) + K
+        self.target = target
+        self.target_idx = target_idx
+
+    def _unpack_and_compute_probs(self, t: torch.Tensor, theta: torch.Tensor):
+        """Unpack data and compute choice probabilities.
+
+        Args:
+            t: Packed X_alt (N, J*K)
+            theta: Structural parameters (N, (J-1)+K)
+
+        Returns:
+            X_alt: Unpacked alternative attributes (N, J, K)
+            probs: Choice probabilities (N, J)
+            V: Utilities (N, J)
+        """
+        N = t.shape[0]
+        X_alt = t.reshape(N, self.J, self.K)
+
+        # Extract parameters: first J-1 are intercepts, next K are coefficients
+        alpha = theta[:, :self.J - 1]  # (N, J-1)
+        beta = theta[:, self.J - 1:]   # (N, K)
+
+        # Build full alpha with α_0 = 0 (normalized)
+        alpha_full = torch.cat([
+            torch.zeros(N, 1, device=theta.device),
+            alpha
+        ], dim=1)  # (N, J)
+
+        # Compute utilities: V_ij = α_j + Σ_k x_{ijk} β_k
+        # einsum: (N, J, K) @ (N, K) -> (N, J)
+        V = alpha_full + torch.einsum('njk,nk->nj', X_alt, beta)
+
+        # Clamp for numerical stability before softmax
+        V = torch.clamp(V, -20, 20)
+
+        # Softmax for probabilities
+        probs = torch.softmax(V, dim=1)
+        probs = torch.clamp(probs, 1e-6, 1 - 1e-6)
+
+        return X_alt, probs, V
+
+    def loss(self, y: torch.Tensor, t: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
+        """Multinomial logit NLL (cross-entropy loss).
+
+        Args:
+            y: Chosen alternative (N,) integer or (N, J) one-hot
+            t: Packed X_alt (N, J*K)
+            theta: Structural parameters (N, (J-1)+K)
+
+        Returns:
+            Per-sample NLL (N,)
+        """
+        N = t.shape[0]
+        X_alt, probs, V = self._unpack_and_compute_probs(t, theta)
+
+        # Use log_softmax for numerical stability
+        log_probs = torch.log_softmax(V, dim=1)
+
+        # Handle both integer and one-hot y
+        if y.dim() == 1:
+            # Integer labels: gather the log prob of chosen alternative
+            nll = -log_probs[torch.arange(N, device=y.device), y.long()]
+        else:
+            # One-hot: dot product
+            nll = -torch.sum(y * log_probs, dim=1)
+
+        return nll
+
+    def residual(self, y: torch.Tensor, t: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
+        """Per-alternative residuals: c_{ij} = y_{ij} - P(Y_ij=1).
+
+        Args:
+            y: Chosen alternative (N,) integer or (N, J) one-hot
+            t: Packed X_alt (N, J*K)
+            theta: Structural parameters (N, (J-1)+K)
+
+        Returns:
+            Residuals (N, J) for each alternative
+        """
+        N = t.shape[0]
+        X_alt, probs, V = self._unpack_and_compute_probs(t, theta)
+
+        # Convert y to one-hot if integer
+        if y.dim() == 1:
+            y_onehot = torch.zeros(N, self.J, device=y.device)
+            y_onehot.scatter_(1, y.long().unsqueeze(1), 1)
+        else:
+            y_onehot = y
+
+        return y_onehot - probs  # (N, J)
+
+    def weight(self, t: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
+        """Fisher information weight matrix Ġ (N, J, J).
+
+        Ġ_{jm} = p_j(1-p_j) if j=m, else -p_j*p_m
+        Equivalently: Ġ = diag(p) - p @ p^T
+
+        Args:
+            t: Packed X_alt (N, J*K)
+            theta: Structural parameters (N, (J-1)+K)
+
+        Returns:
+            Weight matrices (N, J, J)
+        """
+        X_alt, probs, V = self._unpack_and_compute_probs(t, theta)
+
+        # G = diag(p) - p @ p^T
+        G_diag = torch.diag_embed(probs)  # (N, J, J)
+        G_outer = torch.einsum('ni,nj->nij', probs, probs)  # (N, J, J)
+        G = G_diag - G_outer
+
+        return G
+
+    def h_value(self, theta: torch.Tensor, t: torch.Tensor = None) -> torch.Tensor:
+        """Target functional H(θ).
+
+        For 'beta' target: H = β_{target_idx}
+        For 'choice_prob' target: H = P(Y=target_idx | θ, x)
+        """
+        if self.target == "beta":
+            return theta[:, self.J - 1 + self.target_idx]
+        else:  # choice_prob
+            if t is None:
+                raise ValueError("t required for choice_prob target")
+            X_alt, probs, V = self._unpack_and_compute_probs(t, theta)
+            return probs[:, self.target_idx]
+
+    def h_gradient(self, theta: torch.Tensor = None, t: torch.Tensor = None) -> torch.Tensor:
+        """Gradient of H w.r.t. θ = [(J-1)+K] parameters.
+
+        For 'beta' target: ∇H = e_{(J-1)+target_idx} (unit vector)
+        For 'choice_prob' target: chain rule through softmax
+        """
+        n_params = self.n_params
+
+        if self.target == "beta":
+            grad = torch.zeros(n_params)
+            grad[self.J - 1 + self.target_idx] = 1.0
+            return grad
+
+        # choice_prob target: ∇H = ∇P(Y=j)
+        if theta is None or t is None:
+            # Return beta gradient as fallback
+            grad = torch.zeros(n_params)
+            grad[self.J - 1] = 1.0
+            return grad
+
+        X_alt, probs, V = self._unpack_and_compute_probs(t, theta)
+        j = self.target_idx
+        p_j = probs[:, j]  # (N,)
+
+        # ∂P_j/∂α_m = P_j * (I(j=m) - P_m) for m=1..J-1
+        # Note: α_0 is normalized, so we only have gradients for α_1..α_{J-1}
+        grad_alpha = torch.zeros(theta.shape[0], self.J - 1, device=theta.device)
+        for m in range(1, self.J):
+            indicator = 1.0 if j == m else 0.0
+            grad_alpha[:, m - 1] = p_j * (indicator - probs[:, m])
+
+        # ∂P_j/∂β_k = P_j * Σ_m (I(j=m) - P_m) * x_{mk}
+        #           = P_j * (x_jk - Σ_m P_m * x_{mk})
+        x_j = X_alt[:, j, :]  # (N, K)
+        x_weighted = torch.einsum('nj,njk->nk', probs, X_alt)  # (N, K)
+        grad_beta = p_j.unsqueeze(1) * (x_j - x_weighted)  # (N, K)
+
+        # Average gradients across observations
+        grad = torch.cat([grad_alpha.mean(0), grad_beta.mean(0)])
+        return grad
+
+    def compute_hessian(self, theta: torch.Tensor, t: torch.Tensor, t_mean: torch.Tensor) -> torch.Tensor:
+        """Compute ((J-1)+K) × ((J-1)+K) Hessian Λ.
+
+        Λ = (1/N) Σ_i X̃_i' Ġ_i X̃_i
+
+        where X̃_i is the extended design matrix (J, n_params):
+        - Columns 0..J-2: indicator for alternatives 1..J-1
+        - Columns J-1..n_params-1: x_{ijk} for each attribute k
+
+        Args:
+            theta: (N, n_params)
+            t: Packed X_alt (N, J*K)
+            t_mean: Not used (for API compatibility)
+
+        Returns:
+            Lambda: (n_params, n_params) Hessian matrix
+        """
+        N = t.shape[0]
+        n_params = self.n_params
+        X_alt = t.reshape(N, self.J, self.K)
+
+        # Get weight matrices G (N, J, J)
+        G = self.weight(t, theta)
+
+        # Build extended design matrix X̃ (N, J, n_params)
+        X_tilde = torch.zeros(N, self.J, n_params, device=t.device)
+
+        # Alpha part: indicator for alternatives 1..J-1
+        # X̃[n, j, j-1] = 1 for j=1..J-1
+        for j in range(1, self.J):
+            X_tilde[:, j, j - 1] = 1.0
+
+        # Beta part: x_{ijk} for each attribute k
+        X_tilde[:, :, self.J - 1:] = X_alt  # (N, J, K)
+
+        # Λ = (1/N) Σ_i X̃_i' Ġ_i X̃_i
+        # Using einsum: (N,J,p)' @ (N,J,J) @ (N,J,q) -> (p,q)
+        Lambda = torch.einsum('njp,njm,nmq->pq', X_tilde, G, X_tilde) / N
+
+        # Ridge regularization for numerical stability
+        Lambda = Lambda + 1e-4 * torch.eye(n_params, device=t.device)
+
+        return Lambda
+
+    def compute_hessian_with_diagnostics(
+        self, theta: torch.Tensor, t: torch.Tensor, t_mean: torch.Tensor
+    ) -> tuple:
+        """Compute Hessian with stability diagnostics."""
+        Lambda = self.compute_hessian(theta, t, t_mean)
+        eigenvalues = torch.linalg.eigvalsh(Lambda)
+        min_eig = eigenvalues.min().item()
+        max_eig = eigenvalues.max().item()
+        condition = max_eig / (min_eig + 1e-10)
+        return Lambda, min_eig, condition
+
+    def influence_score(
+        self, y, t, theta, t_mean, t_var, lambda_inv, return_correction: bool = False
+    ):
+        """Influence score for multinomial logit.
+
+        ψ_i = H(θ_i) - l_θ_i @ Λ⁻¹ @ ∇H
+
+        Score vector l_θ (gradient of NLL):
+        - l_α_j = -(y_j - p_j) for j=1..J-1
+        - l_β_k = -Σ_j (y_j - p_j) x_{jk} for k=0..K-1
+
+        Args:
+            y: Chosen alternative (N,) or (N, J) one-hot
+            t: Packed X_alt (N, J*K)
+            theta: (N, n_params)
+            t_mean, t_var: Not used (API compatibility)
+            lambda_inv: Inverted Hessian (n_params, n_params)
+            return_correction: If True, return (psi, correction) tuple
+
+        Returns:
+            psi: Influence scores (N,)
+            correction: (optional) Correction terms (N,)
+        """
+        N = y.shape[0]
+        n_params = self.n_params
+        X_alt = t.reshape(N, self.J, self.K)
+
+        # Target value
+        h_i = self.h_value(theta, t)
+
+        # Get residuals (N, J): c_{ij} = y_{ij} - p_{ij}
+        residuals = self.residual(y, t, theta)
+
+        # Build score vector l_θ (gradient of NLL = negative of score)
+        # l_α_j = -(y_j - p_j) = p_j - y_j for j=1..J-1
+        l_alpha = -residuals[:, 1:]  # (N, J-1) - exclude j=0
+
+        # l_β_k = -Σ_j (y_j - p_j) x_{jk}
+        l_beta = -torch.einsum('nj,njk->nk', residuals, X_alt)  # (N, K)
+
+        l_theta = torch.cat([l_alpha, l_beta], dim=1)  # (N, n_params)
+
+        # Gradient of H
+        H_grad = self.h_gradient(theta, t).to(theta.device)
+
+        # Correction term: l_θ @ Λ⁻¹ @ ∇H
+        correction = l_theta @ (lambda_inv @ H_grad)
+
+        psi = h_i - correction
+
+        if return_correction:
+            return psi, correction
+        return psi
+
+
+# =============================================================================
 # Heteroskedastic Linear Family
 # =============================================================================
 
@@ -655,6 +983,7 @@ FAMILIES = {
     "negbin": NegBinFamily,
     "weibull": WeibullFamily,
     "heterolinear": HeteroLinearFamily,
+    "multinomial_logit": MultinomialLogitFamily,
 }
 
 

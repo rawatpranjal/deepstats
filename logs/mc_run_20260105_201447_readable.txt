@@ -1,0 +1,162 @@
+================================================================================
+FLM VALIDATION REPORT
+Generated: 2026-01-05T20:14:47.135421
+================================================================================
+
+## CONFIGURATION
+{
+  "M": 5,
+  "N": 500,
+  "n_folds": 10,
+  "epochs": 30,
+  "hidden_dims": [
+    64,
+    32
+  ],
+  "lr": 0.01,
+  "batch_size": 64,
+  "dropout": 0.1,
+  "weight_decay": 0.0001,
+  "seed": 42,
+  "early_stopping": true,
+  "patience": 10,
+  "val_split": 0.1
+}
+
+## DGP SPECIFICATION
+{
+  "alpha_star": "sin(2piX1) + X2^3 - 2cos(piX3) + exp(X4/3)*I(X4>0) + 0.5*X5*X6",
+  "beta_star": "cos(2piX1)*sin(piX2) + 0.8*tanh(3X3) - 0.5*X4^2 + 0.3*X5*I(X6>0)",
+  "mu_true": -0.16818094145857462
+}
+
+## PHASE 1: PARAMETER RECOVERY
+{
+  "influence": {
+    "rmse_alpha": 1.1486549487467028,
+    "rmse_beta": 0.7659156238689766,
+    "corr_alpha": 0.770314759258705,
+    "corr_beta": 0.6369483540779264,
+    "r2_alpha": 0.5933848283317966,
+    "r2_beta": 0.40570320576257946
+  },
+  "naive": {
+    "rmse_alpha": 1.0030628704960132,
+    "rmse_beta": 0.7413033200205346,
+    "corr_alpha": 0.8342574962462382,
+    "corr_beta": 0.7031274481287443,
+    "r2_alpha": 0.6959855700430422,
+    "r2_beta": 0.49438820831204
+  }
+}
+
+## PHASE 2: INFERENCE VALIDITY
+{
+  "influence": {
+    "mu_true": -0.16818094145857462,
+    "mu_hat_mean": 0.03850767633964611,
+    "bias": 0.20668861779822073,
+    "variance": 0.3083537484377045,
+    "mse": 0.3510739331650435,
+    "bias_ratio": 0.12168429692914788,
+    "rmse_mu": 0.5378723700121468,
+    "empirical_se": 0.55529609078194,
+    "estimated_se": 0.686734650692957,
+    "se_ratio": 1.2366999553804383,
+    "ci_width": 2.6919998307163917,
+    "coverage": 1.0,
+    "n_sims": 5
+  },
+  "naive": {
+    "mu_true": -0.16818094145857462,
+    "mu_hat_mean": -0.22753840311716006,
+    "bias": -0.05935746165858544,
+    "variance": 0.034081217899043795,
+    "mse": 0.037604526153594234,
+    "bias_ratio": 0.09369372825387094,
+    "rmse_mu": 0.17445992986781889,
+    "empirical_se": 0.1846109907319816,
+    "estimated_se": 0.04421361645228451,
+    "se_ratio": 0.23949612250591235,
+    "ci_width": 0.17331737649295528,
+    "coverage": 0.4,
+    "n_sims": 5
+  }
+}
+
+## PHASE 3: TRAINING DIAGNOSTICS
+{
+  "influence": {
+    "final_grad_norm": 1.1985303238986753,
+    "final_beta_std": 0.884545191526413,
+    "overfit_rate": 0.18,
+    "mean_best_epoch": 14.219999999999999,
+    "correction_ratio": 0.571008956071957,
+    "min_hessian_eig": 0.008049221290275455,
+    "hessian_condition": 184.35655751705258
+  },
+  "naive": {
+    "final_grad_norm": 1.2942699862132365,
+    "final_beta_std": 0.939378809928894,
+    "overfit_rate": 0.2,
+    "mean_best_epoch": 19.4
+  }
+}
+
+## TRAINING QUALITY (NN Model Fit)
+{
+  "influence": {
+    "final_train_loss": 0.6997353877623876,
+    "final_val_loss": 0.8409408032894135,
+    "train_val_gap": 0.1412054155270258,
+    "mean_best_epoch": 14.219999999999999,
+    "overfit_rate": 0.18
+  },
+  "naive": {
+    "final_train_loss": 0.7239441919227441,
+    "final_val_loss": 0.8335222959518432,
+    "train_val_gap": 0.10957810402909915,
+    "mean_best_epoch": 19.4,
+    "overfit_rate": 0.2
+  }
+}
+
+## VALIDATION SCORECARD
+{
+  "influence_method": {
+    "grade": "WARNING",
+    "coverage": 1.0,
+    "se_ratio": 1.2366999553804383,
+    "bias_ratio": 0.12168429692914788,
+    "r2_beta": 0.40570320576257946,
+    "notes": "Coverage acceptable but SEs may be conservative."
+  },
+  "naive_method": {
+    "grade": "FAIL (CRITICAL)",
+    "coverage": 0.4,
+    "se_ratio": 0.23949612250591235,
+    "bias_ratio": 0.09369372825387094,
+    "r2_beta": 0.49438820831204,
+    "notes": "Severe under-coverage. Underestimates SE by 76%."
+  },
+  "cross_method": {
+    "violation_rate": 0.8,
+    "bias_shift": 0.2660460794568062,
+    "bias_reduction": -2.482100009381473
+  },
+  "overall_grade": "WARNING"
+}
+
+## TIMING
+{
+  "total_seconds": 172.2639982700348,
+  "per_sim_seconds": 34.45279965400696,
+  "start_time": "2026-01-05T20:11:54",
+  "end_time": "2026-01-05T20:14:47"
+}
+
+## RAW DATA: 10 records
+
+================================================================================
+END REPORT
+================================================================================
