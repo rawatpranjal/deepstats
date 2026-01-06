@@ -90,18 +90,41 @@ Where $\Lambda(x) = \mathbb{E}[\nabla^2 \ell \mid X=x]$ is the conditional Hessi
 
 ## Validation (Monte Carlo Results)
 
-We validate the package against the theoretical convergence rates derived in Farrell, Liang, Misra (2021).
+M=30 simulations, N=10,000 observations. Target: 95% coverage, SE ratio ≈ 1.0.
 
-**Scenario:** $N=10,000$, $M=30$ simulations. Target: 95% Coverage.
+### Linear Model
 
-| Model | Method | Coverage | SE Ratio | Bias Ratio | Verdict |
-|-------|--------|----------|----------|------------|---------|
-| **Linear** | Naive | 10.0% | 0.08 | 2.14 | ❌ Fail |
-| | **Deepstats** | **93.3%** | **1.02** | **0.20** | ✅ **Pass** |
-| **Logit** | Naive | 3.3% | 0.03 | 4.50 | ❌ Fail |
-| | **Deepstats** | **90.0%** | **0.93** | **0.23** | ✅ **Pass** |
+![Linear Results](logs/kde_money_slide.png)
 
-*Note: The "Naive" column represents standard Deep Learning (minimizing MSE/NLL), illustrating the necessity of the Influence Function correction.*
+| Config | K | Network | Coverage | SE Ratio | RMSE | Bias²/MSE |
+|--------|---|---------|----------|----------|------|-----------|
+| **Best** | 50 | [64,32] | **93.3%** | 1.03 | **0.032** | 22% |
+| Deep | 20 | [128,64,32] | 93.3% | 1.02 | 0.033 | 21% |
+| E=100 | 20 | [64,32] | 90.0% | 0.90 | 0.036 | 18% |
+| Separate | 20 | [128,64,32]×2 | 80.0% | 0.82 | 0.036 | 14% |
+| Naive | — | — | 10% | 0.09 | 0.083 | 1% |
+
+**Finding:** K=50 folds achieves best coverage and lowest RMSE. Separate networks don't help.
+
+### Logit Model
+
+![Logit Results](logs/logit_stress_test/logit_results.png)
+
+Target: E[β(X)] = average log-odds ratio
+
+| Method | Coverage | SE Ratio | RMSE | Hessian min λ |
+|--------|----------|----------|------|---------------|
+| **Influence** | **90.0%** | 0.93 | **0.054** | 0.051 |
+| Naive | 3.3% | 0.03 | 0.108 | — |
+
+### Summary
+
+| Model | Target | Naive Cov | IF Cov | RMSE Improvement |
+|-------|--------|-----------|--------|------------------|
+| Linear | E[β(X)] | 10% | **93%** | 2.6× |
+| Logit | E[β(X)] | 3% | **90%** | 2.0× |
+| Poisson | E[β(X)] | TBD | TBD | — |
+| Gamma | E[β(X)] | TBD | TBD | — |
 
 ## Citation
 
