@@ -1,0 +1,163 @@
+================================================================================
+FLM VALIDATION REPORT
+Generated: 2026-01-06T07:52:43.764757
+================================================================================
+
+## CONFIGURATION
+{
+  "M": 30,
+  "N": 10000,
+  "n_folds": 20,
+  "epochs": 50,
+  "hidden_dims": [
+    128,
+    64,
+    32
+  ],
+  "lr": 0.01,
+  "batch_size": 64,
+  "dropout": 0.1,
+  "weight_decay": 0.0001,
+  "seed": 42,
+  "early_stopping": true,
+  "patience": 10,
+  "val_split": 0.1
+}
+
+## DGP SPECIFICATION
+{
+  "alpha_star": "sin(2piX1) + X2^3 - 2cos(piX3) + exp(X4/3)*I(X4>0) + 0.5*X5*X6",
+  "beta_star": "cos(2piX1)*sin(piX2) + 0.8*tanh(3X3) - 0.5*X4^2 + 0.3*X5*I(X6>0)",
+  "mu_true": -0.16818094145857462
+}
+
+## PHASE 1: PARAMETER RECOVERY
+{
+  "influence": {
+    "rmse_alpha": 0.5973950639840032,
+    "rmse_beta": 0.5871643654450648,
+    "corr_alpha": 0.9407959280158426,
+    "corr_beta": 0.7243169707141323,
+    "r2_alpha": 0.8850969781711904,
+    "r2_beta": 0.5246350740644972
+  },
+  "naive": {
+    "rmse_alpha": 0.5584132792615976,
+    "rmse_beta": 0.5762610300580638,
+    "corr_alpha": 0.9505796970840659,
+    "corr_beta": 0.7448321324710279,
+    "r2_alpha": 0.9036017605084344,
+    "r2_beta": 0.5547749055613388
+  }
+}
+
+## PHASE 2: INFERENCE VALIDITY
+{
+  "influence": {
+    "mu_true": -0.16818094145857462,
+    "mu_hat_mean": -0.17712183000443285,
+    "bias": -0.008940888545858231,
+    "variance": 0.0010190065343962918,
+    "mse": 0.0010989460223857508,
+    "bias_ratio": 0.07274196035207874,
+    "rmse_mu": 0.032650619508318345,
+    "empirical_se": 0.031921881748986726,
+    "estimated_se": 0.019494458462719293,
+    "se_ratio": 0.610692647006566,
+    "ci_width": 0.07641827717385963,
+    "coverage": 0.7666666666666667,
+    "n_sims": 30
+  },
+  "naive": {
+    "mu_true": -0.16818094145857462,
+    "mu_hat_mean": -0.16880284167268036,
+    "bias": -0.0006219002141057509,
+    "variance": 0.008334703259589637,
+    "mse": 0.008335090019465941,
+    "bias_ratio": 4.6401403632298136e-05,
+    "rmse_mu": 0.08956017581766125,
+    "empirical_se": 0.09129459600430705,
+    "estimated_se": 0.006881916602452596,
+    "se_ratio": 0.07538142347579833,
+    "ci_width": 0.026977113081614174,
+    "coverage": 0.1,
+    "n_sims": 30
+  }
+}
+
+## PHASE 3: TRAINING DIAGNOSTICS
+{
+  "influence": {
+    "final_grad_norm": 1.3435683426581162,
+    "final_beta_std": 0.6446232863763969,
+    "overfit_rate": 0.0,
+    "mean_best_epoch": 29.913333333333334,
+    "correction_ratio": 0.9311369982955104,
+    "min_hessian_eig": 0.24147290994723639,
+    "hessian_condition": 4.161914703933511
+  },
+  "naive": {
+    "final_grad_norm": 1.357361971545487,
+    "final_beta_std": 0.6626352310180664,
+    "overfit_rate": 0.0,
+    "mean_best_epoch": 30.833333333333332
+  }
+}
+
+## TRAINING QUALITY (NN Model Fit)
+{
+  "influence": {
+    "final_train_loss": 1.8342669076627691,
+    "final_val_loss": 1.7967656783262889,
+    "train_val_gap": -0.03750122933648019,
+    "mean_best_epoch": 29.913333333333334,
+    "overfit_rate": 0.0
+  },
+  "naive": {
+    "final_train_loss": 1.8327767727569297,
+    "final_val_loss": 1.7866275827089946,
+    "train_val_gap": -0.0461491900479352,
+    "mean_best_epoch": 30.833333333333332,
+    "overfit_rate": 0.0
+  }
+}
+
+## VALIDATION SCORECARD
+{
+  "influence_method": {
+    "grade": "FAIL",
+    "coverage": 0.7666666666666667,
+    "se_ratio": 0.610692647006566,
+    "bias_ratio": 0.07274196035207874,
+    "r2_beta": 0.5246350740644972,
+    "notes": "Coverage below target. Check IF implementation."
+  },
+  "naive_method": {
+    "grade": "FAIL (CRITICAL)",
+    "coverage": 0.1,
+    "se_ratio": 0.07538142347579833,
+    "bias_ratio": 4.6401403632298136e-05,
+    "r2_beta": 0.5547749055613388,
+    "notes": "Severe under-coverage. Underestimates SE by 92%."
+  },
+  "cross_method": {
+    "violation_rate": 0.8666666666666667,
+    "bias_shift": 0.00831898833175243,
+    "bias_reduction": -13.376725305866962
+  },
+  "overall_grade": "FAIL"
+}
+
+## TIMING
+{
+  "total_seconds": 3470.8150651454926,
+  "per_sim_seconds": 115.69383550484976,
+  "start_time": "2026-01-06T06:54:52",
+  "end_time": "2026-01-06T07:52:43"
+}
+
+## RAW DATA: 60 records
+
+================================================================================
+END REPORT
+================================================================================

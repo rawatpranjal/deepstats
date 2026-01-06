@@ -37,11 +37,20 @@ Monte Carlo simulations validating the FLM (Farrell, Liang, Misra) influence fun
 |-------|--------|---|---------|----------|----------|-------|
 | linear | β | 50 | default | **93%** | 1.03 | PASS |
 | linear | β | 20 | deep | **93%** | 1.02 | PASS |
-| **poisson** | β | 20 | deep | **93%** | 1.20 | PASS |
+| poisson | β | 20 | deep | **93%** | 1.20 | PASS |
 | logit | AME | 20 | deep | **90%** | 0.88 | PASS |
+| **negbin** | β | 20 | deep | **100%** | 1.26 | WARNING |
 | linear | β | 10 | deep | 87% | 0.94 | WARNING |
 | tobit | observed | 50 | deep | 87% | 0.79 | WARNING |
 | tobit | latent | 50 | deep | 80% | 0.97 | WARNING |
+| gamma | β | 20 | deep | 80% | 0.73 | FAIL |
+| gumbel | β | 20 | deep | 77% | 0.61 | FAIL |
+| weibull | β | 20 | deep | 70% | 0.69 | FAIL |
+
+### Notes on Failing Models
+- **Gamma, Gumbel, Weibull**: SE underestimation (ratio < 0.8)
+- May need K=50 folds or model-specific IF tuning
+- IF correction still significant (86-90% violation rates)
 
 ---
 
