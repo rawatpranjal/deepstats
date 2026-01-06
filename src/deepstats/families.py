@@ -174,18 +174,7 @@ class GammaFamily(BaseFamily):
     def weight(self, t, theta):
         return torch.ones_like(t)
 
-    def influence_score(
-        self, y, t, theta, t_mean, t_var, lambda_inv, return_correction: bool = False
-    ):
-        beta_i = theta[:, 1]
-        r_i = self.residual(y, t, theta)
-        t_centered = t - t_mean
-        global_var = torch.var(t) + 1e-4
-        correction = (r_i * t_centered) / global_var
-        psi = beta_i + correction  # Note: simplified formula uses + not -
-        if return_correction:
-            return psi, -correction  # Return as correction term (negated for consistency)
-        return psi
+    # Uses BaseFamily.influence_score() - the correct Hessian-based formula
 
 
 # =============================================================================
@@ -212,18 +201,7 @@ class GumbelFamily(BaseFamily):
     def weight(self, t, theta):
         return torch.ones_like(t)
 
-    def influence_score(
-        self, y, t, theta, t_mean, t_var, lambda_inv, return_correction: bool = False
-    ):
-        beta_i = theta[:, 1]
-        r_i = self.residual(y, t, theta)
-        t_centered = t - t_mean
-        global_var = torch.var(t) + 1e-4
-        correction = (r_i * t_centered) / global_var
-        psi = beta_i + correction
-        if return_correction:
-            return psi, -correction
-        return psi
+    # Uses BaseFamily.influence_score() - the correct Hessian-based formula
 
 
 # =============================================================================
