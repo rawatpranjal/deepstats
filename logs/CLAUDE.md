@@ -43,14 +43,18 @@ Monte Carlo simulations validating the FLM (Farrell, Liang, Misra) influence fun
 | linear | β | 10 | deep | 87% | 0.94 | WARNING |
 | tobit | observed | 50 | deep | 87% | 0.79 | WARNING |
 | tobit | latent | 50 | deep | 80% | 0.97 | WARNING |
-| gamma | β | 20 | deep | 80% | 0.73 | FAIL |
-| gumbel | β | 20 | deep | 77% | 0.61 | FAIL |
-| weibull | β | 20 | deep | 70% | 0.69 | FAIL |
+| **gamma** | β | 20 | deep | **100%** | 1.24 | WARNING (FIXED) |
+| **gumbel** | β | 20 | deep | **97%** | 1.11 | PASS (FIXED) |
+| weibull | β | 20 | deep | 67% | 0.63 | FAIL |
 
-### Notes on Failing Models
-- **Gamma, Gumbel, Weibull**: SE underestimation (ratio < 0.8)
-- May need K=50 folds or model-specific IF tuning
-- IF correction still significant (86-90% violation rates)
+### Bug Fix Applied (2026-01-06)
+- **Gamma, Gumbel**: Removed broken `influence_score()` overrides that used scalar variance instead of full Hessian
+- Now inherit correct `BaseFamily.influence_score()` with proper FLM formula
+- Coverage improved: Gamma 80%→100%, Gumbel 77%→97%
+
+### Remaining Issue: Weibull
+- Uses correct BaseFamily formula but still failing (67% coverage)
+- May need weight function adjustment or K=50 folds
 
 ---
 
