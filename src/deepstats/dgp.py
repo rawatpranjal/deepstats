@@ -121,10 +121,12 @@ class BaseDGP(ABC):
     """Abstract base for DGPs."""
     name: str = "base"
 
-    def __init__(self, d: int = 10, seed: int = 42):
+    def __init__(self, d: int = 10, n_noise: int = 10, seed: int = 42):
         if d < 10:
             raise ValueError("d must be at least 10")
         self.d = d
+        self.n_noise = n_noise
+        self.d_total = d + n_noise  # Total features (signal + noise)
         self.seed = seed
         self.rng = np.random.default_rng(seed)
         self._mu_true: Optional[float] = None
@@ -144,11 +146,24 @@ class BaseDGP(ABC):
         return self._mu_true
 
     def _generate_base_data(self, n: int) -> tuple:
-        """Generate (X, T, alpha, beta) common to all DGPs."""
-        X = self.rng.uniform(-1, 1, (n, self.d))
-        alpha = alpha_star(X)
-        beta = beta_star(X)
-        T = generate_treatment(X, beta, self.rng)
+        """Generate (X, T, alpha, beta) common to all DGPs.
+
+        X includes both signal features (d) and noise features (n_noise).
+        Only signal features are used for alpha, beta, and treatment.
+        """
+        # Signal features (used for alpha, beta, T)
+        X_signal = self.rng.uniform(-1, 1, (n, self.d))
+        alpha = alpha_star(X_signal)
+        beta = beta_star(X_signal)
+        T = generate_treatment(X_signal, beta, self.rng)
+
+        # Add noise features if n_noise > 0
+        if self.n_noise > 0:
+            X_noise = self.rng.uniform(-1, 1, (n, self.n_noise))
+            X = np.concatenate([X_signal, X_noise], axis=1)
+        else:
+            X = X_signal
+
         return X, T, alpha, beta
 
 
@@ -160,8 +175,8 @@ class LinearDGP(BaseDGP):
     """Y = alpha + beta*T + epsilon, epsilon ~ N(0, sigma^2)."""
     name = "linear"
 
-    def __init__(self, d: int = 10, sigma: float = 1.0, seed: int = 42):
-        super().__init__(d, seed)
+    def __init__(self, d: int = 10, n_noise: int = 10, sigma: float = 1.0, seed: int = 42):
+        super().__init__(d, n_noise, seed)
         self.sigma = sigma
 
     def generate(self, n: int) -> DGPResult:
@@ -175,8 +190,8 @@ class GammaDGP(BaseDGP):
     """Y ~ Gamma(shape, mu/shape) where mu = exp(alpha + beta*T)."""
     name = "gamma"
 
-    def __init__(self, d: int = 10, shape: float = 2.0, seed: int = 42):
-        super().__init__(d, seed)
+    def __init__(self, d: int = 10, n_noise: int = 10, shape: float = 2.0, seed: int = 42):
+        super().__init__(d, n_noise, seed)
         self.shape = shape
 
     def generate(self, n: int) -> DGPResult:
@@ -198,8 +213,8 @@ class GumbelDGP(BaseDGP):
     """Y ~ Gumbel(mu, scale) where mu = alpha + beta*T."""
     name = "gumbel"
 
-    def __init__(self, d: int = 10, scale: float = 1.0, seed: int = 42):
-        super().__init__(d, seed)
+    def __init__(self, d: int = 10, n_noise: int = 10, scale: float = 1.0, seed: int = 42):
+        super().__init__(d, n_noise, seed)
         self.scale = scale
 
     def generate(self, n: int) -> DGPResult:
@@ -238,8 +253,8 @@ class LogitDGP(BaseDGP):
     """
     name = "logit"
 
-    def __init__(self, d: int = 10, seed: int = 42):
-        super().__init__(d, seed)
+    def __init__(self, d: int = 10, n_noise: int = 10, seed: int = 42):
+        super().__init__(d, n_noise, seed)
         self._mu_true_beta = None
         self._mu_true_ame = None
 
@@ -294,8 +309,8 @@ class TobitDGP(BaseDGP):
     """
     name = "tobit"
 
-    def __init__(self, d: int = 10, sigma: float = 1.0, seed: int = 42):
-        super().__init__(d, seed)
+    def __init__(self, d: int = 10, n_noise: int = 10, sigma: float = 1.0, seed: int = 42):
+        super().__init__(d, n_noise, seed)
         self.sigma = sigma
         self._mu_true_latent = None
         self._mu_true_observed = None
@@ -340,8 +355,8 @@ class NegBinDGP(BaseDGP):
     """Y ~ NegBin with mu = exp(alpha + beta*T), Var = mu + alpha*mu^2."""
     name = "negbin"
 
-    def __init__(self, d: int = 10, overdispersion: float = 0.5, seed: int = 42):
-        super().__init__(d, seed)
+    def __init__(self, d: int = 10, n_noise: int = 10, overdispersion: float = 0.5, seed: int = 42):
+        super().__init__(d, n_noise, seed)
         self.overdispersion = overdispersion
 
     def generate(self, n: int) -> DGPResult:
@@ -365,8 +380,8 @@ class WeibullDGP(BaseDGP):
     """Y ~ Weibull(k, lambda) where lambda = exp(alpha + beta*T)."""
     name = "weibull"
 
-    def __init__(self, d: int = 10, shape: float = 2.0, seed: int = 42):
-        super().__init__(d, seed)
+    def __init__(self, d: int = 10, n_noise: int = 10, shape: float = 2.0, seed: int = 42):
+        super().__init__(d, n_noise, seed)
         self.shape = shape
 
     def generate(self, n: int) -> DGPResult:
@@ -402,15 +417,16 @@ class HeteroLinearDGP(BaseDGP):
     """
     name = "heterolinear"
 
-    def __init__(self, d: int = 10, seed: int = 42):
-        super().__init__(d, seed)
+    def __init__(self, d: int = 10, n_noise: int = 10, seed: int = 42):
+        super().__init__(d, n_noise, seed)
         # Cache the true variance mean
         self._mu_true = (np.exp(1) - np.exp(-1)) / 2  # sinh(1) ≈ 1.1752
 
     def generate(self, n: int) -> DGPResult:
         X, T, alpha, beta = self._generate_base_data(n)
         mu = alpha + beta * T
-        # Variance depends on X₁: σ² = exp(X₁)
+        # Variance depends on X₁ (signal feature): σ² = exp(X₁)
+        # Note: X[:, 1] is from signal features, not noise
         sigma = np.exp(X[:, 1] / 2)  # σ = exp(X₁/2), so σ² = exp(X₁)
         Y = mu + sigma * self.rng.normal(0, 1, n)
         # mu_true for this DGP is E[σ²] = E[exp(X₁)]
@@ -446,6 +462,7 @@ class MultinomialLogitDGP(BaseDGP):
         J: int = 4,
         K: int = 3,
         d: int = 10,
+        n_noise: int = 10,
         target_idx: int = 0,
         seed: int = 42
     ):
@@ -455,10 +472,11 @@ class MultinomialLogitDGP(BaseDGP):
             J: Number of alternatives
             K: Number of continuous attributes per alternative
             d: Dimension of individual characteristics W
+            n_noise: Number of noise features to add
             target_idx: Which β_k to use for ground truth (0..K-1)
             seed: Random seed
         """
-        super().__init__(d, seed)
+        super().__init__(d, n_noise, seed)
         self.J = J
         self.K = K
         self.target_idx = target_idx
@@ -515,23 +533,30 @@ class MultinomialLogitDGP(BaseDGP):
         Returns:
             MultinomialLogitResult with W, X_alt, Y, true parameters
         """
-        # Individual characteristics
-        W = self.rng.uniform(-1, 1, (n, self.d))
+        # Individual characteristics (signal features)
+        W_signal = self.rng.uniform(-1, 1, (n, self.d))
+
+        # Add noise features
+        if self.n_noise > 0:
+            W_noise = self.rng.uniform(-1, 1, (n, self.n_noise))
+            W = np.concatenate([W_signal, W_noise], axis=1)
+        else:
+            W = W_signal
 
         # Alternative-specific attributes
         X_alt = self.rng.uniform(-1, 1, (n, self.J, self.K))
 
-        # True parameters
+        # True parameters (computed from signal features only)
         alpha_true = np.zeros((n, self.J - 1))
         for j in range(1, self.J):
-            alpha_true[:, j - 1] = self.alpha_star_j(W, j)
+            alpha_true[:, j - 1] = self.alpha_star_j(W_signal, j)
 
-        beta_true = self.beta_star(W)  # (N, K)
+        beta_true = self.beta_star(W_signal)  # (N, K)
 
         # Compute utilities: V_ij = α_j + X_alt[j] @ β
         V = np.zeros((n, self.J))
         for j in range(self.J):
-            V[:, j] = self.alpha_star_j(W, j) + np.einsum('nk,nk->n', X_alt[:, j, :], beta_true)
+            V[:, j] = self.alpha_star_j(W_signal, j) + np.einsum('nk,nk->n', X_alt[:, j, :], beta_true)
 
         # Add Gumbel noise and choose maximum utility alternative
         epsilon = self.rng.gumbel(0, 1, (n, self.J))
