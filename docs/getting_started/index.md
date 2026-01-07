@@ -7,6 +7,7 @@ This section will help you get up and running with `deepstats`.
 
 installation
 quickstart
+usage
 ```
 
 ## Overview

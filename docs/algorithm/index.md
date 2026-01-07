@@ -1,11 +1,13 @@
 # Structural DML Algorithm
 
-A general-purpose algorithm for structural deep learning with valid inference.
+A general-purpose algorithm for structural deep learning with valid inference, based on the Farrell-Liang-Misra framework.
+
+---
 
 ## The Setup
 
 **You have:**
-- A parametric structural model defined by loss function $\ell(y, t, \theta)$
+- A parametric structural model defined by a loss function $\ell(y, t, \theta)$
 - Observed data $\{(y_i, t_i, x_i)\}_{i=1}^n$
 - A target quantity of interest $H(x, \theta; \tilde{t})$
 
@@ -19,8 +21,8 @@ A general-purpose algorithm for structural deep learning with valid inference.
 
 ```
 INPUT:
-  - Loss function l(y, t, theta)
-  - Target function H(x, theta; t_tilde)
+  - Loss function l(y, t, theta) defining your structural model
+  - Target function H(x, theta; t_tilde) defining your parameter of interest
   - Data {(y_i, t_i, x_i)}
   - Number of folds K (recommend K >= 20)
 
@@ -123,15 +125,15 @@ $$CI_{95\%} = [\hat{\mu} - 1.96 \cdot SE(\hat{\mu}), \hat{\mu} + 1.96 \cdot SE(\
 The key architectural insight is the **parameter layer**:
 
 ```
-Standard NN (prediction):
-    Input -> Hidden -> Hidden -> Output y_hat
+Standard NN (for prediction):
+    Input -> Hidden -> Hidden -> ... -> Output y_hat
     Loss = (y - y_hat)^2
 
-Structural NN (parameter estimation):
-    Input x -> Hidden -> Hidden -> Parameter layer theta_hat(x)
-                                         |
-    Treatment t -----------------------> Model layer: l(y, t, theta_hat(x))
-    Outcome y ------------------------->
+Structural NN (for parameter estimation):
+    Input x -> Hidden -> Hidden -> ... -> Parameter layer theta_hat(x)
+                                               |
+    Treatment t ---------------------------> Model layer: l(y, t, theta_hat(x))
+    Outcome y ------------------------------>
 ```
 
 ### PyTorch Implementation
@@ -171,7 +173,7 @@ class StructuralDNN(nn.Module):
 ```python
 def compute_influence_components(model, y, t, x, H_func):
     """
-    Compute all components for the influence function
+    Compute all components needed for the influence function
     using automatic differentiation.
     """
     x.requires_grad_(True)
@@ -181,16 +183,12 @@ def compute_influence_components(model, y, t, x, H_func):
 
     # Compute l_theta: gradient of loss w.r.t. theta
     loss = model.loss_fn(y, t, theta)
-    ell_theta = torch.autograd.grad(
-        loss, theta, create_graph=True
-    )[0]
+    ell_theta = torch.autograd.grad(loss, theta, create_graph=True)[0]
 
     # Compute l_theta_theta: Hessian of loss w.r.t. theta
     ell_theta_theta = []
     for j in range(len(theta)):
-        grad_j = torch.autograd.grad(
-            ell_theta[j], theta, retain_graph=True
-        )[0]
+        grad_j = torch.autograd.grad(ell_theta[j], theta, retain_graph=True)[0]
         ell_theta_theta.append(grad_j)
     ell_theta_theta = torch.stack(ell_theta_theta)
 
@@ -199,6 +197,27 @@ def compute_influence_components(model, y, t, x, H_func):
     H_theta = torch.autograd.grad(H_val, theta)[0]
 
     return theta, ell_theta, ell_theta_theta, H_val, H_theta
+```
+
+---
+
+## Estimating $\Lambda(x)$
+
+The conditional Hessian $\Lambda(x) = E[\ell_{\theta\theta}(Y, T, \theta(X)) | X = x]$ requires nonparametric regression:
+
+```python
+def estimate_Lambda(x_train, hessian_values, x_eval):
+    """
+    Regress Hessian values on x to get Lambda_hat(x).
+    Can use any nonparametric method: neural net, random forest, kernel, etc.
+    """
+    # Option 1: Another neural network
+    Lambda_model = train_regression_nn(x_train, hessian_values)
+    return Lambda_model(x_eval)
+
+    # Option 2: Random forest (often more stable)
+    Lambda_model = RandomForestRegressor().fit(x_train, hessian_values)
+    return Lambda_model.predict(x_eval)
 ```
 
 ---
@@ -255,6 +274,21 @@ Derivatives: Complex but computed automatically
 Target: E[beta(X)] or E[dE[Y|X,T]/dT]
 ```
 
+### Example 4: Optimal Personalized Pricing
+
+```
+First stage: Same as logit model above
+
+Target: Optimal price r_opt(x) solving:
+  max_r  Pi(r, x) = P[Y=1|x,r] * (r - c)
+
+H is implicitly defined by FOC: dPi/dr = 0
+
+Use envelope theorem: At optimum, dPi/dr = 0, so
+  H_theta = dr_opt/d_theta via implicit function theorem
+  Or: just use numerical differentiation
+```
+
 ---
 
 ## Practical Recommendations
@@ -263,23 +297,33 @@ Target: E[beta(X)] or E[dE[Y|X,T]/dT]
 
 | Parameter | Recommendation | Notes |
 |-----------|---------------|-------|
-| K (folds) | 20-50 | More folds = more stable |
-| Hidden layers | 2-3 | Deeper rarely helps |
+| K (folds) | 20-50 | More folds = more stable, but slower |
+| Hidden layers | 2-3 | Deeper rarely helps for heterogeneity |
 | Width | 10-50 nodes | Depends on sample size |
 | Activation | ReLU | Standard choice |
 | Optimizer | Adam | Learning rate ~0.001 |
 | Epochs | Early stopping | Monitor validation loss |
 
+### When Three-Way Splitting is Needed
+
+**Two-way splitting suffices when:**
+- $\Lambda(x)$ doesn't depend on $\theta(x)$ (linear models)
+- T is randomly assigned and independent of X
+
+**Three-way splitting required when:**
+- $\Lambda(x) = E[\ell_{\theta\theta}|X]$ depends on $\theta(x)$ through $G'(\theta' \cdot t)$ terms
+- Most nonlinear models (logit, probit, Tobit, etc.)
+
 ### Diagnosing Problems
 
 **If confidence intervals are huge:**
-- Check overlap: $\Lambda(x)$ may be nearly singular
+- Check overlap: $\Lambda(x)$ may be nearly singular for some $x$
 - Check positivity in propensity scores
 - Consider trimming extreme regions
 
-**If point estimates are unstable:**
+**If point estimates are unstable across runs:**
 - Increase K (more folds)
-- Use ensembling across methods
+- Use short-stacking (ensemble multiple methods)
 - Simplify network architecture
 
 **If bias correction term dominates:**
@@ -289,7 +333,7 @@ Target: E[beta(X)] or E[dE[Y|X,T]/dT]
 
 ---
 
-## Complete Pseudocode
+## Complete Pseudocode Summary
 
 ```
 ALGORITHM: StructuralDML
@@ -327,4 +371,4 @@ The key contributions from Farrell-Liang-Misra:
 
 1. **The architecture** that directs neural network flexibility toward the parameters
 2. **The generic influence function formula** using ordinary derivatives
-3. **The insight that automatic differentiation** makes this computationally tractable
+3. **The insight that automatic differentiation** makes this all computationally tractable
