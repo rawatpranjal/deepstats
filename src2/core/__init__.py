@@ -6,7 +6,11 @@ from .autodiff import (
     compute_target_gradient,
     detect_theta_dependence,
 )
-from .lambda_estimator import LambdaEstimator
+from .lambda_estimator import (
+    LambdaEstimator,
+    AggregateLambdaEstimator,
+    PropensityWeightedLambdaEstimator,
+)
 from .algorithm import structural_dml_core, DMLResult, compute_coverage, compute_se_ratio
 
 __all__ = [
@@ -15,6 +19,8 @@ __all__ = [
     "compute_target_gradient",
     "detect_theta_dependence",
     "LambdaEstimator",
+    "AggregateLambdaEstimator",
+    "PropensityWeightedLambdaEstimator",
     "structural_dml_core",
     "DMLResult",
     "compute_coverage",

@@ -644,7 +644,30 @@ Observation 1: T=1.00
 3. Coverage remains valid (96%) because regularization is consistent
 4. SE ratio slightly high (1.13) due to regularization adding noise
 
-**This is a fundamental mathematical property of Logit with binary treatment, not a bug.**
+**UPDATE**: Further investigation revealed this is an **estimation bug**, not a fundamental mathematical property!
+
+### 11.4b: Root Cause - MLP Overfitting
+
+**Key Finding**: The conditional expectation Λ(x) = E[ℓ_θθ | X=x] **should average over both T=0 and T=1 observations**. When properly averaged, Λ is FULL RANK.
+
+| Hessian Type | Eigenvalues | Status |
+|--------------|-------------|--------|
+| Individual T=0 | [0, 0.24] | SINGULAR |
+| Individual T=1 | [0, 0.48] | SINGULAR |
+| **Mean of ALL** | **[0.046, 0.31]** | **FULL RANK** ✅ |
+
+**The MLP Lambda estimator was overfitting**, producing near-singular predictions instead of the proper conditional expectation.
+
+**Lambda Estimator Comparison (on test set):**
+
+| Method | Singular (%) | Min Eigenvalue | Issue |
+|--------|--------------|----------------|-------|
+| **MLP (current)** | **15%** | **-0.062** | NEGATIVE eigenvalues! |
+| Ridge | **0%** | 0.035 | Full rank ✅ |
+| Aggregate | **0%** | 0.046 | Full rank ✅ |
+| Propensity | **0%** | 0.038 | Full rank ✅ |
+
+**Fix**: Use `lambda_method='aggregate'` for Logit with binary T. This correctly computes the conditional expectation by averaging over both treatment arms.
 
 ---
 

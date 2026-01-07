@@ -2,6 +2,14 @@
 
 ## 2026-01-07
 
+### Lambda Estimation Investigation (Phase 11)
+- **Root cause identified**: MLP Lambda estimator was overfitting, producing singular predictions
+- **Key finding**: Conditional expectation Λ(x) = E[ℓ_θθ | X=x] should average over both T=0 and T=1
+- **When properly averaged, Λ is FULL RANK** - min eigenvalue = 0.046 (not singular!)
+- Added `lambda_method='aggregate'` option for three-way splitting (ensures full-rank Λ for binary T)
+- MLP produced negative eigenvalues (-0.062) while Ridge/Aggregate/Propensity produced 0% singular predictions
+- Implemented PropensityWeightedLambdaEstimator (theoretically correct for heterogeneous propensity)
+
 ### Post-Validation Fixes
 - Changed default K from 20 to 50 for stable SE estimation
 - Added adaptive eigenvalue monitoring to safe_inverse and batch_inverse

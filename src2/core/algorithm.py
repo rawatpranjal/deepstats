@@ -209,9 +209,14 @@ def structural_dml_core(
 
         # Fit Lambda estimator
         if three_way:
-            # Nonparametric Lambda(x)
-            lambda_est = LambdaEstimator(method=lambda_method, theta_dim=theta_dim)
-            lambda_est.fit(X_lambda, hessians_lambda)
+            if lambda_method == 'aggregate':
+                # Use aggregate even for three-way (ensures full-rank for binary T)
+                lambda_est = AggregateLambdaEstimator(theta_dim=theta_dim)
+                lambda_est.fit(X_lambda, hessians_lambda)
+            else:
+                # Nonparametric Lambda(x)
+                lambda_est = LambdaEstimator(method=lambda_method, theta_dim=theta_dim)
+                lambda_est.fit(X_lambda, hessians_lambda)
             Lambda_eval = lambda_est.predict(X_eval)  # (n_eval, d, d)
         else:
             # Aggregate Lambda (same for all x)
