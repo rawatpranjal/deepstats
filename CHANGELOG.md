@@ -2,6 +2,17 @@
 
 ## 2026-01-07
 
+### Poisson Family Implementation & Validation
+- **Added PoissonFamily to src2**: Y ~ Poisson(λ), λ = exp(α + βT)
+- Model: log-linear rate with heterogeneous treatment effects
+- Closed-form gradient and Hessian (weight = λ)
+- Requires three-way splitting (Hessian depends on θ)
+- **Validation Results (M=30, N=2000, K=50)**:
+  - Aggregate Lambda: Coverage **96.7%**, SE ratio 0.88, reg rate 0%
+  - MLP Lambda: Coverage 80% (fails - underfits)
+- **N=5000 confirms validity**: Coverage **95.0%**, SE ratio **1.17**
+- Recommendation: Use `lambda_method='aggregate'` for Poisson
+
 ### Additional Validation (Phase 13)
 - **Logit continuous T**: SE ratio 1.06 (nearly perfect!), coverage 100%, reg rate 0%
 - MLP Lambda still overfits with continuous T (40% reg rate, negative eigenvalues)

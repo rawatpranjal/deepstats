@@ -3,10 +3,12 @@
 from .base import BaseFamily, Family
 from .linear import LinearFamily
 from .logit import LogitFamily
+from .poisson import PoissonFamily
 
 FAMILY_REGISTRY = {
     "linear": LinearFamily,
     "logit": LogitFamily,
+    "poisson": PoissonFamily,
 }
 
 
@@ -22,6 +24,7 @@ __all__ = [
     "Family",
     "LinearFamily",
     "LogitFamily",
+    "PoissonFamily",
     "get_family",
     "FAMILY_REGISTRY",
 ]
