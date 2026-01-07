@@ -6,15 +6,11 @@ Mathematical foundations of the Farrell-Liang-Misra framework for deep learning 
 :maxdepth: 2
 
 influence_functions
-algorithm
 ```
 
 ## Overview
 
-This section explains the theoretical foundations of `deepstats`:
-
-1. **[Framework](influence_functions.md)**: The enriched structural model approach
-2. **[Algorithm](algorithm.md)**: Step-by-step implementation with code
+This section explains the theoretical foundations of `deepstats`, specifically the enriched structural model approach from Farrell, Liang, and Misra.
 
 ## Key References
 

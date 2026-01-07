@@ -62,6 +62,7 @@ print(f"Estimate: {result.mu_hat:.4f} +/- {result.se:.4f}")
 getting_started/index
 tutorials/index
 theory/index
+algorithm/index
 api/index
 ```
 
