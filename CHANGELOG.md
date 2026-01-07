@@ -2,6 +2,13 @@
 
 ## 2026-01-07
 
+### Post-Validation Fixes
+- Changed default K from 20 to 50 for stable SE estimation
+- Added adaptive eigenvalue monitoring to safe_inverse and batch_inverse
+- Added diagnostics: min_lambda_eigenvalue, n_regularized, pct_regularized
+- Added warnings for high Lambda regularization rate and high correction variance ratio
+- Updated documentation with requirements for valid inference
+
 ### Validation Results
 - **Comprehensive MC validation completed** - Algorithm validated for well-specified models
 - Simple Linear DGP: SE ratio 1.00-1.05, coverage 92-100% across N=500-5000 (M=50 per size)

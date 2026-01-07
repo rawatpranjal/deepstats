@@ -38,7 +38,7 @@ def structural_dml(
     loss_fn: Optional[Callable] = None,
     target_fn: Optional[Callable] = None,
     theta_dim: Optional[int] = None,
-    n_folds: int = 20,
+    n_folds: int = 50,
     hidden_dims: List[int] = [64, 32],
     epochs: int = 100,
     lr: float = 0.01,
@@ -52,6 +52,25 @@ def structural_dml(
     heterogeneous structural parameters with neural networks,
     using influence functions for valid inference.
 
+    Requirements for Valid Inference
+    --------------------------------
+    1. **Model is well-specified**: The structural family matches the data
+       generating process. Influence functions correct for regularization
+       bias but cannot correct for model misspecification.
+
+    2. **Network approximates θ*(x) well**: The neural network must be able
+       to learn the true heterogeneity function. For simple heterogeneity,
+       [64, 32] architecture is sufficient. For complex patterns, consider
+       larger networks and more data.
+
+    3. **Sufficient folds**: K >= 50 is recommended for stable SE estimation.
+       With K=20, SE may be overestimated by 3x or more.
+
+    4. **Well-conditioned Λ(x)**: Check diagnostics.min_lambda_eigenvalue.
+       Near-singular Hessians can cause unstable estimates.
+
+    If these conditions fail, coverage may be below 95%.
+
     Args:
         Y: (n,) outcome vector
         T: (n,) treatment vector
@@ -60,7 +79,7 @@ def structural_dml(
         loss_fn: Custom loss function (y, t, theta) -> (n,) losses
         target_fn: Custom target function (x, theta) -> scalar
         theta_dim: Dimension of parameter vector (required if custom loss)
-        n_folds: Number of cross-fitting folds (recommend 20-50)
+        n_folds: Number of cross-fitting folds (default=50, minimum recommended)
         hidden_dims: Neural network hidden layer sizes
         epochs: Training epochs per fold
         lr: Learning rate
@@ -74,14 +93,25 @@ def structural_dml(
             - ci_lower, ci_upper: 95% confidence interval
             - psi_values: Influence function values
             - theta_hat: Estimated parameters for all observations
-            - diagnostics: Training and estimation diagnostics
+            - diagnostics: Training and estimation diagnostics including:
+                - min_lambda_eigenvalue: Check for near-singular Hessians
+                - n_regularized: Count of observations needing extra regularization
+                - correction_ratio: If > 2, consider more folds
+
+    Warnings:
+        - High Lambda regularization rate: Indicates numerical instability
+        - High correction variance ratio: Suggests too few folds (K < 50)
 
     Examples:
         # Binary outcome with heterogeneous effects
-        result = structural_dml(Y, T, X, family='logit', n_folds=50)
+        result = structural_dml(Y, T, X, family='logit')
 
         # Continuous outcome
         result = structural_dml(Y, T, X, family='linear')
+
+        # Check diagnostics
+        print(f"Min eigenvalue: {result.diagnostics['min_lambda_eigenvalue']:.6f}")
+        print(f"Observations regularized: {result.diagnostics['n_regularized']}")
 
         # Custom structural model
         def tobit_loss(y, t, theta):

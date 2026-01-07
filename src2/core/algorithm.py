@@ -33,7 +33,7 @@ def structural_dml_core(
     loss_fn: Callable[[Tensor, Tensor, Tensor], Tensor],
     target_fn: Callable[[Tensor, Tensor], Tensor],
     theta_dim: int,
-    n_folds: int = 20,
+    n_folds: int = 50,
     hidden_dims: List[int] = [64, 32],
     epochs: int = 100,
     lr: float = 0.01,
@@ -114,6 +114,8 @@ def structural_dml_core(
     theta_hat_all = np.zeros((n, theta_dim))
     corrections = np.zeros(n)
     lambda_cond_numbers = []
+    lambda_min_eigenvalues = []
+    n_regularized = 0  # Count of observations needing extra regularization
     histories = []
 
     # Default per-obs target: h(theta) = beta
@@ -220,7 +222,7 @@ def structural_dml_core(
         # Invert Lambda matrices
         Lambda_inv_eval = batch_inverse(Lambda_eval, ridge=ridge)
 
-        # Track condition numbers
+        # Track condition numbers and min eigenvalues
         for i in range(len(Lambda_eval)):
             s = torch.linalg.svdvals(Lambda_eval[i])
             if s.min() > 1e-10:
@@ -228,6 +230,17 @@ def structural_dml_core(
             else:
                 cond = float('inf')
             lambda_cond_numbers.append(cond)
+
+            # Track minimum eigenvalue
+            try:
+                eigvals = torch.linalg.eigvalsh(Lambda_eval[i])
+                min_eig = eigvals.min().item()
+                lambda_min_eigenvalues.append(min_eig)
+                if min_eig < 1e-6:
+                    n_regularized += 1
+            except RuntimeError:
+                lambda_min_eigenvalues.append(0.0)
+                n_regularized += 1
 
         # Compute gradients on eval data
         # Need theta with grad for autodiff
@@ -286,9 +299,16 @@ def structural_dml_core(
     mu_naive = theta_hat_all[:, 1].mean()  # Just average beta
 
     # Diagnostics
+    min_lambda_eigenvalue = min(lambda_min_eigenvalues) if lambda_min_eigenvalues else 0.0
+    mean_lambda_eigenvalue = np.mean(lambda_min_eigenvalues) if lambda_min_eigenvalues else 0.0
+
     diagnostics = {
         'lambda_cond_numbers': lambda_cond_numbers,
         'mean_cond_number': np.mean([c for c in lambda_cond_numbers if c < float('inf')]),
+        'min_lambda_eigenvalue': min_lambda_eigenvalue,
+        'mean_lambda_eigenvalue': mean_lambda_eigenvalue,
+        'n_regularized': n_regularized,
+        'pct_regularized': 100 * n_regularized / n if n > 0 else 0,
         'correction_mean': corrections.mean(),
         'correction_std': corrections.std(),
         'correction_ratio': corrections.std() / se if se > 0 else 0,
@@ -296,6 +316,24 @@ def structural_dml_core(
         'n_folds': n_folds,
         'histories': histories,
     }
+
+    # Warning for potential instability
+    import warnings
+    if n_regularized > 0.1 * n:
+        warnings.warn(
+            f"High Lambda regularization rate ({diagnostics['pct_regularized']:.1f}% of observations). "
+            "This may indicate numerical instability. Consider: "
+            "(1) larger sample size, (2) more regularization, or (3) simpler model.",
+            UserWarning
+        )
+
+    if diagnostics['correction_ratio'] > 2.0:
+        warnings.warn(
+            f"High correction variance ratio ({diagnostics['correction_ratio']:.2f}). "
+            "This suggests the influence function correction dominates the estimate variance. "
+            "Consider using more cross-fitting folds (K >= 50).",
+            UserWarning
+        )
 
     return DMLResult(
         mu_hat=mu_hat,
