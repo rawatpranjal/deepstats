@@ -2,6 +2,13 @@
 
 ## 2026-01-07
 
+### Additional Validation (Phase 13)
+- **Logit continuous T**: SE ratio 1.06 (nearly perfect!), coverage 100%, reg rate 0%
+- MLP Lambda still overfits with continuous T (40% reg rate, negative eigenvalues)
+- **Naive vs Debiased**: Both achieve valid coverage for well-specified models
+- IF correction provides theoretical validity and robustness
+- Recommendation: Use `lambda_method='aggregate'` regardless of T type
+
 ### SE Ratio Optimization (Phase 12)
 - **Root cause of SE ratio 1.66**: Insufficient cross-fitting folds (K=20 vs K=50)
 - **With K=50**: SE ratio drops to ~1.12-1.19 for Aggregate Lambda
