@@ -59,13 +59,18 @@ intersphinx_mapping = {
 
 # -- Options for HTML output -------------------------------------------------
 html_theme = "pydata_sphinx_theme"
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+html_logo = "_static/logo.svg"
+html_favicon = "_static/logo.svg"
+html_title = "deepstats"
+
 html_theme_options = {
     "github_url": "https://github.com/rawatpranjal/deepstats",
-    "show_toc_level": 2,
+    "show_toc_level": 1,
     "navigation_with_keys": True,
+    "show_prev_next": False,
 }
-html_static_path = ["_static"]
-html_title = "deepstats"
 
 # -- Source settings ---------------------------------------------------------
 templates_path = ["_templates"]

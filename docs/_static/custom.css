@@ -1,0 +1,217 @@
+/* deepstats Documentation Styles */
+
+/* ============================================
+   Homepage Hero Section
+   ============================================ */
+
+.hero-tagline {
+    font-size: 1.3rem;
+    color: #64748b;
+    margin-bottom: 2rem;
+    max-width: 600px;
+}
+
+/* Feature Grid */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin: 2rem 0;
+}
+
+@media (max-width: 900px) {
+    .feature-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .feature-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.feature-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+}
+
+.feature-card h3 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    color: #1e293b;
+}
+
+.feature-card p {
+    margin-bottom: 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+/* ============================================
+   Content Styling
+   ============================================ */
+
+/* Clean table styling */
+table.docutils {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+}
+
+table.docutils th,
+table.docutils td {
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+}
+
+table.docutils th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+/* Code blocks */
+div.highlight {
+    background: #f8f9fa;
+    border-radius: 6px;
+    margin: 1rem 0;
+}
+
+div.highlight pre {
+    padding: 12px 16px;
+    margin: 0;
+    overflow-x: auto;
+}
+
+/* Math blocks */
+div.math {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: #fafafa;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+/* ============================================
+   Admonitions
+   ============================================ */
+
+div.admonition {
+    padding: 12px 16px;
+    margin: 1rem 0;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+div.admonition.note {
+    background: #eff6ff;
+    border-left-color: #3b82f6;
+}
+
+div.admonition.warning {
+    background: #fffbeb;
+    border-left-color: #f59e0b;
+}
+
+div.admonition.important {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+}
+
+div.admonition.tip,
+div.admonition.hint {
+    background: #f0fdf4;
+    border-left-color: #22c55e;
+}
+
+div.admonition > .admonition-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* ============================================
+   API Documentation
+   ============================================ */
+
+dl.py.class dt,
+dl.py.function dt,
+dl.py.method dt {
+    font-family: ui-monospace, monospace;
+    background: #f1f5f9;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+dl.field-list > dt {
+    font-weight: 600;
+    color: #475569;
+}
+
+dl.field-list > dd {
+    margin-left: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* ============================================
+   Dark Mode Support
+   ============================================ */
+
+html[data-theme="dark"] .feature-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+html[data-theme="dark"] .feature-card h3 {
+    color: #f1f5f9;
+}
+
+html[data-theme="dark"] .feature-card p {
+    color: #94a3b8;
+}
+
+html[data-theme="dark"] .hero-tagline {
+    color: #94a3b8;
+}
+
+html[data-theme="dark"] table.docutils th {
+    background: #1e293b;
+}
+
+html[data-theme="dark"] table.docutils th,
+html[data-theme="dark"] table.docutils td {
+    border-color: #334155;
+}
+
+html[data-theme="dark"] div.highlight {
+    background: #1e293b;
+}
+
+html[data-theme="dark"] div.math {
+    background: #1e293b;
+}
+
+html[data-theme="dark"] div.admonition.note {
+    background: #1e3a5f;
+}
+
+html[data-theme="dark"] div.admonition.warning {
+    background: #422006;
+}
+
+html[data-theme="dark"] div.admonition.important {
+    background: #450a0a;
+}
+
+html[data-theme="dark"] div.admonition.tip,
+html[data-theme="dark"] div.admonition.hint {
+    background: #052e16;
+}
+
+html[data-theme="dark"] dl.py.class dt,
+html[data-theme="dark"] dl.py.function dt,
+html[data-theme="dark"] dl.py.method dt {
+    background: #334155;
+}
