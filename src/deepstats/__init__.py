@@ -23,6 +23,8 @@ from .families import get_family, FAMILIES
 from .models import StructuralNet, NuisanceNet, train_structural, train_nuisance
 from .inference import naive, influence, bootstrap, METHODS
 from .metrics import compute_metrics, print_table
+from .real_data import load_dataset, DATASETS, RealDataResult
+from .classical import classical_logit, classical_poisson, classical_ols, ClassicalResult
 
 __all__ = [
     # DGP
@@ -35,6 +37,10 @@ __all__ = [
     "naive", "influence", "bootstrap", "METHODS",
     # Metrics
     "compute_metrics", "print_table",
+    # Real data
+    "load_dataset", "DATASETS", "RealDataResult",
+    # Classical estimators
+    "classical_logit", "classical_poisson", "classical_ols", "ClassicalResult",
 ]
 
 __version__ = "2.0.0"
