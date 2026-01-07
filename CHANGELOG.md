@@ -10,4 +10,5 @@
 - Added Sphinx documentation with Read the Docs support
 - Created tutorials for core models: linear, logit, poisson, tobit, negbin
 - Added comprehensive theory section with FLM framework and Structural DML algorithm
+- Split Theory and Algorithm into separate top-level navigation sections
 - Set up autodoc API reference generation
