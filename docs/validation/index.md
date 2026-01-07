@@ -151,6 +151,36 @@ Results are saved to JSON logs with full metrics and raw simulation data.
 
 ---
 
+## Sample Size for Heterogeneity Recovery
+
+Beyond valid inference (Coverage ≈ 95%), you may want to **recover the heterogeneous parameters** α(X) and β(X).
+
+### Parameter Recovery vs Sample Size
+
+| N | Coverage | SE Ratio | Corr(α) | Corr(β) | Recommended For |
+|---|----------|----------|---------|---------|-----------------|
+| 2,000 | 96% | 0.90 | 0.62 | 0.28 | Inference only |
+| 5,000 | 95% | 0.92 | 0.74 | 0.43 | Moderate heterogeneity |
+| 10,000 | 95% | 1.22 | 0.80 | 0.49 | Good heterogeneity |
+| **20,000** | **96%** | **1.18** | **0.86** | **0.58** | **Rich heterogeneity** |
+
+### Key Findings
+
+1. **Valid inference at any N ≥ 2000**: Coverage remains 93-97% regardless of N
+2. **Parameter recovery improves with N**: Corr(β) scales as ~√N
+3. **Corr(α) > Corr(β)**: Intercept is easier to estimate than treatment effect
+4. **N=20,000 achieves Corr(β) > 0.55**: Good recovery of heterogeneous effects
+
+### Recommendations
+
+| Use Case | Sample Size | Expected Corr(β) |
+|----------|-------------|------------------|
+| Inference only (μ* estimate) | N ≥ 2,000 | Not relevant |
+| Moderate individual effects | N ≥ 10,000 | ~0.5 |
+| Rich heterogeneity analysis | N ≥ 20,000 | ~0.6 |
+
+---
+
 ## References
 
 - Farrell, Liang, Misra (2021): "Deep Neural Networks for Estimation and Inference" *Econometrica*

@@ -1,0 +1,119 @@
+================================================================================
+FLM VALIDATION REPORT
+Generated: 2026-01-07T03:43:02.023953
+================================================================================
+
+## CONFIGURATION
+{
+  "M": 3,
+  "N": 300,
+  "n_folds": 10,
+  "epochs": 30,
+  "hidden_dims": [
+    64,
+    32
+  ],
+  "lr": 0.01,
+  "batch_size": 64,
+  "dropout": 0.1,
+  "weight_decay": 0.0001,
+  "seed": 42,
+  "early_stopping": true,
+  "patience": 10,
+  "val_split": 0.1
+}
+
+## DGP SPECIFICATION
+{
+  "alpha_star": "sin(2piX1) + X2^3 - 2cos(piX3) + exp(X4/3)*I(X4>0) + 0.5*X5*X6",
+  "beta_star": "cos(2piX1)*sin(piX2) + 0.8*tanh(3X3) - 0.5*X4^2 + 0.3*X5*I(X6>0)",
+  "mu_true": -0.16818094145857462
+}
+
+## PHASE 1: PARAMETER RECOVERY
+{
+  "influence": {
+    "rmse_alpha": 1.5893759304698911,
+    "rmse_beta": 0.900403641592639,
+    "corr_alpha": 0.4251978951411865,
+    "corr_beta": 0.5726255972399824,
+    "r2_alpha": 0.18079325003249544,
+    "r2_beta": 0.32790007461444654
+  }
+}
+
+## PHASE 2: INFERENCE VALIDITY
+{
+  "influence": {
+    "mu_true": -0.16818094145857462,
+    "mu_hat_mean": -0.3742900405122762,
+    "bias": -0.2061090990537016,
+    "variance": 0.006824411511117576,
+    "mse": 0.04930537222384615,
+    "bias_ratio": 0.8615888856870448,
+    "rmse_mu": 0.2171434124609476,
+    "empirical_se": 0.08260999643576784,
+    "estimated_se": 0.1745958477728576,
+    "se_ratio": 2.113495403774917,
+    "ci_width": 0.6844157232696019,
+    "coverage": 1.0,
+    "n_sims": 3
+  }
+}
+
+## PHASE 3: TRAINING DIAGNOSTICS
+{
+  "influence": {
+    "final_grad_norm": 2.2097592847136394,
+    "final_beta_std": 1.2351970732212065,
+    "overfit_rate": 0.39999999999999997,
+    "mean_best_epoch": 10.633333333333333,
+    "correction_ratio": 0.5480161380357312,
+    "min_hessian_eig": 0.4975106447935104,
+    "hessian_condition": 2.044790853966808
+  }
+}
+
+## TRAINING QUALITY (NN Model Fit)
+{
+  "influence": {
+    "final_train_loss": 1.9249956576094869,
+    "final_val_loss": 3.016626258691152,
+    "train_val_gap": 1.091630601081665,
+    "mean_best_epoch": 10.633333333333333,
+    "overfit_rate": 0.39999999999999997
+  }
+}
+
+## VALIDATION SCORECARD
+{
+  "influence_method": {
+    "grade": "WARNING",
+    "coverage": 1.0,
+    "se_ratio": 2.113495403774917,
+    "bias_ratio": 0.8615888856870448,
+    "r2_beta": 0.32790007461444654,
+    "notes": "Coverage acceptable but SEs may be conservative."
+  },
+  "naive_method": null,
+  "cross_method": {
+    "violation_rate": NaN,
+    "bias_shift": NaN,
+    "bias_reduction": NaN
+  },
+  "overall_grade": "WARNING"
+}
+
+## TIMING
+{
+  "total_seconds": 19.094539165496826,
+  "per_sim_seconds": 6.364846388498942,
+  "start_time": "2026-01-07T03:42:42",
+  "end_time": "2026-01-07T03:43:02"
+}
+
+## RAW DATA: 3 records
+
+================================================================================
+END REPORT
+================================================================================

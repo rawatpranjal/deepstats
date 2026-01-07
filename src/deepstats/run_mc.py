@@ -83,6 +83,10 @@ class Config:
     target_idx: int = 0           # Which β_k or P(Y=j) to target
     # Logging
     log_dir: str = None
+    # Lambda estimation (for nonlinear families)
+    lambda_method: str = 'mlp'    # 'mlp' or 'lgbm' for nonparametric Λ(x)
+    center_treatment: bool = False  # If False, use T directly (paper formula)
+    theta_lambda_split: float = 0.6  # Split ratio for three-way splitting (θ/Λ)
 
 
 # =============================================================================

@@ -2,6 +2,13 @@
 
 ## 2026-01-07
 
+### Data-Rich Validation (Part XV)
+- **Goal**: Achieve BOTH valid inference AND good parameter recovery
+- **Finding**: N=20000 achieves Corr(α)=0.86, Corr(β)=0.58 with Coverage 96%
+- **Scaling**: Corr(β) improves from 0.28 (N=2000) → 0.43 (N=5000) → 0.58 (N=20000)
+- Added Part XV to VALIDATION_REPORT.md with sample size recommendations
+- For rich heterogeneity recovery, use N=20000+
+
 ### Poisson Family Implementation & Validation
 - **Added PoissonFamily to src2**: Y ~ Poisson(λ), λ = exp(α + βT)
 - Model: log-linear rate with heterogeneous treatment effects

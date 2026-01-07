@@ -13,8 +13,128 @@ from typing import Tuple
 import numpy as np
 import torch
 from sklearn.model_selection import KFold
+from sklearn.neural_network import MLPRegressor
+
+try:
+    from lightgbm import LGBMRegressor
+    HAS_LIGHTGBM = True
+except ImportError:
+    HAS_LIGHTGBM = False
 
 from .models import StructuralNet, StructuralNetSeparate, NuisanceNet, train_structural, train_nuisance, TrainingHistory
+
+
+# =============================================================================
+# Lambda Estimator (Nonparametric Hessian Regression)
+# =============================================================================
+
+class LambdaEstimator:
+    """Nonparametric regression for Λ(x) = E[ℓ_θθ | X=x].
+
+    Used in three-way splitting for families where Λ depends on θ.
+    Fits separate regression models for each unique element of the Hessian matrix.
+    """
+
+    def __init__(self, method: str = 'mlp', n_params: int = 2):
+        """Initialize LambdaEstimator.
+
+        Args:
+            method: 'mlp' (sklearn MLPRegressor) or 'lgbm' (LightGBM)
+            n_params: Number of structural parameters (determines Hessian size)
+        """
+        self.method = method
+        self.n_params = n_params
+        self.models = []
+        self.n_unique = None  # Number of unique elements in symmetric matrix
+
+        if method == 'lgbm' and not HAS_LIGHTGBM:
+            raise ImportError("LightGBM not installed. Use method='mlp' or install lightgbm.")
+
+    def fit(self, X: np.ndarray, hessians: np.ndarray):
+        """Fit regression models from X to Hessian elements.
+
+        Args:
+            X: (n, d_x) covariate matrix
+            hessians: (n, n_params, n_params) per-observation Hessians
+        """
+        n = X.shape[0]
+        self.models = []
+
+        # Extract unique elements (upper triangle of symmetric matrix)
+        targets = []
+        for i in range(self.n_params):
+            for j in range(i, self.n_params):
+                targets.append(hessians[:, i, j])
+
+        self.n_unique = len(targets)
+
+        for target in targets:
+            if self.method == 'mlp':
+                model = MLPRegressor(
+                    hidden_layer_sizes=(32, 16),
+                    max_iter=200,
+                    early_stopping=True,
+                    validation_fraction=0.1,
+                    random_state=42,
+                )
+            else:  # lgbm
+                model = LGBMRegressor(
+                    n_estimators=100,
+                    num_leaves=31,
+                    verbose=-1,
+                    random_state=42,
+                )
+            model.fit(X, target)
+            self.models.append(model)
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Predict Hessians at new covariate values.
+
+        Args:
+            X: (n, d_x) covariate matrix
+
+        Returns:
+            hessians: (n, n_params, n_params) predicted Hessians
+        """
+        n = X.shape[0]
+        predictions = [m.predict(X) for m in self.models]
+
+        # Reconstruct symmetric matrix
+        hessians = np.zeros((n, self.n_params, self.n_params))
+        idx = 0
+        for i in range(self.n_params):
+            for j in range(i, self.n_params):
+                hessians[:, i, j] = predictions[idx]
+                hessians[:, j, i] = predictions[idx]  # Symmetry
+                idx += 1
+
+        return hessians
+
+
+def batch_pinv(matrices: np.ndarray, ridge: float = 1e-4) -> np.ndarray:
+    """Batch pseudo-inverse for array of matrices with ridge regularization.
+
+    Args:
+        matrices: (n, d, d) array of square matrices
+        ridge: Ridge regularization for stability
+
+    Returns:
+        inverses: (n, d, d) array of pseudo-inverses
+    """
+    n, d, _ = matrices.shape
+    inverses = np.zeros_like(matrices)
+
+    # Add ridge regularization
+    eye = np.eye(d)
+    for i in range(n):
+        mat = matrices[i] + ridge * eye
+        try:
+            inverses[i] = np.linalg.pinv(mat)
+        except np.linalg.LinAlgError:
+            # Fallback: use larger ridge
+            inverses[i] = np.linalg.pinv(mat + 0.01 * eye)
+
+    return inverses
 
 
 def _create_structural_model(config, input_dim: int, n_params: int):
@@ -148,13 +268,13 @@ def influence(
     The FLM protocol (NOT DML):
     1. K folds (each model sees (K-1)/K of data)
     2. For each fold k:
-       - Train structural model on D_train (folds ≠ k)
-       - Compute Hessian Λ on same D_train (two-way, NOT three-way split)
+       - If Λ depends on θ: THREE-WAY split (60% θ, 40% Λ)
+       - Otherwise: TWO-WAY split (all train data for θ and Λ)
        - Compute ψᵢ on D_test (fold k)
-    3. μ̂ = mean(ψ), SE = std(ψ) / √n
+    3. μ̂ = mean(ψ), SE computed via within-fold variance
 
     The influence score corrects for regularization bias:
-    ψᵢ = Ĥ(θ̂ᵢ) + Ĥ_θᵀ · Λ̂⁻¹ · ℓ̂_θ,ᵢ
+    ψᵢ = Ĥ(θ̂ᵢ) - Ĥ_θᵀ · Λ̂(xᵢ)⁻¹ · ℓ̂_θ,ᵢ
 
     Expected: ~95% coverage.
     """
@@ -163,120 +283,239 @@ def influence(
     corrections_all = np.zeros(n)  # Phase 3: φᵢ values
     alpha_hat_all = np.zeros(n)  # For parameter recovery
     beta_hat_all = np.zeros(n)   # For parameter recovery
+    fold_indices = np.zeros(n, dtype=int)  # Track which fold each obs belongs to
 
     n_folds = getattr(config, 'n_folds', 50)
     kf = KFold(n_splits=n_folds, shuffle=True, random_state=config.seed)
     histories = []
     hessian_diagnostics = []  # Phase 3: Per-fold stability info
 
-    for fold_idx, (train_idx, eval_idx) in enumerate(kf.split(X)):
-        X_tr, T_tr, Y_tr = X[train_idx], T[train_idx], Y[train_idx]
-        X_ev, T_ev, Y_ev = X[eval_idx], T[eval_idx], Y[eval_idx]
+    # Config options
+    use_three_way = family.lambda_depends_on_theta()
+    theta_lambda_split = getattr(config, 'theta_lambda_split', 0.6)
+    lambda_method = getattr(config, 'lambda_method', 'mlp')
+    center_treatment = getattr(config, 'center_treatment', False)
+    n_params = getattr(family, 'n_params', 2)
 
-        # Step A: Train structural model on D_train
-        struct_model = _create_structural_model(
-            config=config,
-            input_dim=X.shape[1],
-            n_params=getattr(family, 'n_params', 2),
-        )
-        history = train_structural(
-            model=struct_model,
-            family=family,
-            X=X_tr, T=T_tr, Y=Y_tr,
-            epochs=config.epochs,
-            lr=config.lr,
-            batch_size=config.batch_size,
-            weight_decay=config.weight_decay,
-            early_stopping=getattr(config, 'early_stopping', True),
-            patience=getattr(config, 'patience', 10),
-            val_split=getattr(config, 'val_split', 0.1),
-        )
-        histories.append(history)
+    for fold_idx, (train_idx, eval_idx) in enumerate(kf.split(X)):
+        fold_indices[eval_idx] = fold_idx
+
+        # Check for multi-dimensional T
+        is_multidim_t = T.ndim > 1 and T.shape[1] > 1
+
+        if use_three_way and not is_multidim_t:
+            # ============================================
+            # THREE-WAY SPLITTING (for nonlinear families)
+            # ============================================
+            n_train = len(train_idx)
+            split_point = int(theta_lambda_split * n_train)
+
+            # Shuffle train_idx for random split
+            rng = np.random.RandomState(config.seed + fold_idx)
+            shuffled_train_idx = train_idx.copy()
+            rng.shuffle(shuffled_train_idx)
+
+            theta_train_idx = shuffled_train_idx[:split_point]
+            lambda_train_idx = shuffled_train_idx[split_point:]
+
+            X_theta, T_theta, Y_theta = X[theta_train_idx], T[theta_train_idx], Y[theta_train_idx]
+            X_lambda, T_lambda, Y_lambda = X[lambda_train_idx], T[lambda_train_idx], Y[lambda_train_idx]
+            X_ev, T_ev, Y_ev = X[eval_idx], T[eval_idx], Y[eval_idx]
+
+            # Step A: Train structural model on θ-training fold
+            struct_model = _create_structural_model(
+                config=config,
+                input_dim=X.shape[1],
+                n_params=n_params,
+            )
+            history = train_structural(
+                model=struct_model,
+                family=family,
+                X=X_theta, T=T_theta, Y=Y_theta,
+                epochs=config.epochs,
+                lr=config.lr,
+                batch_size=config.batch_size,
+                weight_decay=config.weight_decay,
+                early_stopping=getattr(config, 'early_stopping', True),
+                patience=getattr(config, 'patience', 10),
+                val_split=getattr(config, 'val_split', 0.1),
+            )
+            histories.append(history)
+
+            # Step B: Compute per-observation Hessians on Λ-training fold
+            struct_model.eval()
+            with torch.no_grad():
+                X_lambda_t = torch.FloatTensor(X_lambda)
+                T_lambda_t = torch.FloatTensor(T_lambda)
+                Y_lambda_t = torch.FloatTensor(Y_lambda)
+                theta_lambda_pred = struct_model(X_lambda_t)
+
+                # Per-observation Hessians: (n_lambda, n_params, n_params)
+                hessians_lambda = family.hessian_at_point(Y_lambda_t, T_lambda_t, theta_lambda_pred)
+                hessians_lambda_np = hessians_lambda.numpy()
+
+            # Step C: Fit nonparametric Λ(x) regression
+            lambda_estimator = LambdaEstimator(method=lambda_method, n_params=n_params)
+            lambda_estimator.fit(X_lambda, hessians_lambda_np)
+
+            # Step D: Predict Λ̂(x_i) on eval fold and invert per observation
+            Lambda_eval_np = lambda_estimator.predict(X_ev)  # (n_eval, n_params, n_params)
+            Lambda_inv_eval_np = batch_pinv(Lambda_eval_np)  # (n_eval, n_params, n_params)
+            Lambda_inv_eval = torch.FloatTensor(Lambda_inv_eval_np)
+
+            # Record diagnostics (use mean Hessian for summary)
+            Lambda_mean = np.mean(Lambda_eval_np, axis=0)
+            eigenvalues = np.linalg.eigvalsh(Lambda_mean)
+            min_eig = float(eigenvalues.min())
+            max_eig = float(eigenvalues.max())
+            condition = max_eig / (min_eig + 1e-10)
+            hessian_diagnostics.append({"min_eig": min_eig, "condition": condition})
+
+            # Step E: Compute ψ on eval fold with per-observation Λ⁻¹
+            with torch.no_grad():
+                X_ev_t = torch.FloatTensor(X_ev)
+                T_ev_t = torch.FloatTensor(T_ev)
+                Y_ev_t = torch.FloatTensor(Y_ev)
+                theta_ev = struct_model(X_ev_t)
+
+                # t_mean for influence score (use simple mean if not centering)
+                if center_treatment:
+                    # Train nuisance model on full train data for centering
+                    nuisance_model = NuisanceNet(input_dim=X.shape[1], hidden_dims=[64, 32])
+                    train_nuisance(
+                        model=nuisance_model,
+                        X=X[train_idx], T=T[train_idx],
+                        epochs=100, lr=config.lr,
+                        batch_size=config.batch_size, weight_decay=config.weight_decay,
+                    )
+                    nuisance_model.eval()
+                    t_mean_ev, t_var_ev = nuisance_model(X_ev_t)
+                else:
+                    # No centering - use zeros (T_design = [1, T])
+                    t_mean_ev = torch.zeros(len(X_ev))
+                    t_var_ev = torch.ones(len(X_ev))
+
+                # Get psi with per-observation Λ⁻¹
+                psi, correction = family.influence_score(
+                    y=Y_ev_t,
+                    t=T_ev_t,
+                    theta=theta_ev,
+                    t_mean=t_mean_ev,
+                    t_var=t_var_ev,
+                    lambda_inv=Lambda_inv_eval,  # (n_eval, n_params, n_params)
+                    return_correction=True,
+                    center_treatment=center_treatment,
+                )
+
+        else:
+            # ============================================
+            # TWO-WAY SPLITTING (for linear family or multidim T)
+            # ============================================
+            X_tr, T_tr, Y_tr = X[train_idx], T[train_idx], Y[train_idx]
+            X_ev, T_ev, Y_ev = X[eval_idx], T[eval_idx], Y[eval_idx]
+
+            # Step A: Train structural model on D_train
+            struct_model = _create_structural_model(
+                config=config,
+                input_dim=X.shape[1],
+                n_params=n_params,
+            )
+            history = train_structural(
+                model=struct_model,
+                family=family,
+                X=X_tr, T=T_tr, Y=Y_tr,
+                epochs=config.epochs,
+                lr=config.lr,
+                batch_size=config.batch_size,
+                weight_decay=config.weight_decay,
+                early_stopping=getattr(config, 'early_stopping', True),
+                patience=getattr(config, 'patience', 10),
+                val_split=getattr(config, 'val_split', 0.1),
+            )
+            histories.append(history)
+
+            # Step B: Train nuisance model (if centering or for diagnostics)
+            if not is_multidim_t:
+                nuisance_model = NuisanceNet(input_dim=X.shape[1], hidden_dims=[64, 32])
+                train_nuisance(
+                    model=nuisance_model,
+                    X=X_tr, T=T_tr,
+                    epochs=100,
+                    lr=config.lr,
+                    batch_size=config.batch_size,
+                    weight_decay=config.weight_decay,
+                )
+
+            # Compute aggregate Λ from D_train
+            struct_model.eval()
+            if not is_multidim_t:
+                nuisance_model.eval()
+
+            with torch.no_grad():
+                X_tr_t = torch.FloatTensor(X_tr)
+                T_tr_t = torch.FloatTensor(T_tr)
+                theta_tr = struct_model(X_tr_t)
+
+                if is_multidim_t:
+                    t_mean_tr = T_tr_t.mean(dim=0)
+                elif center_treatment:
+                    t_mean_tr, _ = nuisance_model(X_tr_t)
+                else:
+                    t_mean_tr = torch.zeros(len(X_tr))
+
+                # Hessian from training fold (with Phase 3 diagnostics)
+                Lambda, min_eig, condition = family.compute_hessian_with_diagnostics(
+                    theta_tr, T_tr_t, t_mean_tr
+                )
+                Lambda_inv = torch.linalg.pinv(Lambda)
+                hessian_diagnostics.append({"min_eig": min_eig, "condition": condition})
+
+                # Step C: Compute ψ on D_test (eval fold)
+                X_ev_t = torch.FloatTensor(X_ev)
+                T_ev_t = torch.FloatTensor(T_ev)
+                Y_ev_t = torch.FloatTensor(Y_ev)
+                theta_ev = struct_model(X_ev_t)
+
+                if is_multidim_t:
+                    t_mean_ev = T_ev_t.mean(dim=0).expand(len(X_ev), -1)
+                    t_var_ev = T_ev_t.var(dim=0).expand(len(X_ev), -1)
+                elif center_treatment:
+                    t_mean_ev, t_var_ev = nuisance_model(X_ev_t)
+                else:
+                    t_mean_ev = torch.zeros(len(X_ev))
+                    t_var_ev = torch.ones(len(X_ev))
+
+                # Get psi with aggregate Λ⁻¹
+                psi, correction = family.influence_score(
+                    y=Y_ev_t,
+                    t=T_ev_t,
+                    theta=theta_ev,
+                    t_mean=t_mean_ev,
+                    t_var=t_var_ev,
+                    lambda_inv=Lambda_inv,  # (n_params, n_params)
+                    return_correction=True,
+                    center_treatment=center_treatment,
+                )
+
+        # Store results for this fold
+        psi_all[eval_idx] = psi.numpy()
+        corrections_all[eval_idx] = correction.numpy()
+
+        # Store α̂ and β̂ for parameter recovery metrics
+        n_params_actual = theta_ev.shape[1]
+        alpha_hat_all[eval_idx] = theta_ev[:, 0].numpy()
+        if n_params_actual == 2:
+            beta_hat_all[eval_idx] = theta_ev[:, 1].numpy()
+        else:
+            beta_hat_all[eval_idx] = family.h_value(theta_ev, T_ev_t).numpy()
 
         # Save training history for first few folds
         if log_dir and sim_id is not None and fold_idx < 3:
             history.save(f"{log_dir}/training/influence_sim{sim_id}_fold{fold_idx}.json")
 
-        # Step B: Train nuisance model on same D_train (two-way split)
-        # Use larger network and train longer for better E[T|X] estimation
-        # Note: For multi-dimensional T (like multinomial logit's packed X_alt),
-        # skip NuisanceNet and use simple mean centering since T is exogenous
-        is_multidim_t = T_tr.ndim > 1 and T_tr.shape[1] > 1
-
-        if not is_multidim_t:
-            nuisance_model = NuisanceNet(input_dim=X.shape[1], hidden_dims=[64, 32])
-            train_nuisance(
-                model=nuisance_model,
-                X=X_tr, T=T_tr,
-                epochs=100,  # Longer training
-                lr=config.lr,
-                batch_size=config.batch_size,
-                weight_decay=config.weight_decay,
-            )
-
-        # Compute Λ from D_train
-        struct_model.eval()
-        if not is_multidim_t:
-            nuisance_model.eval()
-
-        with torch.no_grad():
-            X_tr_t = torch.FloatTensor(X_tr)
-            T_tr_t = torch.FloatTensor(T_tr)
-            theta_tr = struct_model(X_tr_t)
-
-            if is_multidim_t:
-                # For multi-dimensional T: use simple mean centering
-                t_mean_tr = T_tr_t.mean(dim=0)
-            else:
-                t_mean_tr, _ = nuisance_model(X_tr_t)
-
-            # Hessian from training fold (with Phase 3 diagnostics)
-            Lambda, min_eig, condition = family.compute_hessian_with_diagnostics(
-                theta_tr, T_tr_t, t_mean_tr
-            )
-            Lambda_inv = torch.linalg.pinv(Lambda)
-            hessian_diagnostics.append({"min_eig": min_eig, "condition": condition})
-
-            # Step C: Compute ψ on D_test (eval fold)
-            X_ev_t = torch.FloatTensor(X_ev)
-            T_ev_t = torch.FloatTensor(T_ev)
-            Y_ev_t = torch.FloatTensor(Y_ev)
-
-            theta_ev = struct_model(X_ev_t)
-
-            if is_multidim_t:
-                # For multi-dimensional T: use same mean centering
-                t_mean_ev = T_ev_t.mean(dim=0).expand(len(X_ev), -1)
-                t_var_ev = T_ev_t.var(dim=0).expand(len(X_ev), -1)
-            else:
-                t_mean_ev, t_var_ev = nuisance_model(X_ev_t)
-
-            # Get both psi and correction term (Phase 3)
-            psi, correction = family.influence_score(
-                y=Y_ev_t,
-                t=T_ev_t,
-                theta=theta_ev,
-                t_mean=t_mean_ev,
-                t_var=t_var_ev,
-                lambda_inv=Lambda_inv,
-                return_correction=True,
-            )
-
-            psi_all[eval_idx] = psi.numpy()
-            corrections_all[eval_idx] = correction.numpy()
-            # Store α̂ and β̂ for parameter recovery metrics
-            # For models with >2 params, store first param as alpha, target param as beta
-            n_params = theta_ev.shape[1]
-            alpha_hat_all[eval_idx] = theta_ev[:, 0].numpy()
-            if n_params == 2:
-                beta_hat_all[eval_idx] = theta_ev[:, 1].numpy()
-            else:
-                # For multi-param models like multinomial_logit, use target functional
-                beta_hat_all[eval_idx] = family.h_value(theta_ev, T_ev_t).numpy()
-
-    # FLM paper: influence function SE (variance of ψ scores)
+    # Within-fold variance formula (paper formula)
     mu_hat = float(np.mean(psi_all))
-    se = float(np.std(psi_all, ddof=1) / np.sqrt(n))
+    se = _compute_within_fold_se(psi_all, fold_indices, n_folds)
 
     # Phase 3: Compute correction ratio (should be 0.1-1.0 for valid inference)
     correction_mean = float(np.abs(np.mean(corrections_all)))
@@ -289,6 +528,26 @@ def influence(
         correction_ratio=correction_ratio,
         hessian_diagnostics=hessian_diagnostics,
     )
+
+
+def _compute_within_fold_se(psi_all: np.ndarray, fold_indices: np.ndarray, K: int) -> float:
+    """Compute SE using within-fold variance formula from the paper.
+
+    Paper formula: Ψ̂ = (1/K) Σ_k (1/|I_k|) Σ_{i∈I_k} (ψ_ik - μ̂_k)²
+    SE = √(Ψ̂/n)
+    """
+    n = len(psi_all)
+    variance_sum = 0.0
+
+    for k in range(K):
+        psi_k = psi_all[fold_indices == k]
+        if len(psi_k) > 0:
+            mu_k = psi_k.mean()
+            variance_k = ((psi_k - mu_k) ** 2).mean()
+            variance_sum += variance_k
+
+    Psi_hat = variance_sum / K
+    return float(np.sqrt(Psi_hat / n))
 
 
 # =============================================================================
