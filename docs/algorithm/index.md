@@ -1,4 +1,4 @@
-# Structural DML Algorithm
+# Algorithm
 
 A general-purpose algorithm for structural deep learning with valid inference, based on the Farrell-Liang-Misra framework.
 
