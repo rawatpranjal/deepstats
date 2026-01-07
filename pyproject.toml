@@ -57,9 +57,11 @@ parity = [
     "rpy2>=3.5",
 ]
 docs = [
-    "mkdocs-material>=9.5",
-    "mkdocstrings[python]>=0.25",
-    "mkdocs-jupyter>=0.24",
+    "sphinx>=7.0",
+    "pydata-sphinx-theme>=0.16",
+    "myst-parser>=2.0",
+    "sphinx-autodoc-typehints>=1.25",
+    "sphinx-copybutton>=0.5",
 ]
 plotting = [
     "matplotlib>=3.8",
