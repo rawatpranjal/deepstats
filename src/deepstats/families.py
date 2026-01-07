@@ -20,6 +20,14 @@ class BaseFamily(ABC):
     name: str = "base"
     n_params: int = 2  # Number of structural parameters [α, β] by default
 
+    def lambda_depends_on_theta(self) -> bool:
+        """If True, need three-way splitting and nonparametric Λ(x).
+
+        Override in subclasses. Returns False for linear (constant Hessian),
+        True for nonlinear models (logit, poisson, etc.) where ℓ_θθ depends on θ.
+        """
+        return False
+
     @abstractmethod
     def loss(self, y: torch.Tensor, t: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
         """Per-sample loss L(Y, T, theta)."""
@@ -34,6 +42,33 @@ class BaseFamily(ABC):
     def weight(self, t: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
         """Hessian weight W_i."""
         pass
+
+    def hessian_at_point(self, y: torch.Tensor, t: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
+        """Per-observation Hessian ℓ_θθ(y, t, θ). Shape: (n, n_params, n_params).
+
+        Required for three-way splitting when lambda_depends_on_theta() is True.
+        Default implementation uses weight-based formula: H_i = W_i * T_i ⊗ T_i
+        where T_i = [1, t_i] (or extended for >2 params).
+
+        Override for models with non-standard Hessian structure.
+        """
+        n = len(y)
+        W = self.weight(t, theta)
+
+        # Build design matrix T_i = [1, t_i] for 2-param models
+        if self.n_params == 2:
+            T_design = torch.stack([torch.ones(n, device=t.device), t], dim=1)  # (n, 2)
+            # H_i = W_i * T_i ⊗ T_i = W_i * T_i @ T_i'
+            # Shape: (n, 2, 2)
+            hessian = W.unsqueeze(1).unsqueeze(2) * (
+                T_design.unsqueeze(2) * T_design.unsqueeze(1)
+            )
+        else:
+            # For >2 params, subclasses must override
+            raise NotImplementedError(
+                f"{self.__class__.__name__} with n_params={self.n_params} must override hessian_at_point()"
+            )
+        return hessian
 
     def h_value(self, theta: torch.Tensor, t: torch.Tensor = None) -> torch.Tensor:
         """Target functional H(theta). Override for T-dependent targets like AME."""
@@ -74,21 +109,41 @@ class BaseFamily(ABC):
         return Lambda, min_eig, condition
 
     def influence_score(
-        self, y, t, theta, t_mean, t_var, lambda_inv, return_correction: bool = False
+        self, y, t, theta, t_mean, t_var, lambda_inv,
+        return_correction: bool = False, center_treatment: bool = False
     ):
         """Default influence score: psi_i = H(theta_i) - l_theta @ Lambda^{-1} @ H_grad.
 
         Args:
+            lambda_inv: Either (n_params, n_params) aggregate inverse or
+                        (n, n_params, n_params) per-observation inverses
             return_correction: If True, return (psi, correction) tuple for Phase 3 diagnostics
+            center_treatment: If True, use T̃ = T - E[T|X]. If False, use T directly (paper formula).
         """
         n = len(y)
         h_i = self.h_value(theta, t)  # Target value (beta for default, p(1-p)beta for AME)
         r_i = self.residual(y, t, theta)
-        t_tilde = t - t_mean
-        T_design = torch.stack([torch.ones(n, device=t.device), t_tilde], dim=1)
+
+        # Design matrix: [1, T] or [1, T-E[T|X]] depending on centering
+        if center_treatment:
+            t_design_col = t - t_mean
+        else:
+            t_design_col = t
+        T_design = torch.stack([torch.ones(n, device=t.device), t_design_col], dim=1)
+
         H_grad = self.h_gradient(theta, t).to(theta.device)
-        l_theta = -r_i.unsqueeze(1) * T_design
-        correction = l_theta @ (lambda_inv @ H_grad)
+        l_theta = -r_i.unsqueeze(1) * T_design  # (n, n_params)
+
+        # Handle per-observation or aggregate Λ⁻¹
+        if lambda_inv.dim() == 3:
+            # Per-observation: lambda_inv is (n, n_params, n_params)
+            # correction_i = l_theta_i @ lambda_inv_i @ H_grad
+            # Using einsum: 'nd,nde,e->n'
+            correction = torch.einsum('nd,nde,e->n', l_theta, lambda_inv, H_grad)
+        else:
+            # Aggregate: lambda_inv is (n_params, n_params)
+            correction = l_theta @ (lambda_inv @ H_grad)
+
         psi = h_i - correction
         if return_correction:
             return psi, correction
@@ -115,37 +170,47 @@ class LinearFamily(BaseFamily):
         return torch.ones_like(t)
 
     def influence_score(
-        self, y, t, theta, t_mean, t_var, lambda_inv, return_correction: bool = False
+        self, y, t, theta, t_mean, t_var, lambda_inv,
+        return_correction: bool = False, center_treatment: bool = False
     ):
-        """Full Hessian-based influence score.
+        """Full Hessian-based influence score for linear family.
 
-        psi_i = H(theta_i) + nabla_H' @ Lambda^{-1} @ nabla_ell_i
+        psi_i = H(theta_i) - nabla_ell_i' @ Lambda^{-1} @ nabla_H
 
         Where:
         - H(theta) = beta (target functional)
         - nabla_H = [0, 1] (gradient of H w.r.t. theta)
-        - nabla_ell = -r_i * [1, T_tilde] (score/gradient of loss)
+        - nabla_ell = -r_i * [1, T] (score/gradient of loss)
         - Lambda = E[W * T_design @ T_design'] (Hessian)
 
         Args:
+            lambda_inv: Either (n_params, n_params) aggregate or (n, n_params, n_params) per-obs
             return_correction: If True, return (psi, correction) tuple for Phase 3 diagnostics
+            center_treatment: If True, use T̃ = T - E[T|X]. If False, use T directly.
         """
         n = len(y)
-        beta_i = theta[:, 1]
         r_i = self.residual(y, t, theta)
-        t_tilde = t - t_mean
 
-        # Design matrix [1, T-E[T]]
-        T_design = torch.stack([torch.ones(n, device=t.device), t_tilde], dim=1)
+        # Design matrix [1, T] or [1, T-E[T|X]] depending on centering
+        if center_treatment:
+            t_design_col = t - t_mean
+        else:
+            t_design_col = t
+        T_design = torch.stack([torch.ones(n, device=t.device), t_design_col], dim=1)
 
         # Gradient of H w.r.t. theta = [0, 1]
         H_grad = self.h_gradient(theta, t).to(theta.device)
 
-        # Score (gradient of loss): l_theta = -r_i * [1, T_tilde]
+        # Score (gradient of loss): l_theta = -r_i * [1, T]
         l_theta = -r_i.unsqueeze(1) * T_design
 
-        # Correction term: l_theta @ Lambda^{-1} @ H_grad
-        correction = l_theta @ (lambda_inv @ H_grad)
+        # Handle per-observation or aggregate Λ⁻¹
+        if lambda_inv.dim() == 3:
+            # Per-observation: lambda_inv is (n, n_params, n_params)
+            correction = torch.einsum('nd,nde,e->n', l_theta, lambda_inv, H_grad)
+        else:
+            # Aggregate: lambda_inv is (n_params, n_params)
+            correction = l_theta @ (lambda_inv @ H_grad)
 
         # Target value: H(theta) = beta for linear
         h_i = self.h_value(theta, t)
@@ -160,8 +225,14 @@ class LinearFamily(BaseFamily):
 # =============================================================================
 
 class GammaFamily(BaseFamily):
-    """Y ~ Gamma, mu = exp(alpha + beta*T). Loss: deviance. Weight: 1."""
+    """Y ~ Gamma, mu = exp(alpha + beta*T). Loss: deviance. Weight: shape."""
     name = "gamma"
+
+    def __init__(self, shape: float = 2.0):
+        self.shape = shape
+
+    def lambda_depends_on_theta(self) -> bool:
+        return True  # Hessian involves μ = exp(α + βT)
 
     def loss(self, y, t, theta):
         mu = torch.exp(torch.clamp(theta[:, 0] + theta[:, 1] * t, -10, 10))
@@ -172,7 +243,9 @@ class GammaFamily(BaseFamily):
         return (y - mu) / torch.clamp(mu, min=1e-6)
 
     def weight(self, t, theta):
-        return torch.ones_like(t)
+        # Gamma variance = μ²/k, Fisher info weight = k (shape parameter)
+        # With log link, working weight simplifies to shape
+        return torch.ones_like(t) * self.shape
 
     # Uses BaseFamily.influence_score() - the correct Hessian-based formula
 
@@ -184,6 +257,9 @@ class GammaFamily(BaseFamily):
 class GumbelFamily(BaseFamily):
     """Y ~ Gumbel(mu, scale), mu = alpha + beta*T. Weight: 1."""
     name = "gumbel"
+
+    def lambda_depends_on_theta(self) -> bool:
+        return True  # Hessian involves scale parameter
 
     def __init__(self, scale: float = 1.0):
         self.scale = scale
@@ -212,6 +288,9 @@ class PoissonFamily(BaseFamily):
     """Y ~ Poisson(lambda), lambda = exp(alpha + beta*T). Weight: lambda."""
     name = "poisson"
 
+    def lambda_depends_on_theta(self) -> bool:
+        return True  # Weight λ = exp(α + βT) depends on θ
+
     def loss(self, y, t, theta):
         lam = torch.exp(torch.clamp(theta[:, 0] + theta[:, 1] * t, -20, 20))
         return lam - y * torch.log(lam + 1e-10)
@@ -236,6 +315,9 @@ class LogitFamily(BaseFamily):
     - 'ame': E[p(1-p)β(X)] - average marginal effect on probability
     """
     name = "logit"
+
+    def lambda_depends_on_theta(self) -> bool:
+        return True  # Weight p(1-p) depends on θ through p = σ(α + βT)
 
     def __init__(self, target: str = "beta"):
         """Initialize LogitFamily with target selection.
@@ -319,6 +401,9 @@ class TobitFamily(BaseFamily):
     """
     name = "tobit"
     n_params = 3  # [α, β, γ=log(σ)]
+
+    def lambda_depends_on_theta(self) -> bool:
+        return True  # Weight Φ(z) depends on θ through z = (α + βT)/σ
 
     def __init__(self, target: str = "latent"):
         """Initialize TobitFamily with target selection.
@@ -443,7 +528,8 @@ class TobitFamily(BaseFamily):
         return Lambda, min_eig, condition
 
     def influence_score(
-        self, y, t, theta, t_mean, t_var, lambda_inv, return_correction: bool = False
+        self, y, t, theta, t_mean, t_var, lambda_inv,
+        return_correction: bool = False, center_treatment: bool = False
     ):
         """Influence score for 3-parameter Tobit model.
 
@@ -452,6 +538,11 @@ class TobitFamily(BaseFamily):
         Score vector (for NLL minimization):
         - Uncensored: [-(y-μ)/σ², -T(y-μ)/σ², 1-e²]
         - Censored: [λ/σ, Tλ/σ, -zλ] where λ = φ/(1-Φ)
+
+        Args:
+            lambda_inv: Either (3, 3) aggregate or (n, 3, 3) per-observation
+            return_correction: If True, return (psi, correction) tuple
+            center_treatment: If True, center T (not used in this model's score)
         """
         n = len(y)
         h_i = self.h_value(theta, t)
@@ -492,8 +583,14 @@ class TobitFamily(BaseFamily):
         # Get gradient of H
         H_grad = self.h_gradient(theta, t).to(theta.device)
 
-        # Influence correction: l_theta @ Λ⁻¹ @ ∇H
-        correction = l_theta @ (lambda_inv @ H_grad)
+        # Handle per-observation or aggregate Λ⁻¹
+        if lambda_inv.dim() == 3:
+            # Per-observation: (n, 3, 3)
+            correction = torch.einsum('nd,nde,e->n', l_theta, lambda_inv, H_grad)
+        else:
+            # Aggregate: (3, 3)
+            correction = l_theta @ (lambda_inv @ H_grad)
+
         psi = h_i - correction
 
         if return_correction:
@@ -508,6 +605,9 @@ class TobitFamily(BaseFamily):
 class NegBinFamily(BaseFamily):
     """Y ~ NegBin, mu = exp(alpha + beta*T). Weight: mu/(1+alpha*mu)."""
     name = "negbin"
+
+    def lambda_depends_on_theta(self) -> bool:
+        return True  # Weight μ/(1+αμ) depends on θ through μ = exp(α + βT)
 
     def __init__(self, overdispersion: float = 0.5):
         self.overdispersion = overdispersion
@@ -527,6 +627,7 @@ class NegBinFamily(BaseFamily):
         return (y - mu) / (1.0 + self.overdispersion * mu)
 
     def weight(self, t, theta):
+        # NegBin weight: μ/(1+αμ) - this is the score variance scaling
         mu = torch.exp(torch.clamp(theta[:, 0] + theta[:, 1] * t, -20, 20))
         return mu / (1.0 + self.overdispersion * mu)
 
@@ -538,6 +639,9 @@ class NegBinFamily(BaseFamily):
 class WeibullFamily(BaseFamily):
     """Y ~ Weibull(k, lambda), lambda = exp(alpha + beta*T). Weight: k^2."""
     name = "weibull"
+
+    def lambda_depends_on_theta(self) -> bool:
+        return True  # Hessian involves λ = exp(α + βT)
 
     def __init__(self, shape: float = 2.0):
         self.shape = shape
@@ -586,6 +690,9 @@ class MultinomialLogitFamily(BaseFamily):
         - Hessian: Λ = E[X̃' Ġ X̃] where Ġ has diag p(1-p), off-diag -p_j*p_m
     """
     name = "multinomial_logit"
+
+    def lambda_depends_on_theta(self) -> bool:
+        return True  # Hessian involves choice probabilities which depend on θ
 
     def __init__(self, J: int, K: int, target: str = "beta", target_idx: int = 0):
         """Initialize MultinomialLogitFamily.
@@ -830,7 +937,8 @@ class MultinomialLogitFamily(BaseFamily):
         return Lambda, min_eig, condition
 
     def influence_score(
-        self, y, t, theta, t_mean, t_var, lambda_inv, return_correction: bool = False
+        self, y, t, theta, t_mean, t_var, lambda_inv,
+        return_correction: bool = False, center_treatment: bool = False
     ):
         """Influence score for multinomial logit.
 
@@ -845,8 +953,9 @@ class MultinomialLogitFamily(BaseFamily):
             t: Packed X_alt (N, J*K)
             theta: (N, n_params)
             t_mean, t_var: Not used (API compatibility)
-            lambda_inv: Inverted Hessian (n_params, n_params)
+            lambda_inv: (n_params, n_params) aggregate or (N, n_params, n_params) per-obs
             return_correction: If True, return (psi, correction) tuple
+            center_treatment: Not used for multinomial logit
 
         Returns:
             psi: Influence scores (N,)
@@ -874,8 +983,13 @@ class MultinomialLogitFamily(BaseFamily):
         # Gradient of H
         H_grad = self.h_gradient(theta, t).to(theta.device)
 
-        # Correction term: l_θ @ Λ⁻¹ @ ∇H
-        correction = l_theta @ (lambda_inv @ H_grad)
+        # Handle per-observation or aggregate Λ⁻¹
+        if lambda_inv.dim() == 3:
+            # Per-observation: (N, n_params, n_params)
+            correction = torch.einsum('nd,nde,e->n', l_theta, lambda_inv, H_grad)
+        else:
+            # Aggregate: (n_params, n_params)
+            correction = l_theta @ (lambda_inv @ H_grad)
 
         psi = h_i - correction
 
@@ -910,6 +1024,9 @@ class HeteroLinearFamily(BaseFamily):
     name = "heterolinear"
     n_params = 3  # [α, β, γ]
 
+    def lambda_depends_on_theta(self) -> bool:
+        return True  # Hessian involves σ² = exp(γ) which is part of θ
+
     def loss(self, y, t, theta):
         alpha, beta, gamma = theta[:, 0], theta[:, 1], theta[:, 2]
         mu = alpha + beta * t
@@ -931,12 +1048,17 @@ class HeteroLinearFamily(BaseFamily):
         return torch.exp(torch.clamp(theta[:, 2], -10, 10))
 
     def influence_score(
-        self, y, t, theta, t_mean, t_var, lambda_inv, return_correction: bool = False
+        self, y, t, theta, t_mean, t_var, lambda_inv,
+        return_correction: bool = False, center_treatment: bool = False
     ):
         """Influence score for variance target: ψᵢ = 2σ̂² - ε̂².
 
         Note: This is a special case where the influence score has a closed form.
         The "correction" is the difference between ψ and the plug-in estimate.
+
+        Args:
+            lambda_inv: Not used (closed-form solution)
+            center_treatment: Not used (closed-form solution)
         """
         sigma2 = torch.exp(torch.clamp(theta[:, 2], -10, 10))
         eps = self.residual(y, t, theta)
