@@ -63,6 +63,7 @@ getting_started/index
 tutorials/index
 theory/index
 algorithm/index
+validation/index
 api/index
 ```
 

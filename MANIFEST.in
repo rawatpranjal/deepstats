@@ -1,0 +1,25 @@
+# Include
+include LICENSE
+include README.md
+include pyproject.toml
+
+# Include source
+recursive-include src *.py *.typed
+
+# Exclude everything else
+prune archive
+prune data
+prune docs
+prune logs
+prune paper
+prune prototypes
+prune references
+prune tests
+prune src2
+global-exclude *.csv
+global-exclude *.pkl
+global-exclude *.json
+global-exclude *.log
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude .DS_Store
