@@ -27,6 +27,7 @@ class LambdaEstimator:
         self,
         method: Literal['mlp', 'rf', 'ridge'] = 'mlp',
         theta_dim: int = 2,
+        ridge_alpha: float = 1.0,
     ):
         """
         Initialize Lambda estimator.
@@ -34,9 +35,11 @@ class LambdaEstimator:
         Args:
             method: Regression method ('mlp', 'rf', or 'ridge')
             theta_dim: Dimension of parameter vector
+            ridge_alpha: Regularization strength for Ridge (default 1.0)
         """
         self.method = method
         self.theta_dim = theta_dim
+        self.ridge_alpha = ridge_alpha
         self.n_outputs = theta_dim * (theta_dim + 1) // 2  # Upper triangle
         self.models = None
 
@@ -62,7 +65,7 @@ class LambdaEstimator:
                 n_jobs=-1,
             )
         elif self.method == 'ridge':
-            return Ridge(alpha=1.0)
+            return Ridge(alpha=self.ridge_alpha)
         else:
             raise ValueError(f"Unknown method: {self.method}")
 

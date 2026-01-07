@@ -44,6 +44,7 @@ def structural_dml_core(
     per_obs_target_grad_fn: Optional[Callable] = None,
     ridge: float = 1e-4,
     lambda_method: str = 'mlp',
+    ridge_alpha: float = 1.0,
     verbose: bool = False,
 ) -> DMLResult:
     """
@@ -76,7 +77,8 @@ def structural_dml_core(
         per_obs_target_fn: Per-observation target h(theta_i) (default: beta_i)
         per_obs_target_grad_fn: Gradient of h w.r.t. theta (default: (0, 1))
         ridge: Ridge regularization for Hessian inversion
-        lambda_method: Method for Lambda estimation ('mlp', 'rf', 'ridge')
+        lambda_method: Method for Lambda estimation ('mlp', 'rf', 'ridge', 'aggregate')
+        ridge_alpha: Regularization strength for Ridge Lambda estimation
         verbose: Print progress
 
     Returns:
@@ -215,7 +217,11 @@ def structural_dml_core(
                 lambda_est.fit(X_lambda, hessians_lambda)
             else:
                 # Nonparametric Lambda(x)
-                lambda_est = LambdaEstimator(method=lambda_method, theta_dim=theta_dim)
+                lambda_est = LambdaEstimator(
+                    method=lambda_method,
+                    theta_dim=theta_dim,
+                    ridge_alpha=ridge_alpha,
+                )
                 lambda_est.fit(X_lambda, hessians_lambda)
             Lambda_eval = lambda_est.predict(X_eval)  # (n_eval, d, d)
         else:

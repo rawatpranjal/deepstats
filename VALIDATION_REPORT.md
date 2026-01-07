@@ -749,6 +749,60 @@ The predictions remain close to singular, even though the true conditional expec
 
 ---
 
+## Part XII: Phase 12 - SE Ratio Optimization
+
+### 12.1: Initial Problem
+
+Previous tests showed SE ratio of 1.66 for aggregate Lambda method (66% overcoverage).
+
+### 12.2: Root Cause Analysis
+
+The high SE ratio of 1.66 was caused by **insufficient cross-fitting folds (K=20)**. With K=50, SE ratio drops to ~1.1-1.2.
+
+### 12.3: Ridge Alpha Testing (M=30, N=2000, K=50)
+
+| Method | Alpha | Coverage | SE Ratio | Reg Rate |
+|--------|-------|----------|----------|----------|
+| Ridge | 0.001 | 96.7-100% | **1.17-1.18** | 0% |
+| Ridge | 0.01 | 100% | 1.21-1.24 | 0% |
+| Ridge | 0.1 | 100% | 1.23-1.25 | 0% |
+| Aggregate | - | 96.7-100% | **1.12-1.19** | 0% |
+
+### 12.4: Sample Size Effect (M=30, K=50, Aggregate)
+
+| N | Coverage | SE Ratio | Empirical SD | Mean SE |
+|---|----------|----------|--------------|---------|
+| 2000 | 100% | 1.12 | 0.0848 | 0.0952 |
+| **5000** | **93.3%** | **1.04** | 0.0574 | 0.0599 |
+
+### 12.5: Key Findings
+
+1. **K=50 folds essential**: SE ratio improves dramatically from ~1.66 (K=20) to ~1.12 (K=50)
+2. **Aggregate Lambda works well**: Full-rank predictions, 0% regularization, valid coverage
+3. **Sample size matters**: With N=5000, SE ratio approaches **1.04** (nearly perfect!)
+4. **Ridge(α=0.001) ≈ Aggregate**: Very low Ridge alpha gives similar results to aggregate
+
+### 12.6: Recommended Configuration
+
+For Logit with binary treatment:
+
+```python
+result = structural_dml_core(
+    Y, T, X,
+    family='logit',
+    n_folds=50,          # Essential for calibrated SEs
+    lambda_method='aggregate',  # Full-rank, no overfitting
+    three_way=True,
+)
+```
+
+**Expected performance** (N=2000-5000, K=50):
+- Coverage: 93-100%
+- SE Ratio: 1.04-1.20
+- Regularization Rate: 0%
+
+---
+
 ## Appendix A: Raw Simulation Data
 
 ### A.1: Simple Linear DGP (Test 2.1)

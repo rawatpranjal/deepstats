@@ -2,6 +2,14 @@
 
 ## 2026-01-07
 
+### SE Ratio Optimization (Phase 12)
+- **Root cause of SE ratio 1.66**: Insufficient cross-fitting folds (K=20 vs K=50)
+- **With K=50**: SE ratio drops to ~1.12-1.19 for Aggregate Lambda
+- **With N=5000, K=50**: SE ratio = **1.04** (nearly perfect!)
+- Ridge(α=0.001) gives similar results to Aggregate
+- Added `ridge_alpha` parameter to LambdaEstimator for configurable regularization
+- Updated VALIDATION_REPORT.md with Phase 12 findings
+
 ### Lambda Estimation Investigation (Phase 11)
 - **Root cause identified**: MLP Lambda estimator was overfitting, producing singular predictions
 - **Key finding**: Conditional expectation Λ(x) = E[ℓ_θθ | X=x] should average over both T=0 and T=1
