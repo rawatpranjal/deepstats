@@ -2,11 +2,22 @@
 
 ## 2026-01-07
 
+### Validation Results
+- **Comprehensive MC validation completed** - Algorithm validated for well-specified models
+- Simple Linear DGP: SE ratio 1.00-1.05, coverage 92-100% across N=500-5000 (M=50 per size)
+- Logit DGP: Coverage 95-97% with three-way splitting (M=100)
+- K≥50 folds required for stable SE estimation
+- Complex DGP fails due to model misspecification (not algorithm bug)
+- Created detailed VALIDATION_REPORT.md with all test results
+
+### Features
 - Implemented three-way splitting for nonlinear families (logit, poisson, etc.) where Λ depends on θ
 - Added nonparametric Λ(x) estimation via LambdaEstimator class (MLP or LightGBM)
 - Made treatment centering configurable (default off to match paper formula)
 - Updated variance estimation to use within-fold formula from paper
 - Added `lambda_depends_on_theta()` and `hessian_at_point()` methods to all families
+
+### Documentation
 - Added Sphinx documentation with Read the Docs support
 - Created tutorials for core models: linear, logit, poisson, tobit, negbin
 - Added comprehensive theory section with FLM framework and Structural DML algorithm
