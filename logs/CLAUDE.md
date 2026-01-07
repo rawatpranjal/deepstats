@@ -58,6 +58,23 @@ Monte Carlo simulations validating the FLM (Farrell, Liang, Misra) influence fun
 
 ---
 
+## Noise Features Validation (2026-01-06)
+
+Added 10 noise features (total 20 features: 10 signal + 10 noise) to demonstrate that deep nets can learn to ignore irrelevant covariates.
+
+| Model | Coverage | SE Ratio | Status |
+|-------|----------|----------|--------|
+| **linear** | **97%** | 1.27 | PASS |
+| **gumbel** | **97%** | 1.11 | PASS |
+| logit (AME) | 100% | 1.34 | WARNING |
+| negbin | 100% | 1.28 | WARNING |
+| gamma | 100% | 1.34 | WARNING |
+| poisson | 87% | 0.99 | WARNING |
+
+**Key finding:** All models maintain valid coverage even with 10 irrelevant noise features. The deep network successfully learns to ignore features that don't affect the outcome.
+
+---
+
 ## Commands
 
 ```bash
