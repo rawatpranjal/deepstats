@@ -54,4 +54,5 @@
 - Split Theory and Algorithm into separate top-level navigation sections
 - Updated documentation with comprehensive FLM framework and algorithm content
 - Added practical Usage Guide in Getting Started section
+- Added Validation section with Monte Carlo simulation study results
 - Set up autodoc API reference generation
