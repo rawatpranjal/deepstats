@@ -3,8 +3,8 @@
 ## 2026-01-07
 
 ### Documentation Update
-- Updated tutorials with linear validation results (M=47, N=20K): Naive 9% → IF 96% coverage
-- Updated validation page and landing page comparison tables
+- Updated tutorials with final linear validation (M=100, N=20K): Naive 8% → IF 95% coverage
+- SE ratio 0.27 (naive) vs 1.08 (IF), Corr(β)=0.953
 
 ### Comprehensive Validation Study Script
 - Added `prototypes/validation_study.py` - main example for ReadTheDocs
