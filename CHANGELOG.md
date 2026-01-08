@@ -3,8 +3,8 @@
 ## 2026-01-07
 
 ### Documentation Update
+- Added verification page comparing deepstats against original FLM2 repository
 - Updated tutorials with final linear validation (M=100, N=20K): Naive 8% → IF 95% coverage
-- SE ratio 0.27 (naive) vs 1.08 (IF), Corr(β)=0.953
 
 ### Comprehensive Validation Study Script
 - Added `prototypes/validation_study.py` - main example for ReadTheDocs

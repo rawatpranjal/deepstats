@@ -2,6 +2,14 @@
 
 Monte Carlo simulation study validating the influence function methodology across all supported model families.
 
+```{toctree}
+:hidden:
+
+verification
+```
+
+See also: [Verification Against FLM2](verification.md) for comparison with the original implementation.
+
 ---
 
 ## Simulation Setup
@@ -57,6 +65,10 @@ $$\mu^* = \mathbb{E}[\beta(X)] \approx -0.168$$
 | **Influence** | **95%** | **1.08** | 93-97% |
 
 The influence function correction is essential for valid inference with neural network estimators.
+
+![KDE comparison of Naive vs Influence estimates](../_static/linear_validation_kde.png)
+
+*Distribution of ATE estimates across 100 simulations. Both methods have similar point estimate distributions, but the naive method severely underestimates uncertainty (SE ratio 0.27), leading to 8% coverage instead of the target 95%.*
 
 ---
 
