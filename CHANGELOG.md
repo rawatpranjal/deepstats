@@ -2,6 +2,18 @@
 
 ## 2026-01-07
 
+### Documentation Update
+- Updated tutorials with linear validation results (M=47, N=20K): Naive 9% → IF 96% coverage
+- Updated validation page and landing page comparison tables
+
+### Comprehensive Validation Study Script
+- Added `prototypes/validation_study.py` - main example for ReadTheDocs
+- Compares Naive vs IF inference across linear, logit, poisson families
+- Config: N=50K, M=50, K=50, epochs=500, [64,64,64,32] architecture
+- Tracks: RMSE(μ̂), Corr(α/β), SE ratio, Coverage, training quality
+- Outputs: CSV, JSON report, PNG plots (coverage/SE comparison)
+- Uses src2's `structural_dml()` API with tqdm progress
+
 ### Data-Rich Validation (Part XV)
 - **Goal**: Achieve BOTH valid inference AND good parameter recovery
 - **Finding**: N=20000 achieves Corr(α)=0.86, Corr(β)=0.58 with Coverage 96%

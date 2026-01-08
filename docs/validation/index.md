@@ -49,13 +49,12 @@ $$\mu^* = \mathbb{E}[\beta(X)] \approx -0.168$$
 - **PASS**: Coverage 90-97%, SE Ratio 0.85-1.20
 - **WARNING**: Coverage >97% or SE Ratio >1.20 (over-conservative)
 
-### Comparison: Naive vs Influence
+### Comparison: Naive vs Influence (Linear, M=47, N=20,000)
 
-| Method | Coverage | SE Ratio | Interpretation |
-|--------|----------|----------|----------------|
-| **Naive** | ~10-30% | 0.15 | Severely undercovers |
-| **Bootstrap** | ~70-85% | 0.72 | Better but insufficient |
-| **Influence** | **~95%** | **~1.0** | Valid inference |
+| Method | Coverage | SE Ratio | Bias |
+|--------|----------|----------|------|
+| **Naive** | 9% | 0.26 | -0.015 |
+| **Influence** | **96%** | **1.03** | -0.001 |
 
 The influence function correction is essential for valid inference with neural network estimators.
 
@@ -162,7 +161,7 @@ Beyond valid inference (Coverage ≈ 95%), you may want to **recover the heterog
 | 2,000 | 96% | 0.90 | 0.62 | 0.28 | Inference only |
 | 5,000 | 95% | 0.92 | 0.74 | 0.43 | Moderate heterogeneity |
 | 10,000 | 95% | 1.22 | 0.80 | 0.49 | Good heterogeneity |
-| **20,000** | **96%** | **1.18** | **0.86** | **0.58** | **Rich heterogeneity** |
+| **20,000** | **96%** | **1.03** | **0.83** | **0.95** | **Rich heterogeneity** |
 
 ### Key Findings
 

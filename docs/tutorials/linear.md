@@ -82,19 +82,19 @@ print(f"Expected coverage: ~95%")
 
 ## Expected Results
 
-From Monte Carlo validation (M=30, N=1000, K=50 folds):
+From Monte Carlo validation (M=47, N=20,000, K=50 folds):
 
-| Method | Coverage | SE Ratio | RMSE |
+| Method | Coverage | SE Ratio | Bias |
 |--------|----------|----------|------|
-| Naive | 13% | 0.15 | 0.108 |
-| Bootstrap | 83% | 0.72 | 0.155 |
-| **Influence** | **97%** | **1.25** | 0.378 |
+| Naive | 9% | 0.26 | -0.015 |
+| **Influence** | **96%** | **1.03** | -0.001 |
+
+Parameter recovery: Corr(α)=0.83, Corr(β)=0.95, RMSE(β)=0.105
 
 ### Interpretation
 
-- **Naive**: Severely underestimates uncertainty (SE ratio 0.15 = 85% too small)
-- **Bootstrap**: Partial correction but still undercoverage
-- **Influence**: Achieves target 95% coverage with properly calibrated SE
+- **Naive**: SE ratio 0.26 indicates 4x underestimation of uncertainty
+- **Influence**: SE ratio 1.03 indicates properly calibrated standard errors
 
 ## Real-World Applications
 

@@ -49,9 +49,8 @@ print(f"Estimate: {result.mu_hat:.4f} +/- {result.se:.4f}")
 
 | Method | Coverage | SE Ratio |
 |--------|----------|----------|
-| Naive | ~10-30% | 0.15 |
-| Bootstrap | ~70-85% | 0.72 |
-| **Influence** | **~95%** | **1.0** |
+| Naive | 9% | 0.26 |
+| **Influence** | **96%** | **1.03** |
 
 ## Documentation
 
