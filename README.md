@@ -29,7 +29,7 @@ Estimate a linear demand model where Price Elasticity $\beta$ varies non-linearl
 
 ```python
 import numpy as np
-from src2 import structural_dml
+from deep_inference import structural_dml
 
 # 1. Generate synthetic data (Linear Demand with Heterogeneity)
 np.random.seed(42)

@@ -2,18 +2,15 @@
 
 ## 2026-01-08
 
-### Major Refactor: src2 as Main Package
-- **src2 is now the main package** - clean API with direct parameters
-- New API: `from src2 import structural_dml; result = structural_dml(Y, T, X, family='linear')`
-- Ported all 8 families: linear, logit, poisson, gamma, gumbel, tobit, negbin, weibull
-- Archived `src/deep_inference/` to `archive/deep_inference_v1/`
-- MC infrastructure (run_mc, metrics, logging, dgp) now in archive for reference
-- Updated pyproject.toml, README.md, CLAUDE.md for new structure
-
-### Package Rename (earlier)
-- Renamed package from `deepstats` to `deep-inference` for PyPI availability
-- Python import: `from src2 import ...` (new), `from deep_inference import ...` (archived)
+### Proper Package Structure
+- Renamed `src2/` to `src/deep_inference/` for standard Python package layout
+- **New import**: `from deep_inference import structural_dml`
 - PyPI install: `pip install deep-inference`
+
+### Major Refactor: Clean API
+- Ported all 8 families: linear, logit, poisson, gamma, gumbel, tobit, negbin, weibull
+- Archived old `src/deep_inference/` to `archive/deep_inference_v1/`
+- MC infrastructure (run_mc, metrics, logging, dgp) now in archive for reference
 
 ## 2026-01-07
 

@@ -32,7 +32,7 @@ Target: μ* = E[β(X)] with valid 95% confidence intervals.
 ## Package Structure
 
 ```
-src2/
+src/deep_inference/
 ├── __init__.py           # Main API: structural_dml()
 ├── core/
 │   ├── algorithm.py      # DML core algorithm
@@ -60,7 +60,7 @@ archive/deep_inference_v1/  # Old implementation (MC tools, DGPs, etc.)
 
 ```python
 import numpy as np
-from src2 import structural_dml
+from deep_inference import structural_dml
 
 # Generate data
 np.random.seed(42)
@@ -157,7 +157,7 @@ for sim in report["raw_data"]:
 
 ## Key Files
 
-- `src2/` - Main package (structural_dml API)
+- `src/deep_inference/` - Main package (structural_dml API)
 - `archive/deep_inference_v1/CLAUDE.md` - Detailed simulation study spec
 - `references/` - Academic papers
 - `paper/` - Our paper (LaTeX)
