@@ -7,6 +7,7 @@
 - DGP: Y = α(X) + β(X)·T + ε with heteroskedastic errors, linear α(X) and β(X)
 - Compares: (a) parameter recovery, (b) training diagnostics, (c) bias/variance, (d) coverage/SE calibration
 - Demonstrates that naive OLS under-covers (~89%) while delta-corrected OLS and NN achieve valid coverage (~95%)
+- Added math verification: delta method derivation, numerical check, independence assumption test
 
 ## 2026-01-08
 
