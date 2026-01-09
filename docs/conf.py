@@ -1,4 +1,4 @@
-"""Sphinx configuration for deepstats documentation."""
+"""Sphinx configuration for deep-inference documentation."""
 
 import os
 import sys
@@ -7,7 +7,7 @@ import sys
 sys.path.insert(0, os.path.abspath("../src"))
 
 # -- Project information -----------------------------------------------------
-project = "deepstats"
+project = "deep-inference"
 copyright = "2024, Pranjal Rawat"
 author = "Pranjal Rawat"
 version = "2.0.0"
@@ -63,10 +63,10 @@ html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_logo = "_static/logo.svg"
 html_favicon = "_static/logo.svg"
-html_title = "deepstats"
+html_title = "deep-inference"
 
 html_theme_options = {
-    "github_url": "https://github.com/rawatpranjal/deepstats",
+    "github_url": "https://github.com/rawatpranjal/deep-inference",
     "show_toc_level": 1,
     "navigation_with_keys": True,
     "show_prev_next": False,

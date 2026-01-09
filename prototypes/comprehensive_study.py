@@ -199,6 +199,11 @@ def run_study(
         print(f"Started: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*70}\n")
 
+    # Output file for incremental saves
+    import os
+    output_path = f'/Users/pranjal/deepest/results/comprehensive_{family}_N{N}_M{M}.csv'
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
     for sim in range(M):
         try:
             r = run_single_sim(N, K, family, d, seed=sim)
@@ -209,16 +214,22 @@ def run_study(
             r['d'] = d
             results.append(r)
 
-            if verbose and (sim + 1) % 10 == 0:
+            # Save incrementally after each simulation
+            pd.DataFrame(results).to_csv(output_path, index=False)
+
+            if verbose:
                 elapsed = (datetime.now() - start_time).total_seconds() / 60
                 eta = elapsed / (sim + 1) * (M - sim - 1)
+                cov = np.mean([r['covered'] for r in results]) * 100
+                corr_b = np.mean([r['corr_beta'] for r in results])
                 print(f"  Sim {sim + 1:3d}/{M} | "
                       f"Elapsed: {elapsed:.1f}m | "
                       f"ETA: {eta:.1f}m | "
-                      f"Cov: {np.mean([r['covered'] for r in results])*100:.1f}%")
+                      f"Cov: {cov:.0f}% | "
+                      f"Corr(β): {corr_b:.2f}", flush=True)
 
         except Exception as e:
-            print(f"  Sim {sim} failed: {e}")
+            print(f"  Sim {sim} failed: {e}", flush=True)
             continue
 
     df = pd.DataFrame(results)

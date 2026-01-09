@@ -91,6 +91,8 @@ From Monte Carlo validation (M=100, N=20,000, K=50 folds):
 
 Parameter recovery: Corr(α)=0.830±0.005, Corr(β)=0.953±0.004, RMSE(β)=0.105±0.004
 
+![KDE comparison of Naive vs Influence estimates](../_static/linear_validation_kde.png)
+
 ### Interpretation
 
 - **Naive**: SE ratio 0.27 indicates 4x underestimation of uncertainty

@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "generated": "2026-01-07T14:18:19.964697",
+    "framework": "FLM (Farrell-Liang-Misra)",
+    "version": "1.0"
+  },
+  "config": {
+    "N": 2000,
+    "M": 3,
+    "n_folds": 10,
+    "d": 20,
+    "epochs": 50,
+    "lr": 0.01,
+    "hidden_dims": [
+      32,
+      16
+    ],
+    "families": [
+      "linear"
+    ]
+  },
+  "results_by_family": {
+    "linear": {
+      "parameter_recovery": {
+        "rmse_alpha": 1.1226054244153403,
+        "rmse_beta": 0.7806315512055299,
+        "corr_alpha": 0.7883693836259442,
+        "corr_beta": 0.6796641741443735
+      },
+      "naive_inference": {
+        "mu_hat_mean": -0.2415125515677501,
+        "mu_hat_std": 0.027499798521620863,
+        "se_estimated": 0.023344953739972252,
+        "se_empirical": 0.027499798521620863,
+        "se_ratio": 0.8489136282805129,
+        "coverage": 0.0
+      },
+      "if_inference": {
+        "mu_hat_mean": -0.2544362028578356,
+        "mu_hat_std": 0.021356209001647013,
+        "se_estimated": 0.056288705255081034,
+        "se_empirical": 0.021356209001647013,
+        "se_ratio": 2.635706798465027,
+        "coverage": 1.0
+      },
+      "training_quality": {
+        "train_loss": 2.240782980124156,
+        "val_loss": 2.395799056688944,
+        "train_val_gap": 0.1550160765647887,
+        "best_epoch": 48.9
+      },
+      "diagnostics": {
+        "correction_ratio": 41.53563464051917,
+        "min_eigenvalue": 0.9380167722702026,
+        "pct_regularized": 0.0
+      },
+      "mu_true": -0.17924274024797346
+    }
+  }
+}
