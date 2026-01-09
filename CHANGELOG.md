@@ -2,6 +2,9 @@
 
 ## 2026-01-09
 
+### Cleanup
+- Removed VALIDATION_REPORT.md (content preserved in logs/)
+
 ### Tutorial: Linear Oracle Comparison
 - Added `tutorials/01_linear_oracle.ipynb` - validates structural_dml against OLS oracle
 - DGP: Y = α(X) + β(X)·T + ε with heteroskedastic errors, linear α(X) and β(X)
