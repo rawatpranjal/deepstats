@@ -1,4 +1,4 @@
-# deepstats
+# deep-inference
 
 # Core Rules
 
@@ -7,7 +7,7 @@
 1. **Always `git push` when done** - Push changes after completing work
 2. **Never remove content** - Content removed is content lost
    - If something seems outdated, find a new home for it
-   - Archive to `data/archive/` rather than delete
+   - Archive to `archive/` rather than delete
 3. **Update `CHANGELOG.md`** after making changes - 1-2 line summary per day
 
 ---
@@ -32,40 +32,58 @@ Target: μ* = E[β(X)] with valid 95% confidence intervals.
 ## Package Structure
 
 ```
-src/deepstats/
-├── dgp.py        # 8 DGPs (linear, gamma, poisson, logit, etc.)
-├── families.py   # 8 families with loss/residual/weight
-├── models.py     # StructuralNet, NuisanceNet, TrainingHistory
-├── inference.py  # naive, influence, bootstrap methods
-├── metrics.py    # MC metrics computation + console output
-├── logging.py    # Comprehensive JSON logging for AI analysis
-└── run_mc.py     # Monte Carlo entry point
+src2/
+├── __init__.py           # Main API: structural_dml()
+├── core/
+│   ├── algorithm.py      # DML core algorithm
+│   ├── autodiff.py       # Gradient/Hessian computation
+│   └── lambda_estimator.py
+├── families/
+│   ├── base.py           # BaseFamily protocol
+│   ├── linear.py
+│   ├── logit.py
+│   ├── poisson.py
+│   ├── gamma.py
+│   ├── gumbel.py
+│   ├── tobit.py
+│   ├── negbin.py
+│   └── weibull.py
+├── models/
+│   └── structural_net.py
+└── utils/
+    └── linalg.py
+
+archive/deep_inference_v1/  # Old implementation (MC tools, DGPs, etc.)
 ```
 
 ## Quick Start
 
 ```python
-from src.deepstats import get_dgp, get_family, influence
+import numpy as np
+from src2 import structural_dml
 
 # Generate data
-dgp = get_dgp("linear")
-data = dgp.generate(1000)
+np.random.seed(42)
+n = 1000
+X = np.random.randn(n, 5)
+T = np.random.randn(n)
+Y = X[:, 0] + 0.5 * T + np.random.randn(n)
 
 # Run influence function inference
-family = get_family("linear")
-# mu_hat, se = influence(data.X, data.T, data.Y, family, config)
+result = structural_dml(Y, T, X, family='linear', epochs=50, n_folds=50)
+print(f"Estimate: {result.mu_hat:.4f} +/- {result.se:.4f}")
+print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 ```
 
-## Monte Carlo Validation
+## Monte Carlo Tools (Archived)
 
-```bash
-# Quick test
-python -m deepstats.run_mc --M 10 --N 500 --epochs 50 --models linear
+MC validation tools are archived in `archive/deep_inference_v1/`:
+- `dgp.py` - 8 DGPs
+- `run_mc.py` - Monte Carlo entry point
+- `metrics.py` - Metrics computation
+- `logging.py` - JSON logging
 
-# Full simulation
-python -m deepstats.run_mc --M 500 --N 2000 --epochs 100 --n-folds 50 \
-  --models linear --methods naive influence --n-jobs -1
-```
+For validation studies, use scripts in `prototypes/`.
 
 ## Comprehensive Logging
 
@@ -139,11 +157,13 @@ for sim in report["raw_data"]:
 
 ## Key Files
 
-- `src/deepstats/CLAUDE.md` - Detailed simulation study spec
+- `src2/` - Main package (structural_dml API)
+- `archive/deep_inference_v1/CLAUDE.md` - Detailed simulation study spec
 - `references/` - Academic papers
 - `paper/` - Our paper (LaTeX)
 - `prototypes/` - Experiments and validation scripts
-- `archive/deepstats_v1/` - Old implementation
+- `archive/deepstats_v1/` - Older implementation (v1)
+- `archive/deep_inference_v1/` - Previous implementation (v2, MC tools)
 
 ## References
 

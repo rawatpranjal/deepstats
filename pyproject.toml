@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "deepstats"
+name = "deep-inference"
 version = "0.1.0"
 description = "Production-grade econometrics with neural networks"
 readme = "README.md"
@@ -67,24 +67,25 @@ plotting = [
     "seaborn>=0.13",
 ]
 all = [
-    "deepstats[dev,parity,docs,plotting]",
+    "deep-inference[dev,parity,docs,plotting]",
 ]
 
 [project.urls]
-Homepage = "https://github.com/rawatpranjal/deepstats"
-Repository = "https://github.com/rawatpranjal/deepstats"
-Documentation = "https://rawatpranjal.github.io/deepstats"
+Homepage = "https://github.com/rawatpranjal/deep-inference"
+Repository = "https://github.com/rawatpranjal/deep-inference"
+Documentation = "https://rawatpranjal.github.io/deep-inference"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["src2*"]
 
 [tool.setuptools.package-data]
-deepstats = ["py.typed"]
+src2 = ["py.typed"]
 
 [tool.ruff]
 line-length = 88
 target-version = "py310"
-src = ["src"]
+src = ["src2"]
 
 [tool.ruff.lint]
 select = [
@@ -102,7 +103,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["deepstats"]
+known-first-party = ["src2"]
 
 [tool.mypy]
 python_version = "3.10"
@@ -128,7 +129,7 @@ python_files = ["test_*.py"]
 addopts = "-v --tb=short"
 
 [tool.coverage.run]
-source = ["src/deepstats"]
+source = ["src2"]
 branch = true
 
 [tool.coverage.report]

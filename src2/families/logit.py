@@ -21,13 +21,27 @@ class LogitFamily(BaseFamily):
         - alpha(x): baseline log-odds
         - beta(x): treatment effect on log-odds
 
-    Target: E[beta(X)] (average treatment effect on log-odds)
+    Target options:
+        - 'beta': E[beta(X)] (average treatment effect on log-odds) [default]
+        - 'ame': E[p(1-p) * beta(X)] (average marginal effect)
 
     Note: The Hessian depends on theta through the weight p(1-p),
     so three-way splitting is required.
     """
 
     theta_dim = 2
+
+    def __init__(self, target: str = "beta"):
+        """
+        Initialize LogitFamily.
+
+        Args:
+            target: Target functional - 'beta' for log-odds effect, 'ame' for
+                    average marginal effect E[p(1-p) * beta]
+        """
+        if target not in ("beta", "ame"):
+            raise ValueError(f"target must be 'beta' or 'ame', got '{target}'")
+        self.target = target
 
     def loss(self, y: Tensor, t: Tensor, theta: Tensor) -> Tensor:
         """
@@ -153,3 +167,58 @@ class LogitFamily(BaseFamily):
         alpha = theta[:, 0]
         beta = theta[:, 1]
         return torch.sigmoid(alpha + beta * t)
+
+    def per_obs_target(self, theta: Tensor, t: Tensor) -> Tensor:
+        """
+        Per-observation target h(θ, t).
+
+        For target='beta': h(θ) = β
+        For target='ame': h(θ, t) = p(1-p) * β where p = sigmoid(α + βt)
+
+        Args:
+            theta: (n, theta_dim) parameters
+            t: (n,) treatments
+
+        Returns:
+            (n,) per-observation target values
+        """
+        if self.target == "ame":
+            alpha = theta[:, 0]
+            beta = theta[:, 1]
+            p = torch.sigmoid(alpha + beta * t)
+            p = torch.clamp(p, 1e-6, 1 - 1e-6)
+            return p * (1 - p) * beta
+        return theta[:, 1]  # default: just β
+
+    def per_obs_target_gradient(self, theta: Tensor, t: Tensor) -> Tensor:
+        """
+        Gradient of per-observation target: ∂h/∂θ.
+
+        For target='beta': ∇h = (0, 1)
+        For target='ame': ∇h = (β·w·(1-2p), w + β·w·(1-2p)·t) where w = p(1-p)
+
+        Args:
+            theta: (n, theta_dim) parameters
+            t: (n,) treatments
+
+        Returns:
+            (n, theta_dim) gradient
+        """
+        if self.target == "ame":
+            alpha = theta[:, 0]
+            beta = theta[:, 1]
+            p = torch.sigmoid(alpha + beta * t)
+            p = torch.clamp(p, 1e-6, 1 - 1e-6)
+            w = p * (1 - p)
+            dw_dz = w * (1 - 2 * p)  # derivative of w w.r.t. logit
+
+            grad_alpha = dw_dz * beta
+            grad_beta = w + dw_dz * beta * t
+
+            return torch.stack([grad_alpha, grad_beta], dim=1)
+
+        # Default: [0, 1] for each observation
+        n = theta.shape[0]
+        grad = torch.zeros(n, self.theta_dim, dtype=theta.dtype, device=theta.device)
+        grad[:, 1] = 1.0
+        return grad

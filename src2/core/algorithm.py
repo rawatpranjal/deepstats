@@ -74,7 +74,7 @@ def structural_dml_core(
         three_way: Use three-way splitting (auto-detect if None)
         gradient_fn: Optional closed-form gradient (falls back to autodiff)
         hessian_fn: Optional closed-form Hessian (falls back to autodiff)
-        per_obs_target_fn: Per-observation target h(theta_i) (default: beta_i)
+        per_obs_target_fn: Per-observation target h(theta_i, t_i) (default: beta_i)
         per_obs_target_grad_fn: Gradient of h w.r.t. theta (default: (0, 1))
         ridge: Ridge regularization for Hessian inversion
         lambda_method: Method for Lambda estimation ('mlp', 'rf', 'ridge', 'aggregate')
@@ -120,14 +120,14 @@ def structural_dml_core(
     n_regularized = 0  # Count of observations needing extra regularization
     histories = []
 
-    # Default per-obs target: h(theta) = beta
+    # Default per-obs target: h(theta, t) = beta (ignores t)
     if per_obs_target_fn is None:
-        def per_obs_target_fn(theta):
+        def per_obs_target_fn(theta, t):
             return theta[:, 1]
 
-    # Default per-obs target gradient: (0, 1)
+    # Default per-obs target gradient: (0, 1) (ignores t)
     if per_obs_target_grad_fn is None:
-        def per_obs_target_grad_fn(theta):
+        def per_obs_target_grad_fn(theta, t):
             n = theta.shape[0]
             grad = torch.zeros(n, theta_dim, dtype=theta.dtype, device=theta.device)
             grad[:, 1] = 1.0
@@ -262,9 +262,9 @@ def structural_dml_core(
         else:
             l_theta_eval = compute_gradient(loss_fn, Y_eval, T_eval, theta_eval)
 
-        # Compute per-observation target and gradient
-        h_eval = per_obs_target_fn(theta_eval)  # (n_eval,)
-        h_grad_eval = per_obs_target_grad_fn(theta_eval)  # (n_eval, d) or (d,)
+        # Compute per-observation target and gradient (pass T for T-dependent targets like AME)
+        h_eval = per_obs_target_fn(theta_eval, T_eval)  # (n_eval,)
+        h_grad_eval = per_obs_target_grad_fn(theta_eval, T_eval)  # (n_eval, d) or (d,)
 
         # Handle both per-obs and constant target gradient
         if h_grad_eval.dim() == 1:

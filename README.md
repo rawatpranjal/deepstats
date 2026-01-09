@@ -1,26 +1,26 @@
-# `deepstats`
+# `deep-inference`
 
 **Deep Learning for Individual Heterogeneity**
 
-`deepstats` is a Python package for **enriching structural economic models** with deep learning. It implements the framework developed by Farrell, Liang, and Misra (2021, 2025) to recover rich, non-linear parameter heterogeneity ($\theta(X)$) while maintaining the interpretability and validity of structural economics.
+`deep-inference` is a Python package for **enriching structural economic models** with deep learning. It implements the framework developed by Farrell, Liang, and Misra (2021, 2025) to recover rich, non-linear parameter heterogeneity ($\theta(X)$) while maintaining the interpretability and validity of structural economics.
 
 Standard deep learning minimizes prediction error, which leads to biased parameter estimates ("The Inference Trap"). This package implements **Influence Function-based Debiasing** (a form of Double Machine Learning) to provide valid confidence intervals and p-values for economic targets.
-1
+
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Why `deepstats`?
+## Why `deep-inference`?
 
 Economic structure and Machine Learning are **complements**, not substitutes.
 *   **Deep Learning** provides the capacity to learn complex, high-dimensional heterogeneity.
 *   **Structural Models** provide the constraints necessary for causal interpretation and counterfactuals.
 
-`deepstats` enforces the structural loss (e.g., Tobit likelihood) on the output of a neural network, ensuring that the estimated parameters $\alpha(X), \beta(X)$ respect the economic theory.
+`deep-inference` enforces the structural loss (e.g., Tobit likelihood) on the output of a neural network, ensuring that the estimated parameters $\alpha(X), \beta(X)$ respect the economic theory.
 
 ## Installation
 
 ```bash
-pip install deepstats
+pip install deep-inference
 ```
 
 ## Quickstart
@@ -28,31 +28,31 @@ pip install deepstats
 Estimate a linear demand model where Price Elasticity $\beta$ varies non-linearly with customer characteristics $X$.
 
 ```python
-import torch
-from deepstats import get_dgp, get_family, influence
+import numpy as np
+from src2 import structural_dml
 
 # 1. Generate synthetic data (Linear Demand with Heterogeneity)
-dgp = get_dgp("linear", seed=42)
-data = dgp.generate(n=2000)
+np.random.seed(42)
+n = 2000
+X = np.random.randn(n, 10)  # Customer characteristics
+T = np.random.randn(n)       # Treatment (e.g., price)
+beta_true = np.cos(np.pi * X[:, 0]) * (X[:, 1] > 0) + 0.5 * X[:, 2]
+Y = X[:, 0] + beta_true * T + np.random.randn(n)
+mu_true = beta_true.mean()
 
-# 2. Define the Structural Family
-# (Defines the Loss, Score, and Hessian automatically)
-family = get_family("linear")
-
-# 3. Run Inference
+# 2. Run Inference
 # The package trains the structural network, computes the influence function,
-# and aggregates results via 10-fold cross-fitting.
-result = influence(
-    X=data.X, T=data.T, Y=data.Y,
-    family=family,
-    config={
-        "hidden_dims": [128, 64, 32],
-        "epochs": 50,
-        "lr": 0.01
-    }
+# and aggregates results via cross-fitting.
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='linear',
+    hidden_dims=[128, 64, 32],
+    epochs=50,
+    lr=0.01,
+    n_folds=50,
 )
 
-print(f"Avg Elasticity (Truth): {data.mu_true:.4f}")
+print(f"Avg Elasticity (Truth): {mu_true:.4f}")
 print(f"Avg Elasticity (Est):   {result.mu_hat:.4f}")
 print(f"Standard Error:         {result.se:.4f}")
 print(f"95% CI:                 [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
@@ -64,14 +64,16 @@ The package abstracts the math of influence functions. You simply select the fam
 
 | Family | Model Structure | Use Case |
 |--------|-----------------|----------|
-| **Linear** | $Y = \alpha(X) + \beta(X)T + \varepsilon$ | Wages, Test Scores, consumption |
+| **Linear** | $Y = \alpha(X) + \beta(X)T + \varepsilon$ | Wages, Test Scores, Consumption |
 | **Logit** | $P(Y=1) = \sigma(\alpha(X) + \beta(X)T)$ | Binary Choice, Market Entry |
-| **Tobit** | $Y = \max(0, \alpha(X) + \beta(X)T + \varepsilon)$ | Labor Supply, Censored Demand |
 | **Poisson** | $Y \sim \text{Pois}(\exp(\alpha(X) + \beta(X)T))$ | Patent Counts, Doctor Visits |
-| **Gamma** | $Y \sim \text{Gamma}(k(X), \theta(X))$ | Healthcare Costs, Insurance Claims |
-| **Weibull** | $Y \sim \text{Weibull}(\dots)$ | Duration Analysis, Unemployment Spells |
+| **Gamma** | $Y \sim \text{Gamma}(k, \exp(\alpha(X) + \beta(X)T))$ | Healthcare Costs, Insurance Claims |
+| **Gumbel** | $Y \sim \text{Gumbel}(\alpha(X) + \beta(X)T, s)$ | Extreme Value Analysis |
+| **Tobit** | $Y = \max(0, \alpha(X) + \beta(X)T + \sigma\varepsilon)$ | Labor Supply, Censored Demand |
+| **NegBin** | $Y \sim \text{NegBin}(\exp(\alpha(X) + \beta(X)T), r)$ | Count Data with Overdispersion |
+| **Weibull** | $Y \sim \text{Weibull}(k, \exp(\alpha(X) + \beta(X)T))$ | Duration Analysis, Survival |
 
-*Note: For complex models like Tobit, `deepstats` automatically handles the joint estimation of structural variance $\sigma(X)$ required for consistent inference.*
+*Note: For complex models like Tobit, `deep-inference` automatically handles the joint estimation of structural variance $\sigma(X)$ required for consistent inference.*
 
 ## Methodological Details
 
@@ -90,7 +92,7 @@ Naive averaging of $\hat{\theta}(X)$ yields biased inference. We construct a Ney
 ```
 
 Where $\Lambda(x) = \mathbb{E}[\nabla^2 \ell \mid X=x]$ is the conditional Hessian.
-*   **Automatic Differentiation:** `deepstats` uses PyTorch Autograd to compute exact Jacobians and Hessians for any model family.
+*   **Automatic Differentiation:** `deep-inference` uses PyTorch Autograd to compute exact Jacobians and Hessians for any model family.
 *   **Stability:** Includes Tikhonov regularization for inverting Hessians in non-linear models (e.g., Logit/Tobit).
 
 ## Validation (Monte Carlo Results)

@@ -44,6 +44,11 @@ class BaseFamily:
 
     theta_dim: int = 2
 
+    def __init__(self, **kwargs):
+        """Base constructor - accepts and ignores kwargs for compatibility."""
+        # Subclasses can override to use kwargs like target='ame'
+        pass
+
     def loss(self, y: Tensor, t: Tensor, theta: Tensor) -> Tensor:
         """
         Compute per-observation loss.
@@ -106,28 +111,32 @@ class BaseFamily:
         """
         return theta[:, 1].mean()
 
-    def per_obs_target(self, theta: Tensor) -> Tensor:
+    def per_obs_target(self, theta: Tensor, t: Tensor) -> Tensor:
         """
-        Per-observation target h(θ) = β.
+        Per-observation target h(θ, t) = β.
 
         For H = E[β(X)] = (1/n)Σβᵢ, this returns βᵢ.
+        The t parameter enables T-dependent targets like AME.
 
         Args:
             theta: (n, theta_dim) parameters
+            t: (n,) treatments
 
         Returns:
             (n,) per-observation target values
         """
         return theta[:, 1]
 
-    def per_obs_target_gradient(self, theta: Tensor) -> Tensor:
+    def per_obs_target_gradient(self, theta: Tensor, t: Tensor) -> Tensor:
         """
         Gradient of per-observation target: ∂h/∂θ = (0, 1).
 
         For H = E[β(X)], the gradient with respect to (α, β) is (0, 1).
+        The t parameter enables T-dependent targets like AME.
 
         Args:
             theta: (n, theta_dim) parameters
+            t: (n,) treatments
 
         Returns:
             (n, theta_dim) or (theta_dim,) gradient

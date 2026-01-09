@@ -35,6 +35,7 @@ def structural_dml(
     T: np.ndarray,
     X: np.ndarray,
     family: Optional[str] = None,
+    target: Optional[str] = None,
     loss_fn: Optional[Callable] = None,
     target_fn: Optional[Callable] = None,
     theta_dim: Optional[int] = None,
@@ -75,7 +76,18 @@ def structural_dml(
         Y: (n,) outcome vector
         T: (n,) treatment vector
         X: (n, d) covariate matrix
-        family: Pre-built family name ('linear', 'logit', etc.)
+        family: Pre-built family name. Available families:
+                - 'linear': Y = alpha + beta*T + eps
+                - 'logit': P(Y=1) = sigmoid(alpha + beta*T)
+                - 'poisson': Y ~ Poisson(exp(alpha + beta*T))
+                - 'gamma': Y ~ Gamma(shape, exp(alpha + beta*T))
+                - 'gumbel': Y ~ Gumbel(alpha + beta*T, scale)
+                - 'tobit': Y = max(0, alpha + beta*T + sigma*eps)
+                - 'negbin': Y ~ NegBin(exp(alpha + beta*T), r)
+                - 'weibull': Y ~ Weibull(shape, exp(alpha + beta*T))
+        target: Target functional for inference (family-specific):
+                - logit: 'beta' (log-odds, default) or 'ame' (average marginal effect)
+                - tobit: 'latent' (effect on Y*, default) or 'observed' (effect on E[Y])
         loss_fn: Custom loss function (y, t, theta) -> (n,) losses
         target_fn: Custom target function (x, theta) -> scalar
         theta_dim: Dimension of parameter vector (required if custom loss)
@@ -141,19 +153,30 @@ def structural_dml(
 
     # Get family or use custom functions
     if family is not None:
-        fam = get_family(family)
+        # Build family kwargs (e.g., target='ame' for logit)
+        family_kwargs = {}
+        if target is not None:
+            family_kwargs['target'] = target
+
+        fam = get_family(family, **family_kwargs)
         loss_fn = fam.loss
         theta_dim = fam.theta_dim
         three_way = fam.hessian_depends_on_theta()
 
         # Use closed-form functions if available
-        gradient_fn = fam.gradient if hasattr(fam, 'gradient') and fam.gradient(
-            Tensor([0.0]), Tensor([0.0]), Tensor([[0.0, 0.0]])
-        ) is not None else None
+        # Create test inputs with correct theta dimension
+        test_theta = Tensor([[0.0] * theta_dim])
+        try:
+            grad_result = fam.gradient(Tensor([0.0]), Tensor([0.0]), test_theta)
+            gradient_fn = fam.gradient if grad_result is not None else None
+        except Exception:
+            gradient_fn = None
 
-        hessian_fn = fam.hessian if hasattr(fam, 'hessian') and fam.hessian(
-            Tensor([0.0]), Tensor([0.0]), Tensor([[0.0, 0.0]])
-        ) is not None else None
+        try:
+            hess_result = fam.hessian(Tensor([0.0]), Tensor([0.0]), test_theta)
+            hessian_fn = fam.hessian if hess_result is not None else None
+        except Exception:
+            hessian_fn = None
 
         # Use family's target functions
         target_fn = fam.default_target
@@ -195,7 +218,17 @@ def structural_dml(
 
 # Re-export key classes
 from .core import DMLResult, compute_coverage, compute_se_ratio
-from .families import LinearFamily, LogitFamily, BaseFamily
+from .families import (
+    LinearFamily,
+    LogitFamily,
+    PoissonFamily,
+    GammaFamily,
+    GumbelFamily,
+    TobitFamily,
+    NegBinFamily,
+    WeibullFamily,
+    BaseFamily,
+)
 
 __all__ = [
     # Main API
@@ -205,6 +238,12 @@ __all__ = [
     # Families
     'LinearFamily',
     'LogitFamily',
+    'PoissonFamily',
+    'GammaFamily',
+    'GumbelFamily',
+    'TobitFamily',
+    'NegBinFamily',
+    'WeibullFamily',
     'BaseFamily',
     'get_family',
     'FAMILY_REGISTRY',
