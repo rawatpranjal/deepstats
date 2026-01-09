@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-01-09
+
+### Tutorial: Linear Oracle Comparison
+- Added `tutorials/01_linear_oracle.ipynb` - validates structural_dml against OLS oracle
+- DGP: Y = α(X) + β(X)·T + ε with heteroskedastic errors, linear α(X) and β(X)
+- Compares: (a) parameter recovery, (b) training diagnostics, (c) bias/variance, (d) coverage/SE calibration
+- Demonstrates that naive OLS under-covers (~89%) while delta-corrected OLS and NN achieve valid coverage (~95%)
+
 ## 2026-01-08
 
 ### Proper Package Structure
