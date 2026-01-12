@@ -42,38 +42,40 @@ Note: The weight $W = p(1-p)$ varies across observations based on predicted prob
 ## Complete Example
 
 ```python
-from deepstats import get_dgp, get_family, naive, influence
+import numpy as np
+from deep_inference import structural_dml
+from scipy.special import expit  # sigmoid
 
 # Generate binary outcome data
-dgp = get_dgp("logit", d=10, seed=42)
-data = dgp.generate(n=2000)
+np.random.seed(42)
+n = 2000
+X = np.random.randn(n, 10)
+T = np.random.randn(n)
 
-print(f"True mu* = {data.mu_true:.6f}")
-print(f"Outcome mean = {data.Y.mean():.3f}")
+# True structural functions
+alpha_true = 0.5 + 0.3 * X[:, 0]
+beta_true = -0.5 + 0.5 * X[:, 0]
+p_true = expit(alpha_true + beta_true * T)
+Y = np.random.binomial(1, p_true).astype(float)
+mu_true = beta_true.mean()
 
-# Get family
-family = get_family("logit")
-
-# Configuration
-config = {
-    "hidden_dims": [64, 32],
-    "epochs": 100,
-    "n_folds": 50,
-    "lr": 0.01
-}
+print(f"True mu* = {mu_true:.6f}")
+print(f"Outcome mean = {Y.mean():.3f}")
 
 # Run inference
-naive_result = naive(data.X, data.T, data.Y, family, config)
-if_result = influence(data.X, data.T, data.Y, family, config)
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='logit',
+    hidden_dims=[64, 32],
+    epochs=100,
+    n_folds=50,
+    lr=0.01
+)
 
-print("\n--- Naive Method ---")
-print(f"Estimate: {naive_result.mu_hat:.4f}")
-print(f"SE:       {naive_result.se:.4f}")
-
-print("\n--- Influence Function ---")
-print(f"Estimate: {if_result.mu_hat:.4f}")
-print(f"SE:       {if_result.se:.4f}")
-print(f"95% CI:   [{if_result.ci_lower:.4f}, {if_result.ci_upper:.4f}]")
+print("\n--- Results ---")
+print(f"Estimate: {result.mu_hat:.4f}")
+print(f"SE:       {result.se:.4f}")
+print(f"95% CI:   [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 ```
 
 ## Expected Results
@@ -82,8 +84,8 @@ From Monte Carlo validation:
 
 | Method | Coverage | SE Ratio | RMSE |
 |--------|----------|----------|------|
-| Naive | 3% | 0.03 | 0.108 |
-| **Influence** | **90%** | **0.93** | 0.054 |
+| Naive | ~3% | ~0.03 | 0.108 |
+| **Influence** | **~90%** | **~0.93** | 0.054 |
 
 ### Interpretation
 
@@ -97,14 +99,21 @@ The logit family supports multiple target estimands:
 ### Log-Odds Ratio (Default)
 
 ```python
-family = get_family("logit", target="beta")
+# Default target is beta (log-odds)
+result = structural_dml(Y, T, X, family='logit')
 # mu* = E[beta(X)] = average log-odds ratio
 ```
 
 ### Average Marginal Effect (AME)
 
+For AME, use the LogitFamily class directly:
+
 ```python
-family = get_family("logit", target="ame")
+from deep_inference import LogitFamily, structural_dml
+
+# Create family with AME target
+family = LogitFamily(target='ame')
+result = structural_dml(Y, T, X, family=family)
 # mu* = E[p(1-p) * beta(X)] = effect on probability scale
 ```
 
@@ -119,6 +128,8 @@ The AME tells you the average effect on the probability of the outcome, accounti
 # T = loan amount
 # X = (income, credit score, employment, ...)
 # Target: E[beta(X)] = average effect of loan size on default risk
+
+result = structural_dml(Y, T, X, family='logit')
 ```
 
 ### Market Entry
@@ -128,6 +139,8 @@ The AME tells you the average effect on the probability of the outcome, accounti
 # T = competitor count
 # X = (market size, firm characteristics, ...)
 # Target: E[beta(X)] = average effect of competition on entry
+
+result = structural_dml(Y, T, X, family='logit')
 ```
 
 ### Treatment Uptake
@@ -137,6 +150,8 @@ The AME tells you the average effect on the probability of the outcome, accounti
 # T = out-of-pocket cost
 # X = (age, insurance status, condition severity, ...)
 # Target: E[beta(X)] = average price sensitivity
+
+result = structural_dml(Y, T, X, family='logit')
 ```
 
 ## Numerical Considerations
@@ -151,8 +166,9 @@ $$\Lambda^{-1} = (\Lambda + \lambda I)^{-1}$$
 
 ```python
 # After running inference, check:
-# - min(Lambda eigenvalue) > 1e-4 for stability
-# - R_corr in [0.1, 1.0] for reasonable correction magnitude
+diagnostics = result.diagnostics
+print(f"Min lambda eigenvalue: {diagnostics.get('min_lambda_eigenvalue', 'N/A')}")
+# Target: min(lambda) > 1e-4 for stability
 ```
 
 ## Key Takeaways

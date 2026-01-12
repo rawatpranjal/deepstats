@@ -1,120 +1,89 @@
-# DGP Module
+# DGP Module (Archived)
 
 Data Generating Processes for Monte Carlo simulation.
 
-## Factory Function
+**Note:** The DGP module has been archived to `archive/deep_inference_v1/`. For Monte Carlo validation, see the Jupyter notebooks in `tutorials/`.
 
-```{eval-rst}
-.. autofunction:: deepstats.get_dgp
-```
+## Creating Your Own DGP
 
-## Available DGPs
-
-```{eval-rst}
-.. autodata:: deepstats.DGPS
-```
-
-## Base Class
-
-```{eval-rst}
-.. autoclass:: deepstats.dgp.BaseDGP
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
-
-## DGP Classes
-
-### LinearDGP
-
-```{eval-rst}
-.. autoclass:: deepstats.dgp.LinearDGP
-   :members:
-   :show-inheritance:
-```
-
-### LogitDGP
-
-```{eval-rst}
-.. autoclass:: deepstats.dgp.LogitDGP
-   :members:
-   :show-inheritance:
-```
-
-### PoissonDGP
-
-```{eval-rst}
-.. autoclass:: deepstats.dgp.PoissonDGP
-   :members:
-   :show-inheritance:
-```
-
-### TobitDGP
-
-```{eval-rst}
-.. autoclass:: deepstats.dgp.TobitDGP
-   :members:
-   :show-inheritance:
-```
-
-### NegBinDGP
-
-```{eval-rst}
-.. autoclass:: deepstats.dgp.NegBinDGP
-   :members:
-   :show-inheritance:
-```
-
-### GammaDGP
-
-```{eval-rst}
-.. autoclass:: deepstats.dgp.GammaDGP
-   :members:
-   :show-inheritance:
-```
-
-### GumbelDGP
-
-```{eval-rst}
-.. autoclass:: deepstats.dgp.GumbelDGP
-   :members:
-   :show-inheritance:
-```
-
-### WeibullDGP
-
-```{eval-rst}
-.. autoclass:: deepstats.dgp.WeibullDGP
-   :members:
-   :show-inheritance:
-```
-
-## Usage Example
+For simulation studies, create your own DGP in Python:
 
 ```python
-from deepstats import get_dgp
+import numpy as np
+from scipy.special import expit  # sigmoid
 
-# Create a DGP
-dgp = get_dgp("linear", d=10, seed=42)
+def generate_linear_dgp(n, seed=None):
+    """Generate data from a linear DGP."""
+    if seed is not None:
+        np.random.seed(seed)
 
-# Generate data
-data = dgp.generate(n=1000)
+    # Covariates
+    X = np.random.randn(n, 10)
+    T = np.random.randn(n)
 
-# Access generated data
-X = data.X      # Covariates (N x d)
-T = data.T      # Treatment (N,)
-Y = data.Y      # Outcome (N,)
-mu_true = data.mu_true  # True average effect
+    # True structural functions
+    alpha_true = 1.0 + 0.5 * X[:, 0]
+    beta_true = 0.5 + 0.3 * X[:, 0]
 
-# Verify ground truth
-dgp.verify_ground_truth(n_mc=100000)
+    # Outcome
+    Y = alpha_true + beta_true * T + np.random.randn(n)
+
+    return {
+        'Y': Y,
+        'T': T,
+        'X': X,
+        'mu_true': beta_true.mean()
+    }
+
+def generate_logit_dgp(n, seed=None):
+    """Generate data from a logit DGP."""
+    if seed is not None:
+        np.random.seed(seed)
+
+    # Covariates
+    X = np.random.randn(n, 10)
+    T = np.random.randn(n)
+
+    # True structural functions
+    alpha_true = 0.5 + 0.3 * X[:, 0]
+    beta_true = -0.5 + 0.5 * X[:, 0]
+
+    # Probability and outcome
+    p = expit(alpha_true + beta_true * T)
+    Y = np.random.binomial(1, p).astype(float)
+
+    return {
+        'Y': Y,
+        'T': T,
+        'X': X,
+        'mu_true': beta_true.mean()
+    }
 ```
 
-## Common Parameters
+## Usage
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `d` | int | Number of signal covariates (default: 10) |
-| `n_noise` | int | Number of noise covariates (default: 10) |
-| `seed` | int | Random seed for reproducibility |
-| `sigma` | float | Error standard deviation (model-specific) |
+```python
+from deep_inference import structural_dml
+
+# Generate data
+data = generate_linear_dgp(n=2000, seed=42)
+
+# Run inference
+result = structural_dml(
+    Y=data['Y'],
+    T=data['T'],
+    X=data['X'],
+    family='linear'
+)
+
+# Compare to truth
+print(f"True: {data['mu_true']:.4f}")
+print(f"Est:  {result.mu_hat:.4f}")
+```
+
+## Example DGPs in Tutorials
+
+See the Jupyter notebooks for complete examples:
+
+- `tutorials/01_linear_oracle.ipynb` - Linear DGP with OLS oracle
+- `tutorials/02_logit_oracle.ipynb` - Logit DGP with logistic regression oracle

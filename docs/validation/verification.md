@@ -1,6 +1,6 @@
 # Verification Against FLM2
 
-This page documents how `deepstats` validates against the original implementation by Farrell, Liang, and Misra.
+This page documents how `deep-inference` validates against the original implementation by Farrell, Liang, and Misra.
 
 ---
 
@@ -16,8 +16,8 @@ The FLM2 repository contains replication code for:
 
 ## Implementation Comparison
 
-| Component | FLM2 (R) | deepstats (Python) |
-|-----------|----------|-------------------|
+| Component | FLM2 (R) | deep-inference (Python) |
+|-----------|----------|-------------------------|
 | Framework | R + PyTorch via reticulate | PyTorch native |
 | Cross-fitting folds | K=50 | K=50 |
 | Lambda regularization | λ=1e-8 | λ=1e-8 |
@@ -42,8 +42,8 @@ Where:
 
 ### Monte Carlo Study (M=100, N=20,000, K=50)
 
-| Metric | FLM Target | deepstats | Status |
-|--------|------------|-----------|--------|
+| Metric | FLM Target | deep-inference | Status |
+|--------|------------|----------------|--------|
 | Coverage | 93-97% | 95% | PASS |
 | SE Ratio | 0.9-1.2 | 1.08 | PASS |
 | Bias | ~0 | -0.001 | PASS |

@@ -22,9 +22,9 @@ The log-link ensures $\lambda > 0$.
 
 ### Estimand
 
-$$\mu^* = E[0.3 \cdot \beta(X)]$$
+$$\mu^* = E[\beta(X)]$$
 
-Note: The DGP scales $\beta$ by 0.3 to keep counts in a reasonable range.
+The average treatment effect on the log-rate.
 
 ### Loss Function
 
@@ -45,39 +45,40 @@ Note: Weight $W = \lambda$ means high-count observations get more weight.
 ## Complete Example
 
 ```python
-from deepstats import get_dgp, get_family, naive, influence
+import numpy as np
+from deep_inference import structural_dml
 
 # Generate count data
-dgp = get_dgp("poisson", d=10, seed=42)
-data = dgp.generate(n=2000)
+np.random.seed(42)
+n = 2000
+X = np.random.randn(n, 10)
+T = np.random.randn(n)
 
-print(f"True mu* = {data.mu_true:.6f}")
-print(f"Mean count = {data.Y.mean():.2f}")
-print(f"Max count = {data.Y.max()}")
+# True structural functions
+alpha_true = 1.0 + 0.2 * X[:, 0]
+beta_true = 0.3 + 0.1 * X[:, 0]
+lam = np.exp(alpha_true + beta_true * T)
+Y = np.random.poisson(lam).astype(float)
+mu_true = beta_true.mean()
 
-# Get family
-family = get_family("poisson")
-
-# Configuration
-config = {
-    "hidden_dims": [64, 32],
-    "epochs": 100,
-    "n_folds": 50,
-    "lr": 0.01
-}
+print(f"True mu* = {mu_true:.6f}")
+print(f"Mean count = {Y.mean():.2f}")
+print(f"Max count = {Y.max()}")
 
 # Run inference
-naive_result = naive(data.X, data.T, data.Y, family, config)
-if_result = influence(data.X, data.T, data.Y, family, config)
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='poisson',
+    hidden_dims=[64, 32],
+    epochs=100,
+    n_folds=50,
+    lr=0.01
+)
 
-print("\n--- Naive Method ---")
-print(f"Estimate: {naive_result.mu_hat:.4f}")
-print(f"SE:       {naive_result.se:.4f}")
-
-print("\n--- Influence Function ---")
-print(f"Estimate: {if_result.mu_hat:.4f}")
-print(f"SE:       {if_result.se:.4f}")
-print(f"95% CI:   [{if_result.ci_lower:.4f}, {if_result.ci_upper:.4f}]")
+print("\n--- Results ---")
+print(f"Estimate: {result.mu_hat:.4f}")
+print(f"SE:       {result.se:.4f}")
+print(f"95% CI:   [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 ```
 
 ## Interpreting Coefficients
@@ -101,6 +102,8 @@ If $\hat{\mu} = 0.05$, then on average a 1-unit increase in treatment increases 
 # T = R&D spending (log)
 # X = (firm size, industry, prior patents, ...)
 # Target: E[beta(X)] = average R&D elasticity of patenting
+
+result = structural_dml(Y, T, X, family='poisson')
 ```
 
 ### Doctor Visits
@@ -110,6 +113,8 @@ If $\hat{\mu} = 0.05$, then on average a 1-unit increase in treatment increases 
 # T = insurance generosity
 # X = (age, health status, income, ...)
 # Target: E[beta(X)] = average effect of insurance on utilization
+
+result = structural_dml(Y, T, X, family='poisson')
 ```
 
 ### Traffic Accidents
@@ -119,6 +124,8 @@ If $\hat{\mu} = 0.05$, then on average a 1-unit increase in treatment increases 
 # T = speed limit
 # X = (traffic volume, weather, road design, ...)
 # Target: E[beta(X)] = average effect of speed on accidents
+
+result = structural_dml(Y, T, X, family='poisson')
 ```
 
 ## Poisson vs Negative Binomial
@@ -127,12 +134,12 @@ If your count data shows **overdispersion** (variance > mean), consider the Nega
 
 ```python
 # Check for overdispersion
-print(f"Mean: {data.Y.mean():.2f}")
-print(f"Variance: {data.Y.var():.2f}")
+print(f"Mean: {Y.mean():.2f}")
+print(f"Variance: {Y.var():.2f}")
 
-if data.Y.var() > 1.5 * data.Y.mean():
+if Y.var() > 1.5 * Y.mean():
     print("Consider using NegBin model")
-    family = get_family("negbin")
+    result = structural_dml(Y, T, X, family='negbin')
 ```
 
 ## Key Takeaways
@@ -140,4 +147,4 @@ if data.Y.var() > 1.5 * data.Y.mean():
 1. **Log-link interpretation**: Coefficients are semi-elasticities
 2. **Weight = lambda**: High counts get more influence
 3. **Check for overdispersion**: Use NegBin if variance >> mean
-4. **Scale factor**: DGP uses 0.3 scaling for reasonable count ranges
+4. **Count data is common**: Many economic outcomes are counts

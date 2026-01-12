@@ -1,106 +1,140 @@
 # Inference Module
 
-Inference methods for structural estimation.
+The main inference function for structural estimation.
 
-## Main Functions
+## Main Function
 
-### naive
+### structural_dml
 
-```{eval-rst}
-.. autofunction:: deepstats.naive
-```
+```python
+from deep_inference import structural_dml
 
-### influence
-
-```{eval-rst}
-.. autofunction:: deepstats.influence
-```
-
-### bootstrap
-
-```{eval-rst}
-.. autofunction:: deepstats.bootstrap
-```
-
-## Available Methods
-
-```{eval-rst}
-.. autodata:: deepstats.METHODS
+result = structural_dml(
+    Y,                      # Outcome variable (n,) array-like
+    T,                      # Treatment variable (n,) array-like
+    X,                      # Covariates (n, d) array-like
+    family='linear',        # Family name or instance
+    hidden_dims=[64, 32],   # Network architecture
+    epochs=100,             # Training epochs
+    n_folds=50,             # Cross-fitting folds
+    lr=0.01,               # Learning rate
+    batch_size=64,         # Mini-batch size
+    weight_decay=1e-4,     # L2 regularization
+    verbose=False          # Print progress
+)
 ```
 
 ## Usage Example
 
 ```python
-from deepstats import get_dgp, get_family, naive, influence, bootstrap
+import numpy as np
+from deep_inference import structural_dml
 
-# Generate data
-dgp = get_dgp("linear", seed=42)
-data = dgp.generate(n=2000)
+# Prepare data
+np.random.seed(42)
+n = 2000
+X = np.random.randn(n, 10)
+T = np.random.randn(n)
+Y = X[:, 0] + 0.5 * T + np.random.randn(n)
 
-# Get family
-family = get_family("linear")
+# Run inference
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='linear',
+    hidden_dims=[64, 32],
+    epochs=100,
+    n_folds=50
+)
 
-# Configuration
-config = {
-    "hidden_dims": [64, 32],
-    "epochs": 100,
-    "n_folds": 50,
-    "lr": 0.01
-}
-
-# Run different inference methods
-naive_result = naive(data.X, data.T, data.Y, family, config)
-if_result = influence(data.X, data.T, data.Y, family, config)
-boot_result = bootstrap(data.X, data.T, data.Y, family, config)
-
-# Compare results
-print(f"True:      {data.mu_true:.4f}")
-print(f"Naive:     {naive_result.mu_hat:.4f} +/- {naive_result.se:.4f}")
-print(f"Influence: {if_result.mu_hat:.4f} +/- {if_result.se:.4f}")
-print(f"Bootstrap: {boot_result.mu_hat:.4f} +/- {boot_result.se:.4f}")
+# Access results
+print(f"Estimate: {result.mu_hat:.4f}")
+print(f"SE: {result.se:.4f}")
+print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
+print(f"Naive: {result.mu_naive:.4f}")
 ```
 
-## Result Object
+## DMLResult Object
 
-All inference functions return a result object with:
+The result object contains:
 
-| Attribute | Description |
-|-----------|-------------|
-| `mu_hat` | Point estimate |
-| `se` | Standard error |
-| `ci_lower` | Lower bound of 95% CI |
-| `ci_upper` | Upper bound of 95% CI |
-| `psi` | Influence scores (influence method only) |
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `mu_hat` | float | Debiased point estimate of E[beta(X)] |
+| `mu_naive` | float | Naive (biased) estimate |
+| `se` | float | Standard error |
+| `ci_lower` | float | Lower bound of 95% CI |
+| `ci_upper` | float | Upper bound of 95% CI |
+| `theta_hat` | ndarray | Estimated parameters (n, theta_dim) |
+| `psi` | ndarray | Influence scores (n,) |
+| `diagnostics` | dict | Training diagnostics |
+
+### Diagnostics Dictionary
+
+```python
+diagnostics = result.diagnostics
+print(diagnostics.get('min_lambda_eigenvalue'))  # Hessian stability
+print(diagnostics.get('correction_ratio'))       # IF correction magnitude
+print(diagnostics.get('pct_regularized'))        # % observations regularized
+```
 
 ## Configuration Options
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `hidden_dims` | `[64, 32]` | Network architecture |
+| `hidden_dims` | `[64, 32]` | Hidden layer sizes |
 | `epochs` | `100` | Training epochs |
-| `n_folds` | `50` | Cross-fitting folds (influence only) |
+| `n_folds` | `50` | Cross-fitting folds |
 | `lr` | `0.01` | Learning rate |
 | `batch_size` | `64` | Mini-batch size |
 | `weight_decay` | `1e-4` | L2 regularization |
-| `n_bootstrap` | `100` | Bootstrap replicates (bootstrap only) |
+| `verbose` | `False` | Print progress |
 
-## Method Comparison
+### Architecture Guidelines
 
-| Method | Coverage | SE Calibration | Speed |
-|--------|----------|----------------|-------|
-| Naive | ~10-30% | Underestimates | Fast |
-| Bootstrap | ~70-85% | Partial | Slow |
-| **Influence** | **~95%** | **Correct** | Medium |
+| Sample Size | Recommended Architecture |
+|-------------|-------------------------|
+| n < 1,000 | `[32, 16]` |
+| 1,000 < n < 10,000 | `[64, 32]` |
+| 10,000 < n < 100,000 | `[128, 64, 32]` |
+| n > 100,000 | `[256, 128, 64]` |
 
-## Cross-Fitting Details
+### Fold Selection
 
-The `influence` function uses K-fold cross-fitting:
+| Use Case | Recommended K |
+|----------|--------------|
+| Quick exploration | 10-20 |
+| Final results | 50 |
+| Very large data | 20-50 |
+
+## Cross-Fitting Algorithm
+
+The `structural_dml` function uses K-fold cross-fitting:
 
 1. Split data into K folds
 2. For each fold k:
-   - Train on all other folds
+   - Train structural network on all other folds
    - Compute influence scores on fold k
 3. Aggregate all influence scores
-4. Compute mean and SE
+4. Compute: `mu_hat = mean(psi)`, `se = std(psi) / sqrt(n)`
 
 This prevents overfitting bias in the influence function estimates.
+
+## Comparing Naive vs Debiased
+
+```python
+result = structural_dml(Y, T, X, family='linear')
+
+print(f"Naive estimate:    {result.mu_naive:.4f}")
+print(f"Debiased estimate: {result.mu_hat:.4f}")
+print(f"Bias correction:   {result.mu_hat - result.mu_naive:.4f}")
+
+# The naive estimate underestimates uncertainty
+# The debiased estimate has valid 95% coverage
+```
+
+## Expected Coverage
+
+| Method | Coverage | SE Calibration |
+|--------|----------|----------------|
+| Naive | ~10-30% | Underestimates |
+| **Influence** | **~95%** | **Correct** |

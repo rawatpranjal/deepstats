@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-01-12
+
+### Tutorial: Logit Oracle Comparison
+- Added `tutorials/02_logit_oracle.ipynb` - validates structural_dml against logistic regression oracle
+- DGP: P(Y=1) = sigmoid(α(X) + β(X)·T) with heterogeneous parameters
+- Compares: naive vs delta-corrected oracle, neural network with influence functions
+- Monte Carlo validation: M=100, N=1000
+
+### Documentation Alignment
+- Updated all 21 docs files from `deepstats` to `deep_inference` API
+- All code examples now use `from deep_inference import structural_dml`
+- Updated validation docs with Python-based MC examples (archived command-line tools)
+
 ## 2026-01-09
 
 ### Cleanup

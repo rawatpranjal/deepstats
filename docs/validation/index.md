@@ -145,20 +145,51 @@ Without the influence function correction:
 
 ## Running Your Own Validation
 
-```bash
-# Quick test (M=10, ~5 minutes)
-python -m deepstats.run_mc --M 10 --N 2000 --epochs 50 --models linear
+Use Python scripts or Jupyter notebooks for Monte Carlo validation:
 
-# Full validation (M=30, ~30 minutes)
-python -m deepstats.run_mc --M 30 --N 10000 --epochs 50 --n-folds 20 \
-  --models linear logit poisson --methods naive influence
+```python
+import numpy as np
+from deep_inference import structural_dml
 
-# With logging
-python -m deepstats.run_mc --M 30 --N 10000 --models linear \
-  --log-dir logs/my_experiment
+# Monte Carlo validation
+M = 30  # simulations
+N = 2000  # sample size
+MU_TRUE = 0.5  # known ground truth
+
+results = []
+for m in range(M):
+    np.random.seed(m)
+
+    # Generate data
+    X = np.random.randn(N, 10)
+    T = np.random.randn(N)
+    Y = X[:, 0] + MU_TRUE * T + np.random.randn(N)
+
+    # Run inference
+    result = structural_dml(
+        Y=Y, T=T, X=X,
+        family='linear',
+        epochs=50,
+        n_folds=50,
+        verbose=False
+    )
+
+    covered = result.ci_lower <= MU_TRUE <= result.ci_upper
+    results.append({
+        'mu_hat': result.mu_hat,
+        'se': result.se,
+        'covered': covered
+    })
+
+# Compute metrics
+coverage = np.mean([r['covered'] for r in results])
+se_ratio = np.mean([r['se'] for r in results]) / np.std([r['mu_hat'] for r in results])
+
+print(f"Coverage: {coverage:.1%}")  # Target: 93-97%
+print(f"SE Ratio: {se_ratio:.2f}")  # Target: 0.9-1.2
 ```
 
-Results are saved to JSON logs with full metrics and raw simulation data.
+See `tutorials/01_linear_oracle.ipynb` and `tutorials/02_logit_oracle.ipynb` for complete validation examples.
 
 ---
 

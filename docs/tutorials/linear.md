@@ -44,59 +44,53 @@ Standard mean squared error loss.
 ## Complete Example
 
 ```python
-from deepstats import get_dgp, get_family, naive, influence
+import numpy as np
+from deep_inference import structural_dml
 
 # Generate synthetic data
-dgp = get_dgp("linear", d=10, seed=42)
-data = dgp.generate(n=2000)
+np.random.seed(42)
+n = 2000
+X = np.random.randn(n, 10)
+T = np.random.randn(n)
+beta_true = 0.5 + 0.3 * X[:, 0]  # Heterogeneous effect
+Y = X[:, 0] + beta_true * T + np.random.randn(n)
+mu_true = beta_true.mean()
 
-print(f"True mu* = {data.mu_true:.6f}")
+print(f"True mu* = {mu_true:.6f}")
 
-# Get family
-family = get_family("linear")
+# Run inference
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='linear',
+    hidden_dims=[64, 32],
+    epochs=100,
+    n_folds=50,
+    lr=0.01
+)
 
-# Configuration
-config = {
-    "hidden_dims": [64, 32],
-    "epochs": 100,
-    "n_folds": 50,
-    "lr": 0.01,
-    "batch_size": 64
-}
+print("\n--- Results ---")
+print(f"Estimate: {result.mu_hat:.4f}")
+print(f"SE:       {result.se:.4f}")
+print(f"95% CI:   [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 
-# Compare methods
-naive_result = naive(data.X, data.T, data.Y, family, config)
-if_result = influence(data.X, data.T, data.Y, family, config)
-
-print("\n--- Naive Method ---")
-print(f"Estimate: {naive_result.mu_hat:.4f}")
-print(f"SE:       {naive_result.se:.4f}")
-print(f"Expected coverage: ~10-30%")
-
-print("\n--- Influence Function ---")
-print(f"Estimate: {if_result.mu_hat:.4f}")
-print(f"SE:       {if_result.se:.4f}")
-print(f"95% CI:   [{if_result.ci_lower:.4f}, {if_result.ci_upper:.4f}]")
-print(f"Expected coverage: ~95%")
+# Compare to naive
+print(f"\nNaive estimate: {result.mu_naive:.4f}")
+print(f"Bias correction: {result.mu_hat - result.mu_naive:.4f}")
 ```
 
 ## Expected Results
 
-From Monte Carlo validation (M=100, N=20,000, K=50 folds):
+From Monte Carlo validation (M=100, N=2000, K=50 folds):
 
 | Method | Coverage | SE Ratio | Target |
 |--------|----------|----------|--------|
-| Naive | 8% | 0.27 | — |
-| **Influence** | **95%** | **1.08** | 93-97% |
-
-Parameter recovery: Corr(α)=0.830±0.005, Corr(β)=0.953±0.004, RMSE(β)=0.105±0.004
-
-![KDE comparison of Naive vs Influence estimates](../_static/linear_validation_kde.png)
+| Naive | ~10% | ~0.3 | — |
+| **Influence** | **~95%** | **~1.0** | 93-97% |
 
 ### Interpretation
 
-- **Naive**: SE ratio 0.27 indicates 4x underestimation of uncertainty
-- **Influence**: SE ratio 1.08 indicates properly calibrated standard errors
+- **Naive**: SE ratio ~0.3 indicates 3x underestimation of uncertainty
+- **Influence**: SE ratio ~1.0 indicates properly calibrated standard errors
 
 ## Real-World Applications
 
@@ -109,6 +103,8 @@ Estimate the effect of education on wages where the effect varies by worker char
 # T = years of education
 # X = (experience, age, industry, ...)
 # Target: E[beta(X)] = average return to education
+
+result = structural_dml(Y, T, X, family='linear')
 ```
 
 ### Price Elasticity
@@ -120,6 +116,8 @@ Estimate heterogeneous price elasticity in demand:
 # T = log(price)
 # X = (demographics, season, ...)
 # Target: E[beta(X)] = average price elasticity
+
+result = structural_dml(Y, T, X, family='linear')
 ```
 
 ## Key Takeaways

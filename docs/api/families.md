@@ -4,136 +4,163 @@ Statistical families for structural estimation.
 
 ## Factory Function
 
-```{eval-rst}
-.. autofunction:: deepstats.get_family
+```python
+from deep_inference import get_family
+
+# Get a family by name
+family = get_family("linear")
+family = get_family("logit")
 ```
 
 ## Available Families
 
-```{eval-rst}
-.. autodata:: deepstats.FAMILIES
+```python
+from deep_inference import FAMILY_REGISTRY
+print(list(FAMILY_REGISTRY.keys()))
+# ['linear', 'logit', 'poisson', 'tobit', 'negbin', 'gamma', 'gumbel', 'weibull']
 ```
 
 ## Base Class
 
-```{eval-rst}
-.. autoclass:: deepstats.families.BaseFamily
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+All families inherit from `BaseFamily` and implement:
+
+| Method | Description |
+|--------|-------------|
+| `loss(y, t, theta)` | Per-observation loss |
+| `gradient(y, t, theta)` | Gradient w.r.t. theta |
+| `hessian(y, t, theta)` | Hessian w.r.t. theta |
+| `hessian_depends_on_theta()` | Whether Hessian depends on theta |
+| `per_obs_target(theta, t)` | Per-observation target h(theta) |
+| `per_obs_target_gradient(theta, t)` | Gradient of target |
 
 ## Family Classes
 
 ### LinearFamily
 
-```{eval-rst}
-.. autoclass:: deepstats.families.LinearFamily
-   :members:
-   :show-inheritance:
+```python
+from deep_inference import LinearFamily
+
+family = LinearFamily()
+# Model: Y = alpha(X) + beta(X) * T + epsilon
+# Loss: MSE
+# Hessian: constant (2-way splitting)
 ```
 
 ### LogitFamily
 
-```{eval-rst}
-.. autoclass:: deepstats.families.LogitFamily
-   :members:
-   :show-inheritance:
+```python
+from deep_inference import LogitFamily
+
+# Default: log-odds target
+family = LogitFamily(target='beta')
+
+# Alternative: average marginal effect
+family = LogitFamily(target='ame')
+
+# Model: P(Y=1) = sigmoid(alpha(X) + beta(X) * T)
+# Loss: Binary cross-entropy
+# Hessian: depends on theta (3-way splitting)
 ```
 
 ### PoissonFamily
 
-```{eval-rst}
-.. autoclass:: deepstats.families.PoissonFamily
-   :members:
-   :show-inheritance:
+```python
+from deep_inference import PoissonFamily
+
+family = PoissonFamily()
+# Model: Y ~ Poisson(exp(alpha(X) + beta(X) * T))
+# Loss: Poisson deviance
+# Hessian: depends on theta
 ```
 
 ### TobitFamily
 
-```{eval-rst}
-.. autoclass:: deepstats.families.TobitFamily
-   :members:
-   :show-inheritance:
+```python
+from deep_inference import TobitFamily
+
+# Default: effect on latent Y*
+family = TobitFamily(target='latent')
+
+# Alternative: effect on observed E[Y]
+family = TobitFamily(target='observed')
+
+# Model: Y = max(0, alpha(X) + beta(X) * T + sigma(X) * epsilon)
+# theta_dim: 3 (alpha, beta, gamma=log(sigma))
 ```
 
 ### NegBinFamily
 
-```{eval-rst}
-.. autoclass:: deepstats.families.NegBinFamily
-   :members:
-   :show-inheritance:
+```python
+from deep_inference import NegBinFamily
+
+family = NegBinFamily(overdispersion=0.5)
+# Model: Y ~ NegBin(mu, r) where mu = exp(alpha + beta * T)
+# Use for overdispersed count data
 ```
 
 ### GammaFamily
 
-```{eval-rst}
-.. autoclass:: deepstats.families.GammaFamily
-   :members:
-   :show-inheritance:
+```python
+from deep_inference import GammaFamily
+
+family = GammaFamily(shape=1.0)
+# Model: Y ~ Gamma(shape, exp(alpha + beta * T))
+# Use for positive, skewed outcomes
 ```
 
 ### GumbelFamily
 
-```{eval-rst}
-.. autoclass:: deepstats.families.GumbelFamily
-   :members:
-   :show-inheritance:
+```python
+from deep_inference import GumbelFamily
+
+family = GumbelFamily(scale=1.0)
+# Model: Y ~ Gumbel(alpha + beta * T, scale)
+# Use for extreme value analysis
 ```
 
 ### WeibullFamily
 
-```{eval-rst}
-.. autoclass:: deepstats.families.WeibullFamily
-   :members:
-   :show-inheritance:
+```python
+from deep_inference import WeibullFamily
+
+family = WeibullFamily(shape=1.0)
+# Model: Y ~ Weibull(shape, exp(alpha + beta * T))
+# Use for duration/survival analysis
 ```
 
 ## Usage Example
 
 ```python
-from deepstats import get_family
+from deep_inference import structural_dml, LogitFamily
 
-# Get a family
-family = get_family("linear")
+# Using family name (string)
+result = structural_dml(Y, T, X, family='logit')
 
-# Family provides:
-# - family.loss(Y, T, theta)    : Loss function
-# - family.residual(Y, T, theta): Score residuals
-# - family.weight(Y, T, theta)  : Hessian weights
-# - family.influence_score(...) : Full influence score
+# Using family instance (for custom options)
+family = LogitFamily(target='ame')
+result = structural_dml(Y, T, X, family=family)
 ```
 
 ## Family Methods
 
-Each family implements:
-
-| Method | Description |
-|--------|-------------|
-| `loss(Y, T, theta)` | Negative log-likelihood |
-| `residual(Y, T, theta)` | Score residuals $r_i$ |
-| `weight(Y, T, theta)` | Hessian weights $W_i$ |
-| `influence_score(...)` | Complete influence function $\psi_i$ |
-| `n_params` | Number of parameters per observation |
-
-## Family-Specific Options
-
-### Logit
+Each family provides closed-form implementations for efficiency:
 
 ```python
-# Log-odds ratio (default)
-family = get_family("logit", target="beta")
+import torch
+from deep_inference import LinearFamily
 
-# Average marginal effect
-family = get_family("logit", target="ame")
-```
+family = LinearFamily()
+n = 100
 
-### Tobit
+# Create tensors
+y = torch.randn(n)
+t = torch.randn(n)
+theta = torch.randn(n, 2)  # [alpha, beta]
 
-```python
-# Effect on latent Y* (default)
-family = get_family("tobit", target="latent")
-
-# Effect on observed E[Y]
-family = get_family("tobit", target="observed")
+# Compute quantities
+loss = family.loss(y, t, theta)           # (n,)
+grad = family.gradient(y, t, theta)       # (n, 2)
+hess = family.hessian(y, t, theta)        # (n, 2, 2)
+h = family.per_obs_target(theta, t)       # (n,)
+dh = family.per_obs_target_gradient(theta, t)  # (n, 2)
 ```

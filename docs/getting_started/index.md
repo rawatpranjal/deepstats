@@ -1,6 +1,6 @@
 # Getting Started
 
-This section will help you get up and running with `deepstats`.
+This section will help you get up and running with `deep-inference`.
 
 ```{toctree}
 :maxdepth: 2
@@ -12,7 +12,7 @@ usage
 
 ## Overview
 
-`deepstats` provides valid statistical inference for neural network estimators. The core workflow is:
+`deep-inference` provides valid statistical inference for neural network estimators. The core workflow is:
 
 1. **Generate or load data** with covariates $X$, treatment $T$, and outcome $Y$
 2. **Select a statistical family** that matches your outcome distribution

@@ -8,14 +8,14 @@
 ## Install from PyPI
 
 ```bash
-pip install deepstats
+pip install deep-inference
 ```
 
 ## Install from Source
 
 ```bash
-git clone https://github.com/rawatpranjal/deepstats
-cd deepstats
+git clone https://github.com/rawatpranjal/deep-inference
+cd deep-inference
 pip install -e .
 ```
 
@@ -25,23 +25,23 @@ Install optional dependencies for additional functionality:
 
 ```bash
 # Development tools (testing, linting)
-pip install deepstats[dev]
+pip install deep-inference[dev]
 
 # Documentation building
-pip install deepstats[docs]
+pip install deep-inference[docs]
 
 # Plotting (matplotlib, seaborn)
-pip install deepstats[plotting]
+pip install deep-inference[plotting]
 
 # All optional dependencies
-pip install deepstats[all]
+pip install deep-inference[all]
 ```
 
 ## Verify Installation
 
 ```python
-import deepstats
-print(deepstats.__version__)
+from deep_inference import structural_dml
+print("deep-inference installed successfully!")
 ```
 
 ## Dependencies

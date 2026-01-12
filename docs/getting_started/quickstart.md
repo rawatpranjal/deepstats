@@ -1,62 +1,45 @@
 # Quickstart
 
-This guide shows you how to use `deepstats` to estimate treatment effects with valid inference.
+This guide shows you how to use `deep-inference` to estimate treatment effects with valid inference.
 
 ## Basic Workflow
 
-### 1. Generate Data
+### 1. Import and Prepare Data
 
 ```python
-from deepstats import get_dgp
+import numpy as np
+from deep_inference import structural_dml
 
-# Create a data generating process
-dgp = get_dgp("linear", seed=42)
-
-# Generate N observations
-data = dgp.generate(n=2000)
-
-# data contains:
-# - data.X: Covariates (N x d)
-# - data.T: Treatment (N,)
-# - data.Y: Outcome (N,)
-# - data.mu_true: True average treatment effect
+# Example: Generate synthetic data
+np.random.seed(42)
+n = 2000
+X = np.random.randn(n, 10)  # Covariates
+T = np.random.randn(n)       # Treatment
+beta_true = np.cos(np.pi * X[:, 0]) * (X[:, 1] > 0) + 0.5 * X[:, 2]
+Y = X[:, 0] + beta_true * T + np.random.randn(n)
 ```
 
-### 2. Select a Family
+### 2. Run Inference
 
 ```python
-from deepstats import get_family
-
-# Linear family for continuous outcomes
-family = get_family("linear")
-```
-
-### 3. Run Inference
-
-```python
-from deepstats import influence
-
-result = influence(
-    X=data.X,
-    T=data.T,
-    Y=data.Y,
-    family=family,
-    config={
-        "hidden_dims": [64, 32],
-        "epochs": 50,
-        "n_folds": 50,
-        "lr": 0.01
-    }
+result = structural_dml(
+    Y=Y,
+    T=T,
+    X=X,
+    family='linear',
+    hidden_dims=[64, 32],
+    epochs=100,
+    n_folds=50,
+    lr=0.01
 )
 ```
 
-### 4. Interpret Results
+### 3. Interpret Results
 
 ```python
-print(f"True effect:  {data.mu_true:.4f}")
-print(f"Estimate:     {result.mu_hat:.4f}")
-print(f"Std Error:    {result.se:.4f}")
-print(f"95% CI:       [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
+print(f"Estimate:    {result.mu_hat:.4f}")
+print(f"Std Error:   {result.se:.4f}")
+print(f"95% CI:      [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 ```
 
 ## Configuration Options
@@ -70,23 +53,42 @@ print(f"95% CI:       [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 | `batch_size` | `64` | Mini-batch size |
 | `weight_decay` | `1e-4` | L2 regularization |
 
-## Comparing Methods
+## Comparing Naive vs Debiased
 
 ```python
-from deepstats import naive, influence, bootstrap
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='linear',
+    epochs=100,
+    n_folds=50
+)
 
-# Naive (undercovers)
-naive_result = naive(data.X, data.T, data.Y, family, config)
+# The result contains both estimates
+print(f"Naive estimate:    {result.mu_naive:.4f}")
+print(f"Debiased estimate: {result.mu_hat:.4f}")
+print(f"Difference:        {result.mu_hat - result.mu_naive:.4f}")
 
-# Influence function (valid coverage)
-if_result = influence(data.X, data.T, data.Y, family, config)
+# Expected coverage:
+# - Naive: ~10-30% (severely undercovered)
+# - Debiased (Influence): ~95%
+```
 
-# Bootstrap (partial correction)
-boot_result = bootstrap(data.X, data.T, data.Y, family, config)
+## Supported Families
 
-print(f"Naive coverage:     ~10-30%")
-print(f"Bootstrap coverage: ~70-85%")
-print(f"Influence coverage: ~95%")
+```python
+# Linear: continuous outcomes
+result = structural_dml(Y, T, X, family='linear')
+
+# Logit: binary outcomes (0/1)
+result = structural_dml(Y, T, X, family='logit')
+
+# Poisson: count outcomes
+result = structural_dml(Y, T, X, family='poisson')
+
+# Tobit: censored continuous outcomes
+result = structural_dml(Y, T, X, family='tobit')
+
+# And more: gamma, gumbel, negbin, weibull
 ```
 
 ## Next Steps

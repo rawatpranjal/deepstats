@@ -37,19 +37,27 @@ Each tutorial covers:
 All tutorials follow the same basic pattern:
 
 ```python
-from deepstats import get_dgp, get_family, influence
+from deep_inference import structural_dml
+import numpy as np
 
-# 1. Get data (synthetic or real)
-dgp = get_dgp("MODEL_NAME")
-data = dgp.generate(n=2000)
+# 1. Prepare your data
+# Y: outcome variable
+# T: treatment variable
+# X: covariates (must be 2D array)
 
-# 2. Get family
-family = get_family("MODEL_NAME")
+# 2. Run inference
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='linear',  # or 'logit', 'poisson', etc.
+    hidden_dims=[64, 32],
+    epochs=100,
+    n_folds=50
+)
 
-# 3. Run inference
-result = influence(data.X, data.T, data.Y, family, config)
+# 3. Check results
+print(f"Estimate: {result.mu_hat:.4f}")
+print(f"SE: {result.se:.4f}")
+print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 
-# 4. Check results
-print(f"Coverage should be ~95%")
-print(f"SE ratio should be ~1.0")
+# Coverage should be ~95%, SE ratio should be ~1.0
 ```

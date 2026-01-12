@@ -1,35 +1,64 @@
 # Metrics Module
 
-Monte Carlo metrics computation and reporting.
+Helper functions for computing inference quality metrics.
 
 ## Main Functions
 
-### compute_metrics
+### compute_coverage
 
-```{eval-rst}
-.. autofunction:: deepstats.compute_metrics
+```python
+from deep_inference import compute_coverage
+
+# Check if true value falls within CI
+covered = compute_coverage(mu_true, ci_lower, ci_upper)
 ```
 
-### print_table
+### compute_se_ratio
 
-```{eval-rst}
-.. autofunction:: deepstats.print_table
+```python
+from deep_inference import compute_se_ratio
+
+# Compare estimated SE to empirical SE
+se_ratio = compute_se_ratio(estimated_se, empirical_se)
 ```
 
 ## Usage Example
 
 ```python
-from deepstats import compute_metrics, print_table
-import pandas as pd
+from deep_inference import structural_dml
+import numpy as np
 
-# After running Monte Carlo simulations
-# results_df has columns: sim_id, model, method, mu_hat, se, mu_true, covered
+# Run multiple simulations
+results = []
+for seed in range(100):
+    np.random.seed(seed)
+    # Generate data...
+    result = structural_dml(Y, T, X, family='linear')
+    results.append({
+        'mu_hat': result.mu_hat,
+        'se': result.se,
+        'ci_lower': result.ci_lower,
+        'ci_upper': result.ci_upper
+    })
 
-metrics = compute_metrics(results_df)
-print_table(metrics)
+# Compute metrics
+mu_true = 0.5  # known ground truth
+mu_hats = [r['mu_hat'] for r in results]
+ses = [r['se'] for r in results]
+
+# Coverage
+covered = [(r['ci_lower'] <= mu_true <= r['ci_upper']) for r in results]
+coverage = np.mean(covered)
+print(f"Coverage: {coverage:.1%}")  # Target: 95%
+
+# SE ratio
+empirical_se = np.std(mu_hats)
+mean_estimated_se = np.mean(ses)
+se_ratio = mean_estimated_se / empirical_se
+print(f"SE Ratio: {se_ratio:.2f}")  # Target: 1.0
 ```
 
-## Computed Metrics
+## Key Metrics
 
 | Metric | Formula | Target |
 |--------|---------|--------|
@@ -37,65 +66,74 @@ print_table(metrics)
 | `variance` | $\text{Var}(\hat\mu)$ | - |
 | `rmse` | $\sqrt{\text{Bias}^2 + \text{Var}}$ | Small |
 | `empirical_se` | $\sqrt{\text{Var}}$ | - |
-| `se_mean` | $E[\hat{SE}]$ | - |
 | `se_ratio` | $\hat{SE} / SE_{emp}$ | 1.0 |
-| `ci_width` | $2 \times 1.96 \times \hat{SE}$ | - |
 | `coverage` | $P(\mu^* \in CI)$ | 95% |
 
-## Output Format
+## Validation Targets
 
-### Console Output
+| Metric | Valid Range | Interpretation |
+|--------|-------------|----------------|
+| Coverage | 93-97% | CI contains true value |
+| SE Ratio | 0.9-1.2 | SE is properly calibrated |
+| min(lambda) | > 1e-4 | Hessian is well-conditioned |
 
-```
-==================================================================
-MONTE CARLO RESULTS
-==================================================================
-Model    Method      mu*    Bias    Var    RMSE  SE(emp) SE(est) Ratio Coverage
-------------------------------------------------------------------
-linear   naive     0.001  -0.005  0.015  0.123   0.124   0.023  0.19    30.0%
-linear   influence 0.001  -0.007  0.008  0.091   0.091   0.067  0.73    80.0%
-...
-==================================================================
-```
+## Interpreting Results
 
-### CSV Output
-
-The `run_mc.py` script outputs two CSV files:
-
-1. **Raw results** (`mc_results.csv`):
-   - One row per simulation
-   - Columns: sim_id, model, method, mu_hat, se, mu_true, bias, covered
-
-2. **Aggregated metrics** (`mc_results.metrics.csv`):
-   - One row per model/method combination
-   - All computed metrics
-
-## Validation Scorecard
-
-The metrics module also produces a validation scorecard:
+### Good Results
 
 ```
-VALIDATION SCORECARD
-====================
-Coverage:    PASS (95.0% in [93%, 97%])
-SE Ratio:    PASS (1.02 in [0.9, 1.2])
-RMSE:        PASS (below threshold)
-Hessian:     PASS (min eigenvalue > 1e-4)
-
-Overall:     PASS
+Coverage: 95.0%   [PASS - in 93-97% range]
+SE Ratio: 1.02    [PASS - close to 1.0]
+RMSE: 0.032       [Low bias and variance]
 ```
 
-## Diagnostic Plots
+### Warning Signs
+
+```
+Coverage: 30%     [FAIL - severe undercoverage]
+SE Ratio: 0.27    [FAIL - SE underestimated 4x]
+```
+
+Common causes of poor coverage:
+- Naive method (no IF correction)
+- Too few folds (K < 20)
+- Insufficient training epochs
+- Model misspecification
+
+## Monte Carlo Validation
+
+For rigorous validation, run Monte Carlo simulations:
 
 ```python
-import matplotlib.pyplot as plt
-from deepstats.metrics import plot_coverage, plot_se_ratio
+import numpy as np
+from deep_inference import structural_dml
 
-# Coverage comparison
-plot_coverage(metrics)
-plt.savefig("coverage.png")
+M = 100  # number of simulations
+N = 2000  # sample size
+MU_TRUE = 0.5
 
-# SE ratio by model
-plot_se_ratio(metrics)
-plt.savefig("se_ratio.png")
+results = []
+for m in range(M):
+    np.random.seed(m)
+
+    # Generate data with known DGP
+    X = np.random.randn(N, 10)
+    T = np.random.randn(N)
+    Y = X[:, 0] + MU_TRUE * T + np.random.randn(N)
+
+    result = structural_dml(Y, T, X, family='linear', verbose=False)
+
+    covered = result.ci_lower <= MU_TRUE <= result.ci_upper
+    results.append({
+        'mu_hat': result.mu_hat,
+        'se': result.se,
+        'covered': covered
+    })
+
+# Summary
+coverage = np.mean([r['covered'] for r in results])
+se_ratio = np.mean([r['se'] for r in results]) / np.std([r['mu_hat'] for r in results])
+
+print(f"Coverage: {coverage:.1%}")
+print(f"SE Ratio: {se_ratio:.2f}")
 ```

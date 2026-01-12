@@ -10,7 +10,7 @@ influence_functions
 
 ## Overview
 
-This section explains the theoretical foundations of `deepstats`, specifically the enriched structural model approach from Farrell, Liang, and Misra.
+This section explains the theoretical foundations of `deep-inference`, specifically the enriched structural model approach from Farrell, Liang, and Misra.
 
 ## Key References
 

@@ -1,6 +1,6 @@
 # Usage Guide
 
-A practical guide to using `deepstats` for structural deep learning with valid inference.
+A practical guide to using `deep-inference` for structural deep learning with valid inference.
 
 ---
 
@@ -36,7 +36,9 @@ This is economics, not statistics. You're encoding domain knowledge about how th
 > "I'm studying labor supply. The outcome Y is hours worked. Many people work zero hours (corner solution), and hours can't be negative. This sounds like a Tobit model."
 
 ```python
-family = get_family("tobit")
+from deep_inference import structural_dml
+
+result = structural_dml(Y, T, X, family='tobit')
 ```
 
 ---
@@ -58,8 +60,9 @@ Common targets:
 **For most applications, the default target $E[\beta(X)]$ is what you want.**
 
 ```python
-# Default: average treatment effect
-result = influence(X, T, Y, family, config)
+# Default: average treatment effect on the treatment coefficient
+result = structural_dml(Y, T, X, family='linear')
+print(f"E[beta(X)] = {result.mu_hat:.4f}")
 ```
 
 ---
@@ -69,12 +72,16 @@ result = influence(X, T, Y, family, config)
 ### Network Architecture
 
 ```python
+from deep_inference import structural_dml
+
 # Wider/deeper = more flexibility, but needs more data
-config = {
-    "hidden_dims": [64, 32],  # Default: reasonable for most cases
-    "epochs": 100,
-    "lr": 0.01
-}
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='linear',
+    hidden_dims=[64, 32],  # Default: reasonable for most cases
+    epochs=100,
+    lr=0.01
+)
 ```
 
 **Rules of thumb:**
@@ -90,7 +97,7 @@ config = {
 
 ```python
 # More folds = more stable, but slower
-n_folds = 20  # Default
+n_folds = 20  # OK for exploration
 n_folds = 50  # Better for final results
 ```
 
@@ -99,24 +106,26 @@ Monte Carlo validation shows K=50 gives best coverage. Use K=20 for exploration,
 ### The Actual Call
 
 ```python
-from deepstats import get_dgp, get_family, influence
+from deep_inference import structural_dml
+import numpy as np
 
-# Generate or load data
-dgp = get_dgp("linear", seed=42)
-data = dgp.generate(n=2000)
+# Load or generate data
+np.random.seed(42)
+n = 2000
+X = np.random.randn(n, 10)
+T = np.random.randn(n)
+Y = X[:, 0] + 0.5 * T + np.random.randn(n)
 
 # Run influence function inference
-family = get_family("linear")
-result = influence(
-    X=data.X,
-    T=data.T,
-    Y=data.Y,
-    family=family,
-    config={
-        "hidden_dims": [64, 32],
-        "epochs": 100,
-        "n_folds": 20
-    }
+result = structural_dml(
+    Y=Y,
+    T=T,
+    X=X,
+    family='linear',
+    hidden_dims=[64, 32],
+    epochs=100,
+    n_folds=50,
+    lr=0.01
 )
 ```
 
@@ -174,7 +183,7 @@ The whole point of this framework is heterogeneity. Use it!
 
 ```python
 # Get theta(x) for all observations
-theta_all = result.predict_theta(X)
+theta_all = result.theta_hat  # (n, 2) array: [alpha, beta]
 alpha_all = theta_all[:, 0]
 beta_all = theta_all[:, 1]
 
@@ -191,7 +200,7 @@ print(X[top_responders].mean(axis=0))
 
 ```python
 import numpy as np
-from deepstats import get_family, influence
+from deep_inference import structural_dml
 
 # ======================
 # 1. LOAD AND PREPARE DATA
@@ -200,7 +209,7 @@ from deepstats import get_family, influence
 # T: price offered (continuous)
 # X: customer characteristics
 
-Y = data["purchased"].values
+Y = data["purchased"].values.astype(float)
 T = data["price"].values
 X = data[["age", "income", "tenure", "segment"]].values
 
@@ -220,21 +229,24 @@ assert not np.isnan(X).any(), "Missing covariates"
 # ======================
 # 3. FIT THE MODEL
 # ======================
-family = get_family("logit")
 
 # First pass: quick exploration
-result_v1 = influence(
-    X=X, T=T, Y=Y,
-    family=family,
-    config={"hidden_dims": [32, 16], "epochs": 50, "n_folds": 10}
+result_v1 = structural_dml(
+    Y=Y, T=T, X=X,
+    family='logit',
+    hidden_dims=[32, 16],
+    epochs=50,
+    n_folds=10
 )
 print(f"Quick estimate: {result_v1.mu_hat:.4f} +/- {result_v1.se:.4f}")
 
 # Second pass: production quality
-result = influence(
-    X=X, T=T, Y=Y,
-    family=family,
-    config={"hidden_dims": [64, 32], "epochs": 100, "n_folds": 50}
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='logit',
+    hidden_dims=[64, 32],
+    epochs=100,
+    n_folds=50
 )
 
 # ======================
@@ -285,10 +297,10 @@ else:
 |-----------|---------------|
 | Quick exploration | K=10, small network, 50 epochs |
 | Paper/publication | K=50, validated architecture, full diagnostics |
-| Binary outcome | `family="logit"` |
-| Censored outcome | `family="tobit"` |
-| Count outcome | `family="poisson"` |
-| Continuous outcome | `family="linear"` |
+| Binary outcome | `family='logit'` |
+| Censored outcome | `family='tobit'` |
+| Count outcome | `family='poisson'` |
+| Continuous outcome | `family='linear'` |
 | Small data (n < 1000) | Simpler network, more regularization |
 | Large data (n > 100k) | Larger network, can use more folds |
 

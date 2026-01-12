@@ -1,4 +1,4 @@
-# deepstats
+# deep-inference
 
 ```{raw} html
 <p class="hero-tagline">
@@ -6,7 +6,7 @@ Deep Learning for Individual Heterogeneity with Valid Inference
 </p>
 ```
 
-`deepstats` enriches structural economic models with deep learning while maintaining valid statistical inference. It implements the Farrell, Liang, and Misra (2021, 2025) framework.
+`deep-inference` enriches structural economic models with deep learning while maintaining valid statistical inference. It implements the Farrell, Liang, and Misra (2021, 2025) framework.
 
 ```{raw} html
 <div class="feature-grid">
@@ -28,20 +28,30 @@ Deep Learning for Individual Heterogeneity with Valid Inference
 ## Quick Start
 
 ```python
-from deepstats import get_dgp, get_family, influence
+import numpy as np
+from deep_inference import structural_dml
 
 # Generate data with heterogeneous treatment effects
-dgp = get_dgp("linear", seed=42)
-data = dgp.generate(n=2000)
+np.random.seed(42)
+n = 2000
+X = np.random.randn(n, 10)
+T = np.random.randn(n)
+Y = X[:, 0] + 0.5 * T + np.random.randn(n)
 
 # Run influence function inference
-family = get_family("linear")
-result = influence(data.X, data.T, data.Y, family, {"n_folds": 50})
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='linear',
+    hidden_dims=[64, 32],
+    epochs=100,
+    n_folds=50
+)
 
 print(f"Estimate: {result.mu_hat:.4f} +/- {result.se:.4f}")
+print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 ```
 
-## Why deepstats?
+## Why deep-inference?
 
 **The Problem**: Neural networks are great at prediction but naive inference produces invalid confidence intervals with coverage far below 95%.
 

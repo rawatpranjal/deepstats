@@ -47,35 +47,42 @@ The **Mills ratio** is $\phi(z)/\Phi(z)$ where $z = -\mu/\sigma$.
 ## Complete Example
 
 ```python
-from deepstats import get_dgp, get_family, naive, influence
+import numpy as np
+from deep_inference import structural_dml
 
 # Generate censored data
-dgp = get_dgp("tobit", d=10, sigma=1.0, seed=42)
-data = dgp.generate(n=2000)
+np.random.seed(42)
+n = 2000
+X = np.random.randn(n, 10)
+T = np.random.randn(n)
+
+# True structural functions
+alpha_true = 0.5 + 0.3 * X[:, 0]
+beta_true = 0.3 + 0.2 * X[:, 0]
+sigma = 1.0
+Y_star = alpha_true + beta_true * T + sigma * np.random.randn(n)
+Y = np.maximum(0, Y_star)  # Censoring at 0
+mu_true = beta_true.mean()
 
 # Check censoring rate
-censored_pct = (data.Y == 0).mean() * 100
-print(f"True mu* = {data.mu_true:.6f}")
+censored_pct = (Y == 0).mean() * 100
+print(f"True mu* = {mu_true:.6f}")
 print(f"Censored at 0: {censored_pct:.1f}%")
 
-# Get family
-family = get_family("tobit")
-
-# Configuration
-config = {
-    "hidden_dims": [64, 32],
-    "epochs": 100,
-    "n_folds": 50,
-    "lr": 0.01
-}
-
 # Run inference
-if_result = influence(data.X, data.T, data.Y, family, config)
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='tobit',
+    hidden_dims=[64, 32],
+    epochs=100,
+    n_folds=50,
+    lr=0.01
+)
 
-print("\n--- Influence Function ---")
-print(f"Estimate: {if_result.mu_hat:.4f}")
-print(f"SE:       {if_result.se:.4f}")
-print(f"95% CI:   [{if_result.ci_lower:.4f}, {if_result.ci_upper:.4f}]")
+print("\n--- Results ---")
+print(f"Estimate: {result.mu_hat:.4f}")
+print(f"SE:       {result.se:.4f}")
+print(f"95% CI:   [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 ```
 
 ## Alternative Targets
@@ -83,14 +90,21 @@ print(f"95% CI:   [{if_result.ci_lower:.4f}, {if_result.ci_upper:.4f}]")
 ### Latent Effect (Default)
 
 ```python
-family = get_family("tobit", target="latent")
+# Default target is effect on latent Y*
+result = structural_dml(Y, T, X, family='tobit')
 # mu* = E[beta(X)] = effect on latent Y*
 ```
 
 ### Observed Effect
 
+For observed effect, use the TobitFamily class directly:
+
 ```python
-family = get_family("tobit", target="observed")
+from deep_inference import TobitFamily, structural_dml
+
+# Create family with observed target
+family = TobitFamily(target='observed')
+result = structural_dml(Y, T, X, family=family)
 # mu* = E[beta(X) * Phi(mu/sigma)] = effect on observed E[Y]
 ```
 
@@ -113,6 +127,8 @@ Where $\sigma(X) = \exp(\gamma(X))$ is the conditional variance.
 # T = wage rate
 # X = (education, family size, non-labor income, ...)
 # Target: E[beta(X)] = average labor supply elasticity
+
+result = structural_dml(Y, T, X, family='tobit')
 ```
 
 ### Charitable Donations
@@ -122,6 +138,8 @@ Where $\sigma(X) = \exp(\gamma(X))$ is the conditional variance.
 # T = match rate offered
 # X = (income, past giving, solicitation type, ...)
 # Target: E[beta(X)] = average matching effect
+
+result = structural_dml(Y, T, X, family='tobit')
 ```
 
 ### Durable Goods Expenditure
@@ -131,6 +149,8 @@ Where $\sigma(X) = \exp(\gamma(X))$ is the conditional variance.
 # T = income change
 # X = (current car age, household size, ...)
 # Target: E[beta(X)] = average income effect on car spending
+
+result = structural_dml(Y, T, X, family='tobit')
 ```
 
 ## Handling Different Censoring
@@ -138,7 +158,7 @@ Where $\sigma(X) = \exp(\gamma(X))$ is the conditional variance.
 ### Left-censoring at 0 (Default)
 
 ```python
-family = get_family("tobit")  # Assumes Y >= 0
+result = structural_dml(Y, T, X, family='tobit')  # Assumes Y >= 0
 ```
 
 ### Right-censoring
