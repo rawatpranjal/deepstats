@@ -10,6 +10,9 @@ logit
 poisson
 tobit
 negbin
+gamma
+gumbel
+weibull
 ```
 
 ## Overview
@@ -31,6 +34,9 @@ Each tutorial covers:
 | Count (0, 1, 2, ...) | Poisson | Poisson | [Poisson](poisson.md) |
 | Censored at boundary | Tobit | Tobit | [Tobit](tobit.md) |
 | Overdispersed counts | Negative Binomial | NegBin | [NegBin](negbin.md) |
+| Positive right-skewed | Gamma | Gamma | [Gamma](gamma.md) |
+| Extreme values (maxima) | Gumbel | Gumbel | [Gumbel](gumbel.md) |
+| Time-to-event | Weibull | Weibull | [Weibull](weibull.md) |
 
 ## Common Workflow
 

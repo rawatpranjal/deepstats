@@ -2,6 +2,25 @@
 
 ## 2026-01-12
 
+### Release Cleanup
+- Fixed version mismatch: docs/conf.py now matches pyproject.toml (0.1.0)
+- Fixed pyproject.toml testpaths: `["tests"]` → `["src/deep_inference/tests"]`
+- Removed unused `Tuple` import from `src/deep_inference/core/autodiff.py`
+- Removed `src2` reference from MANIFEST.in
+
+### Complete Tutorial Coverage (All 8 Families)
+- Added `docs/tutorials/gamma.md` - Gamma model for positive right-skewed data
+- Added `docs/tutorials/gumbel.md` - Gumbel model for extreme values
+- Added `docs/tutorials/weibull.md` - Weibull model for survival analysis
+- Updated `docs/tutorials/index.md` with all 8 families
+
+### Archive Cleanup
+- Archived broken prototype scripts (basic_usage.py, run_python.py, validation_suite.py) to `archive/prototypes_broken/`
+- Archived logs/ directory to `archive/logs_historical/`
+- Archived unused MNIST data to `archive/data_mnist/`
+- Archived FLM comparison data to `archive/prototypes_flm_comparison_data/`
+- Added `logs/` to .gitignore
+
 ### Tutorial: Logit Oracle Comparison
 - Added `tutorials/02_logit_oracle.ipynb` - validates structural_dml against logistic regression oracle
 - DGP: P(Y=1) = sigmoid(α(X) + β(X)·T) with heterogeneous parameters

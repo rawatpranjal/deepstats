@@ -50,3 +50,6 @@ site/
 # Misc
 .DS_Store
 *.log
+
+# Logs directory (archived to archive/logs_historical/)
+logs/

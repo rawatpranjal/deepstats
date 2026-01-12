@@ -2,7 +2,7 @@
 
 import torch
 from torch import Tensor
-from typing import Callable, Tuple, Optional
+from typing import Callable, Optional
 
 
 def compute_gradient(

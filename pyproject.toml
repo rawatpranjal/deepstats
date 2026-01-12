@@ -123,7 +123,7 @@ module = [
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["src/deep_inference/tests"]
 python_files = ["test_*.py"]
 addopts = "-v --tb=short"
 

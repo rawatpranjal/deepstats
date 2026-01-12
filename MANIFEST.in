@@ -15,7 +15,6 @@ prune paper
 prune prototypes
 prune references
 prune tests
-prune src2
 global-exclude *.csv
 global-exclude *.pkl
 global-exclude *.json
