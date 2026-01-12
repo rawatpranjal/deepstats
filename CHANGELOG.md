@@ -2,6 +2,11 @@
 
 ## 2026-01-12
 
+### Poisson E2E Validation
+- Added `tutorials/04_poisson_e2e_test.ipynb` - validates Poisson family across 4 DGPs
+- Results: NN Naive 25% coverage, NN IF 100% coverage, SE Ratio 5.1x-6.9x (mean 6.1x)
+- Confirms `lambda_method='aggregate'` requirement for Poisson
+
 ### Release 0.1.1
 - Bumped version to 0.1.1 and published to PyPI
 - Simplified logit tutorial: Oracle MC (M=500) + single NN run with IF-based SE
