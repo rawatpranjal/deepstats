@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deep-inference"
-version = "0.1.0"
+version = "0.1.1"
 description = "Production-grade econometrics with neural networks"
 readme = "README.md"
 license = "MIT"
