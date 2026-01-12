@@ -17,7 +17,9 @@ Implements Farrell, Liang, Misra (2021, 2025) approach.
 
 ## Rules for Claude
 
-- Show all the statistics. 
+- **SHOW ME THE FACTS** - Report EVERY metric, EVERY statistic, EVERY number computed. No summaries. No opinions. No hiding. Raw data only. The user does not trust you - prove yourself with transparency.
+- **BENCHMARKING** - The goal is to benchmark the Neural Network against the Oracle. Show ALL methods side by side: Oracle (Naive SE), Oracle (Delta SE), NN Naive, NN IF. Show estimates, SEs, CIs, coverage, bias for EVERY method. This is what benchmarking means.
+- Show all the statistics.
 - NO overrides, placeholders, or deviating from the plan - no matter how hard it gets
 - Follow the plan exactly as specified
 - If something doesn't work, fix it properly instead of using workarounds
