@@ -2,6 +2,10 @@
 
 ## 2026-01-12
 
+### Release 0.1.1
+- Bumped version to 0.1.1 and published to PyPI
+- Simplified logit tutorial: Oracle MC (M=500) + single NN run with IF-based SE
+
 ### E2E Logit Validation
 - Rewrote `tutorials/02_logit_oracle.ipynb` with comprehensive E2E validation
   - Three scenarios: simple (1D linear), complex (5D nonlinear), high-dim (20D, 2 signal)
