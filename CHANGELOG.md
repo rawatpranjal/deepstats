@@ -5,6 +5,7 @@
 ### Release 0.1.1
 - Bumped version to 0.1.1 and published to PyPI
 - Simplified logit tutorial: Oracle MC (M=500) + single NN run with IF-based SE
+- Added NN Naive vs IF comparison showing SE ratio ~7.5x (naive severely underestimates uncertainty)
 
 ### E2E Logit Validation
 - Rewrote `tutorials/02_logit_oracle.ipynb` with comprehensive E2E validation
