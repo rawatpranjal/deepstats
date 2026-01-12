@@ -167,6 +167,140 @@ for sim in report["raw_data"]:
 - `archive/deepstats_v1/` - Older implementation (v1)
 - `archive/deep_inference_v1/` - Previous implementation (v2, MC tools)
 
+## How to do E2E User Runs
+
+**Benchmarking = comparing NN to Oracle. Show EVERYTHING. No opinions. Only facts.**
+
+### Step 1: Set Config
+
+```python
+# DGP
+A0, A1 = 1.0, 0.3      # alpha(X) = A0 + A1*X
+B0, B1 = 0.5, 0.2      # beta(X) = B0 + B1*X
+MU_TRUE = 0.5          # E[beta(X)] = B0 (since E[X]=0)
+
+# Oracle MC
+M_ORACLE = 100         # replications (fast)
+N = 1000               # sample size
+
+# NN (single run only - MC too slow)
+NN_SEED = 42
+EPOCHS = 100
+N_FOLDS = 50
+HIDDEN_DIMS = [64, 32]
+LR = 0.01
+LAMBDA_METHOD = 'aggregate'  # CRITICAL for logit!
+```
+
+### Step 2: Run Oracle MC (M=100)
+
+```python
+oracle_results = []
+for seed in range(1, M_ORACLE+1):
+    np.random.seed(seed)
+    X = np.random.normal(0, 1, N)
+    T = np.random.normal(0, 1, N)
+    p = expit((A0 + A1*X) + (B0 + B1*X)*T)
+    Y = np.random.binomial(1, p).astype(float)
+
+    # Fit oracle logistic regression
+    X_design = np.column_stack([np.ones(N), X, T, X*T])
+    model = sm.Logit(Y, X_design).fit(disp=0)
+    b0, b1 = model.params[2], model.params[3]
+    cov = model.cov_params()
+
+    # Compute estimates and SEs
+    mu = b0 + b1*X.mean()
+    se_naive = sqrt(cov[2,2] + X.mean()**2*cov[3,3] + 2*X.mean()*cov[2,3])
+    se_delta = sqrt(se_naive**2 + b1**2*(X.var()/N))
+
+    # Store: seed, mu, se_naive, se_delta, CI, covers, bias
+```
+
+### Step 3: Run NN (single run)
+
+```python
+np.random.seed(NN_SEED)
+# Generate data...
+
+nn = structural_dml(
+    Y=Y, T=T, X=X.reshape(-1,1),
+    family='logit',
+    lambda_method='aggregate',  # CRITICAL!
+    epochs=EPOCHS, n_folds=N_FOLDS,
+    hidden_dims=HIDDEN_DIMS, lr=LR
+)
+
+# Extract:
+# - mu_naive = nn.theta_hat[:,1].mean()
+# - se_naive = nn.theta_hat[:,1].std() / sqrt(N)
+# - mu_hat = nn.mu_hat (IF corrected)
+# - se = nn.se (IF)
+# - All diagnostics from nn.diagnostics
+```
+
+### Step 4: Report EVERYTHING
+
+**ORACLE MC TABLE** (all M rows):
+```
+Seed  mu_hat    SE_naive  SE_delta  CI_naive           CI_delta           Cov_N  Cov_D  Bias
+1     0.58114   0.07715   0.07722   [0.43, 0.73]       [0.43, 0.73]       True   True   0.081
+2     0.54577   0.08005   0.08084   [0.39, 0.70]       [0.39, 0.70]       True   True   0.046
+...
+```
+
+**ORACLE SUMMARY**:
+```
+Mean estimate: X.XXXXXX
+Empirical SE: X.XXXXXX
+Mean bias: X.XXXXXX
+
+Naive SE: Mean=X.XX, Ratio=X.XX, Coverage=XX/100=XX%
+Delta SE: Mean=X.XX, Ratio=X.XX, Coverage=XX/100=XX%
+```
+
+**NN RESULTS** (single run):
+```
+mu_naive: X.XXXXXX
+mu_hat: X.XXXXXX
+se_naive: X.XXXXXX
+se (IF): X.XXXXXX
+CI_naive: [X.XX, X.XX]
+CI_IF: [X.XX, X.XX]
+Covers_naive: True/False
+Covers_IF: True/False
+```
+
+**NN DIAGNOSTICS**:
+```
+min_lambda_eigenvalue: X.XXXXXX
+correction_ratio: X.XX
+Corr(alpha): X.XXXX
+Corr(beta): X.XXXX
+```
+
+**FINAL COMPARISON**:
+```
+Method          Estimate  SE        CI_lo     CI_hi     Covers  Bias      Coverage(MC)
+Oracle_Naive    X.XXXXX   X.XXXXX   —         —         —       X.XXXXX   XX%
+Oracle_Delta    X.XXXXX   X.XXXXX   —         —         —       X.XXXXX   XX%
+NN_Naive        X.XXXXX   X.XXXXX   X.XXXXX   X.XXXXX   T/F     X.XXXXX   N/A
+NN_IF           X.XXXXX   X.XXXXX   X.XXXXX   X.XXXXX   T/F     X.XXXXX   N/A
+```
+
+### Key Expectations
+
+| Method | Coverage | SE Ratio | Notes |
+|--------|----------|----------|-------|
+| Oracle_Naive | ~95-98% | ~1.0 | Gold standard |
+| Oracle_Delta | ~95-98% | ~1.0 | Accounts for Var(X̄) |
+| NN_Naive | **LOW** (~0-20%) | **<<1** (~0.15) | Overconfident - BAD |
+| NN_IF | **~95%** | **~1.0** | Matches Oracle - GOOD |
+
+### Report Location
+
+Full benchmark: `tutorials/02_logit_oracle.ipynb`
+
 ## References
 
 - Farrell, Liang, Misra (2021): Econometrica
