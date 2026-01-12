@@ -2,6 +2,16 @@
 
 **Deep Learning for Individual Heterogeneity**
 
+[![GitHub](https://img.shields.io/badge/GitHub-rawatpranjal%2Fdeep--inference-blue?logo=github)](https://github.com/rawatpranjal/deep-inference)
+[![PyPI](https://img.shields.io/pypi/v/deep-inference?color=blue)](https://pypi.org/project/deep-inference/)
+[![Documentation](https://img.shields.io/badge/docs-rawatpranjal.github.io-blue)](https://rawatpranjal.github.io/deep-inference/)
+
+**References:**
+- Farrell, Liang, Misra (2021) ["Deep Neural Networks for Estimation and Inference"](https://doi.org/10.3982/ECTA16901) *Econometrica*
+- Farrell, Liang, Misra (2025) "Deep Learning for Individual Heterogeneity"
+
+---
+
 `deep-inference` is a Python package for **enriching structural economic models** with deep learning. It implements the framework developed by Farrell, Liang, and Misra (2021, 2025) to recover rich, non-linear parameter heterogeneity ($\theta(X)$) while maintaining the interpretability and validity of structural economics.
 
 Standard deep learning minimizes prediction error, which leads to biased parameter estimates ("The Inference Trap"). This package implements **Influence Function-based Debiasing** (a form of Double Machine Learning) to provide valid confidence intervals and p-values for economic targets.

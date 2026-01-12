@@ -2,6 +2,16 @@
 
 ## 2026-01-12
 
+### E2E Logit Validation
+- Rewrote `tutorials/02_logit_oracle.ipynb` with comprehensive E2E validation
+  - Three scenarios: simple (1D linear), complex (5D nonlinear), high-dim (20D, 2 signal)
+  - Target μ* = 0.5 (not 0)
+  - M=100, N=1000 Monte Carlo validation
+- **CRITICAL FINDING**: Logit requires `lambda_method='aggregate'` for stability
+  - Default `lambda_method='mlp'` produces negative Hessian eigenvalues → unstable estimates
+  - Updated docs/tutorials/logit.md with warning and all code examples
+- Added links to README.md (GitHub, PyPI, ReadTheDocs, Papers)
+
 ### Release Cleanup
 - Fixed version mismatch: docs/conf.py now matches pyproject.toml (0.1.0)
 - Fixed pyproject.toml testpaths: `["tests"]` → `["src/deep_inference/tests"]`
