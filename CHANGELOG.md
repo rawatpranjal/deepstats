@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-01-13
+
+### Comprehensive 3-Regime Evaluation Framework
+- Reorganized `evals/` to support all 3 Lambda regimes with isolated ground-truth tests
+- **Regime A (RCT Logit)**: ComputeLambda (Monte Carlo), 4 evals for randomized experiments
+- **Regime B (Linear)**: AnalyticLambda (E[TT'|X]), 5 evals including Robinson 1988 closed-form ψ
+- **Regime C (Obs Logit)**: EstimateLambda (3-way split), 6 evals for confounded treatment
+- Created `evals/dgps/` with 3 DGP definitions and oracle formulas
+- Added `python -m evals.run_all --regime [a/b/c]` for regime-specific testing
+
 ## 2026-01-12
 
 ### Poisson E2E Validation

@@ -19,6 +19,7 @@ Implements Farrell, Liang, Misra (2021, 2025) approach.
 
 - **SHOW ME THE FACTS** - Report EVERY metric, EVERY statistic, EVERY number computed. No summaries. No opinions. No hiding. Raw data only. The user does not trust you - prove yourself with transparency.
 - **BENCHMARKING** - The goal is to benchmark the Neural Network against the Oracle. Show ALL methods side by side: Oracle (Naive SE), Oracle (Delta SE), NN Naive, NN IF. Show estimates, SEs, CIs, coverage, bias for EVERY method. This is what benchmarking means.
+- **VERBOSE STDOUT REPORTS** - All validation runs MUST capture full stdout to a report file. Use `tee` to save output: `python3 -m evals.run_all 2>&1 | tee evals/evals_report.txt`. Never summarize - the raw output IS the proof.
 - Show all the statistics.
 - NO overrides, placeholders, or deviating from the plan - no matter how hard it gets
 - Follow the plan exactly as specified
@@ -160,12 +161,39 @@ for sim in report["raw_data"]:
 ## Key Files
 
 - `src/deep_inference/` - Main package (structural_dml API)
+- `evals/` - Ground truth validation scripts (see below)
 - `archive/deep_inference_v1/CLAUDE.md` - Detailed simulation study spec
 - `references/` - Academic papers
 - `paper/` - Our paper (LaTeX)
 - `prototypes/` - Experiments and validation scripts
 - `archive/deepstats_v1/` - Older implementation (v1)
 - `archive/deep_inference_v1/` - Previous implementation (v2, MC tools)
+
+## Evals Folder (Ground Truth Validation)
+
+The `evals/` folder contains isolated validation scripts for EVERY mathematical object in Theorem 2:
+
+```
+evals/
+├── dgp.py           # Canonical DGP: Heterogeneous Logistic Demand (Regime C)
+├── eval_01_theta.py # Parameter recovery: θ̂(x) vs θ*(x)
+├── eval_02_autodiff.py # Score & Hessian: autodiff vs calculus formulas
+├── eval_03_lambda.py   # Lambda estimation: Λ̂(x) vs E[ℓ_θθ|X=x]
+├── eval_04_jacobian.py # Target Jacobian: H_θ autodiff vs chain rule
+├── eval_05_psi.py      # Influence function assembly: ψ package vs Oracle
+├── eval_06_coverage.py # Frequentist coverage: Monte Carlo validation
+└── run_all.py          # Run all evals, produce full report
+```
+
+**Run all evals:**
+```bash
+python3 -m evals.run_all 2>&1 | tee evals/evals_report.txt
+```
+
+**Quick mode (faster, smaller samples):**
+```bash
+python3 -m evals.run_all --quick 2>&1 | tee evals/evals_report_quick.txt
+```
 
 ## How to do E2E User Runs
 
