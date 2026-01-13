@@ -20,6 +20,40 @@ What we learn from each eval. Updated as we investigate.
 
 ---
 
-## Eval 02-06
+## Eval 02: Autodiff vs Calculus
+
+**Goal**: Verify torch.func autodiff matches closed-form gradient/Hessian for all families.
+
+**Results by family**:
+| Family | Gradient | Hessian | Status |
+|--------|----------|---------|--------|
+| Linear | 1e-16 | 0 | PASS |
+| Logit | 1e-16 | 1e-16 | PASS |
+| Poisson | 1e-9 | 1e-9 | PASS (numerical epsilon) |
+| Gamma | 1e-15 | 1e-15 | PASS |
+| Gumbel | 0 | 0 | PASS |
+| Tobit | N/A | N/A | Uses autodiff only |
+| NegBin | 1e-9 | **1.66** | **FAIL** |
+| Weibull | 1e-16 | 1e-15 | PASS |
+
+**Issue found - NegBin Hessian bug**: The closed-form Hessian in `negbin.py` uses a "working weight" formula `mu/(1+α·mu)` for quasi-likelihood, but the loss is Poisson-like with true Hessian `mu`. These don't match. Fix: change Hessian to use `mu` instead of `mu/(1+α·mu)`, or use autodiff.
+
+**Extended test**: Also verified with estimated θ̂(x) from a trained model. Same results.
+
+**Poisson/NegBin note**: The 1e-9 gradient errors are from the `log(mu + 1e-10)` numerical stability term. Acceptable.
+
+---
+
+## Eval 03: Lambda Estimation
+
+**Goal**: Verify EstimateLambda recovers Λ(x) = E[ℓ_θθ | X=x].
+
+**Result**: PASS. Mean Frobenius error 0.12, all eigenvalues positive (min=0.035), 0/1000 non-PSD.
+
+**Note**: The `aggregate` method returns mean(Hessians), losing x-dependence. This is stable but doesn't capture Λ(x) heterogeneity. For this DGP, the heterogeneity is small so it works.
+
+---
+
+## Eval 04-06
 
 (TODO)
