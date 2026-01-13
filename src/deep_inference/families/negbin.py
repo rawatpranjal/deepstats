@@ -64,21 +64,22 @@ class NegBinFamily(BaseFamily):
     def hessian(self, y: Tensor, t: Tensor, theta: Tensor) -> Optional[Tensor]:
         """Closed-form Hessian of loss.
 
-        For NegBin, using the working weight mu / (1 + alpha*mu):
-        H_ij = W * T_i * T_j where T = [1, t]
+        For Poisson-like loss: H = mu * [[1, t], [t, t^2]]
+        where mu = exp(alpha + beta*t)
+
+        Note: This is the true Hessian of the loss, not the quasi-likelihood
+        working weight (which would be mu / (1 + alpha*mu)).
         """
         alpha, beta = theta[:, 0], theta[:, 1]
         eta = torch.clamp(alpha + beta * t, -20, 20)
         mu = torch.exp(eta)
-        # NegBin working weight
-        w = mu / (1.0 + self.overdispersion * mu)
 
         n = theta.shape[0]
         H = torch.zeros(n, 2, 2, dtype=theta.dtype, device=theta.device)
-        H[:, 0, 0] = w
-        H[:, 0, 1] = w * t
-        H[:, 1, 0] = w * t
-        H[:, 1, 1] = w * t * t
+        H[:, 0, 0] = mu
+        H[:, 0, 1] = mu * t
+        H[:, 1, 0] = mu * t
+        H[:, 1, 1] = mu * t * t
         return H
 
     def hessian_depends_on_theta(self) -> bool:

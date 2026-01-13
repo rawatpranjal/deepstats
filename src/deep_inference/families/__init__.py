@@ -5,6 +5,7 @@ from .linear import LinearFamily
 from .logit import LogitFamily
 from .poisson import PoissonFamily
 from .gamma import GammaFamily
+from .gaussian import GaussianFamily
 from .gumbel import GumbelFamily
 from .tobit import TobitFamily
 from .negbin import NegBinFamily
@@ -15,6 +16,7 @@ FAMILY_REGISTRY = {
     "logit": LogitFamily,
     "poisson": PoissonFamily,
     "gamma": GammaFamily,
+    "gaussian": GaussianFamily,
     "gumbel": GumbelFamily,
     "tobit": TobitFamily,
     "negbin": NegBinFamily,
@@ -28,10 +30,11 @@ def get_family(name: str, **kwargs) -> BaseFamily:
 
     Args:
         name: Family name. Available:
-              - 'linear': Y = alpha + beta*T + eps
+              - 'linear': Y = alpha + beta*T + eps (squared error)
               - 'logit': P(Y=1) = sigmoid(alpha + beta*T)
               - 'poisson': Y ~ Poisson(exp(alpha + beta*T))
               - 'gamma': Y ~ Gamma(shape, exp(alpha + beta*T))
+              - 'gaussian': Y ~ N(alpha + beta*T, sigma) (Gaussian NLL)
               - 'gumbel': Y ~ Gumbel(alpha + beta*T, scale)
               - 'tobit': Y = max(0, alpha + beta*T + sigma*eps)
               - 'negbin': Y ~ NegBin(exp(alpha + beta*T), r)
@@ -59,6 +62,7 @@ __all__ = [
     "LogitFamily",
     "PoissonFamily",
     "GammaFamily",
+    "GaussianFamily",
     "GumbelFamily",
     "TobitFamily",
     "NegBinFamily",

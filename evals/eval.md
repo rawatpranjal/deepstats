@@ -24,19 +24,20 @@ What we learn from each eval. Updated as we investigate.
 
 **Goal**: Verify torch.func autodiff matches closed-form gradient/Hessian for all families.
 
-**Results by family**:
+**Results by family** (9 families):
 | Family | Gradient | Hessian | Status |
 |--------|----------|---------|--------|
 | Linear | 1e-16 | 0 | PASS |
 | Logit | 1e-16 | 1e-16 | PASS |
-| Poisson | 1e-9 | 1e-9 | PASS (numerical epsilon) |
+| Poisson | 1e-9 | 1e-9 | PASS |
 | Gamma | 1e-15 | 1e-15 | PASS |
+| Gaussian | 0 | 0 | PASS |
 | Gumbel | 0 | 0 | PASS |
 | Tobit | N/A | N/A | Uses autodiff only |
-| NegBin | 1e-9 | **1.66** | **FAIL** |
-| Weibull | 1e-16 | 1e-15 | PASS |
+| NegBin | 1e-9 | 1e-9 | PASS |
+| Weibull | 1e-15 | 1e-15 | PASS |
 
-**Issue found - NegBin Hessian bug**: The closed-form Hessian in `negbin.py` uses a "working weight" formula `mu/(1+α·mu)` for quasi-likelihood, but the loss is Poisson-like with true Hessian `mu`. These don't match. Fix: change Hessian to use `mu` instead of `mu/(1+α·mu)`, or use autodiff.
+**Fixed**: NegBin Hessian was using wrong formula (working weight instead of mu). Now uses correct `mu * [[1,t],[t,t²]]`.
 
 **Extended test**: Also verified with estimated θ̂(x) from a trained model. Same results.
 
