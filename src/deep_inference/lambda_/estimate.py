@@ -40,14 +40,16 @@ class EstimateLambda(BaseLambdaStrategy):
 
     def __init__(
         self,
-        method: Literal["mlp", "rf", "ridge", "aggregate"] = "mlp",
+        method: Literal["mlp", "rf", "ridge", "aggregate"] = "aggregate",
         ridge_alpha: float = 1.0,
     ):
         """
         Initialize EstimateLambda strategy.
 
         Args:
-            method: Regression method ("mlp", "rf", "ridge", "aggregate")
+            method: Regression method ("aggregate" [default], "mlp", "rf", "ridge")
+                    "aggregate" is the most stable and recommended for most cases.
+                    Other methods may produce non-PSD matrices requiring projection.
             ridge_alpha: Regularization for ridge regression
         """
         self.method = method
@@ -182,7 +184,7 @@ class EstimateLambda(BaseLambdaStrategy):
             theta_hat: Not used for prediction (already fitted)
 
         Returns:
-            (n, d_theta, d_theta) Lambda matrices
+            (n, d_theta, d_theta) Lambda matrices (guaranteed PSD)
         """
         n = X.shape[0]
         d_theta = self._d_theta
@@ -215,4 +217,37 @@ class EstimateLambda(BaseLambdaStrategy):
             Lambda[:, self._triu_idx[0], self._triu_idx[1]] = pred
             Lambda[:, self._triu_idx[1], self._triu_idx[0]] = pred
 
+        # Project to PSD to ensure valid matrices (fixes numerical instability)
+        Lambda = self._project_to_psd(Lambda)
+
         return Lambda
+
+    def _project_to_psd(
+        self, Lambda: Tensor, min_eigenvalue: float = 1e-4
+    ) -> Tensor:
+        """
+        Project matrices to the nearest positive semi-definite matrices.
+
+        Uses eigendecomposition and clamps negative eigenvalues.
+
+        Args:
+            Lambda: (n, d, d) batch of matrices
+            min_eigenvalue: Minimum eigenvalue to enforce
+
+        Returns:
+            (n, d, d) PSD matrices
+        """
+        n = Lambda.shape[0]
+        Lambda_psd = Lambda.clone()
+
+        for i in range(n):
+            # Eigendecomposition
+            eigvals, eigvecs = torch.linalg.eigh(Lambda[i])
+
+            # Clamp negative eigenvalues to minimum
+            eigvals_clamped = torch.clamp(eigvals, min=min_eigenvalue)
+
+            # Reconstruct: V @ diag(D) @ V'
+            Lambda_psd[i] = eigvecs @ torch.diag(eigvals_clamped) @ eigvecs.T
+
+        return Lambda_psd
