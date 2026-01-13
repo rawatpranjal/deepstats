@@ -216,6 +216,206 @@ def structural_dml(
     )
 
 
+# New API: inference() with general loss/target
+from dataclasses import dataclass
+import torch
+
+
+@dataclass
+class InferenceResult:
+    """Result from the new inference() API."""
+
+    mu_hat: float
+    se: float
+    ci_lower: float
+    ci_upper: float
+    psi_values: Tensor
+    theta_hat: Tensor
+    diagnostics: dict
+
+
+def inference(
+    Y: np.ndarray,
+    T: np.ndarray,
+    X: np.ndarray,
+    # Option 1: Built-in model/target (strings)
+    model: Optional[str] = None,
+    target: Optional[str] = None,
+    # Option 2: Custom loss/target functions
+    loss: Optional[Callable] = None,
+    target_fn: Optional[Callable] = None,
+    theta_dim: Optional[int] = None,
+    # Evaluation point
+    t_tilde: Optional[float] = None,
+    # Randomization settings (for Regime A)
+    is_randomized: bool = False,
+    treatment_dist: Optional["TreatmentDistribution"] = None,
+    # Lambda estimation override
+    lambda_method: Optional[str] = None,
+    # Cross-fitting settings
+    n_folds: int = 50,
+    # Network settings
+    hidden_dims: List[int] = [64, 32],
+    epochs: int = 100,
+    lr: float = 0.01,
+    # Other
+    ridge: float = 1e-4,
+    verbose: bool = False,
+) -> InferenceResult:
+    """
+    General inference with user-provided loss and target.
+
+    This is the new API that supports arbitrary loss functions and targets.
+    Everything is derived via autodiff unless closed-forms are provided.
+
+    Args:
+        Y: (n,) outcomes
+        T: (n,) treatments
+        X: (n, d_x) covariates
+
+        # Model specification (choose one):
+        model: Built-in model name ("linear", "logit", etc.)
+        loss: Custom loss function: loss(y, t, theta) -> scalar
+
+        # Target specification (choose one):
+        target: Built-in target name ("beta", "ame", etc.)
+        target_fn: Custom target: h(x, theta, t_tilde) -> scalar
+
+        theta_dim: Parameter dimension (required for custom loss)
+        t_tilde: Evaluation point (default: mean(T))
+
+        # Regime settings:
+        is_randomized: True if T is randomly assigned
+        treatment_dist: Distribution F_T (enables Regime A computation)
+        lambda_method: Override auto-detection ("compute", "analytic", "estimate")
+
+        # Cross-fitting:
+        n_folds: Number of folds (default: 50)
+
+        # Network:
+        hidden_dims: Hidden layer sizes
+        epochs: Training epochs
+        lr: Learning rate
+
+        ridge: Regularization for Lambda inversion
+        verbose: Print progress
+
+    Returns:
+        InferenceResult with mu_hat, se, ci, psi_values, theta_hat, diagnostics
+
+    Examples:
+        # Built-in model and target
+        result = inference(Y, T, X, model="logit", target="ame")
+
+        # Custom loss and target
+        def my_loss(y, t, theta):
+            p = torch.sigmoid(theta[0] + theta[1] * t)
+            return -y * torch.log(p) - (1-y) * torch.log(1-p)
+
+        def my_target(x, theta, t_tilde):
+            p = torch.sigmoid(theta[0] + theta[1] * t_tilde)
+            return p * (1-p) * theta[1]
+
+        result = inference(Y, T, X, loss=my_loss, target_fn=my_target, theta_dim=2)
+    """
+    from .models import Linear, Logit, CustomModel, model_from_loss
+    from .targets import AverageParameter, AME, CustomTarget
+    from .lambda_ import select_lambda_strategy, Regime, detect_regime
+    from .engine import run_crossfit
+
+    # Convert inputs to tensors
+    Y_t = torch.tensor(Y, dtype=torch.float32)
+    T_t = torch.tensor(T, dtype=torch.float32)
+    X_t = torch.tensor(X, dtype=torch.float32)
+
+    # Default t_tilde to mean treatment
+    if t_tilde is None:
+        t_tilde = T_t.mean()
+    else:
+        t_tilde = torch.tensor(t_tilde, dtype=torch.float32)
+
+    # Resolve model
+    if model is not None:
+        # Built-in model
+        model_map = {
+            "linear": Linear(),
+            "logit": Logit(),
+        }
+        if model not in model_map:
+            raise ValueError(f"Unknown model: {model}. Available: {list(model_map.keys())}")
+        struct_model = model_map[model]
+    elif loss is not None:
+        # Custom loss
+        if theta_dim is None:
+            raise ValueError("theta_dim required for custom loss")
+        struct_model = model_from_loss(loss, theta_dim)
+    else:
+        raise ValueError("Must provide 'model' or 'loss'")
+
+    # Resolve target
+    if target is not None:
+        # Built-in target
+        target_map = {
+            "beta": AverageParameter(param_index=1, theta_dim=struct_model.theta_dim),
+            "ame": AME(param_index=1, model_type="logit" if model == "logit" else "linear"),
+        }
+        if target not in target_map:
+            raise ValueError(f"Unknown target: {target}. Available: {list(target_map.keys())}")
+        struct_target = target_map[target]
+    elif target_fn is not None:
+        # Custom target
+        struct_target = CustomTarget(h_fn=target_fn)
+    else:
+        # Default: average beta
+        struct_target = AverageParameter(param_index=1, theta_dim=struct_model.theta_dim)
+
+    # Select Lambda strategy
+    lambda_strategy = select_lambda_strategy(
+        model=struct_model,
+        is_randomized=is_randomized,
+        treatment_dist=treatment_dist,
+        lambda_method=lambda_method,
+    )
+
+    # Detect regime for diagnostics
+    regime = detect_regime(struct_model, is_randomized, treatment_dist is not None)
+
+    if verbose:
+        from .lambda_.selector import describe_regime
+        print(f"Detected: {describe_regime(regime)}")
+
+    # Run cross-fitting
+    result = run_crossfit(
+        Y=Y_t,
+        T=T_t,
+        X=X_t,
+        t_tilde=t_tilde,
+        model=struct_model,
+        target=struct_target,
+        lambda_strategy=lambda_strategy,
+        n_folds=n_folds,
+        epochs=epochs,
+        lr=lr,
+        hidden_dims=hidden_dims,
+        ridge=ridge,
+        verbose=verbose,
+    )
+
+    return InferenceResult(
+        mu_hat=result.mu_hat,
+        se=result.se,
+        ci_lower=result.ci_lower,
+        ci_upper=result.ci_upper,
+        psi_values=result.psi_values,
+        theta_hat=result.theta_hat,
+        diagnostics={
+            "regime": regime.name,
+            "n_folds": n_folds,
+            "lambda_method": lambda_strategy.__class__.__name__,
+        },
+    )
+
+
 # Re-export key classes
 from .core import DMLResult, compute_coverage, compute_se_ratio
 from .families import (
@@ -230,12 +430,20 @@ from .families import (
     BaseFamily,
 )
 
+# New architecture exports
+from .models import StructuralModel, CustomModel, Linear, Logit
+from .targets import Target, CustomTarget, AverageParameter, AME
+from .lambda_ import Regime, detect_regime, select_lambda_strategy
+
 __all__ = [
-    # Main API
+    # New API
+    'inference',
+    'InferenceResult',
+    # Legacy API
     'structural_dml',
     # Result class
     'DMLResult',
-    # Families
+    # Families (legacy)
     'LinearFamily',
     'LogitFamily',
     'PoissonFamily',
@@ -247,6 +455,18 @@ __all__ = [
     'BaseFamily',
     'get_family',
     'FAMILY_REGISTRY',
+    # New architecture
+    'StructuralModel',
+    'CustomModel',
+    'Linear',
+    'Logit',
+    'Target',
+    'CustomTarget',
+    'AverageParameter',
+    'AME',
+    'Regime',
+    'detect_regime',
+    'select_lambda_strategy',
     # Utilities
     'compute_coverage',
     'compute_se_ratio',
