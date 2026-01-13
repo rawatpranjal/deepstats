@@ -9,8 +9,10 @@ Validates all 3 Lambda regimes:
 
 Usage:
     python -m evals.run_all > evals_report.txt 2>&1
-    python -m evals.run_all --quick  # Faster with smaller samples
+    python -m evals.run_all --quick  # Faster with smaller samples (M=10)
     python -m evals.run_all --regime a  # Run only Regime A
+    python -m evals.run_all --M 100  # Override simulation count
+    python -m evals.run_all --output-dir evals/reports  # Custom report output
 """
 
 import sys
@@ -24,6 +26,8 @@ def run_all_evals(
     verbose: bool = True,
     quick: bool = False,
     regime: Optional[str] = None,
+    M: Optional[int] = None,
+    output_dir: str = "evals/reports",
 ) -> Dict[str, Any]:
     """
     Run evaluations for all 3 regimes (or a specific one).
@@ -32,7 +36,14 @@ def run_all_evals(
         verbose: Print all output
         quick: Use smaller sample sizes for faster testing
         regime: Run only specific regime ('a', 'b', or 'c')
+        M: Override simulation count for coverage tests
+           Default: 10 (quick), 100 (full)
+        output_dir: Directory for report output files
     """
+    # Set default M based on quick mode
+    if M is None:
+        M = 10 if quick else 100  # INCREASED from 20
+
     results = {}
 
     # Print header
@@ -41,6 +52,8 @@ def run_all_evals(
     print("=" * 80)
     print(f"\nGenerated: {datetime.datetime.now().isoformat()}")
     print(f"Quick mode: {quick}")
+    print(f"Coverage simulations (M): {M}")
+    print(f"Report output: {output_dir}")
     if regime:
         print(f"Running only: Regime {regime.upper()}")
     print("\n" + "=" * 80)
@@ -56,19 +69,19 @@ def run_all_evals(
     if regime is None or regime.lower() == 'a':
         print("\n\n")
         from evals.regime_a.run_regime_a import run_regime_a
-        results["regime_a"] = run_regime_a(quick=quick, verbose=verbose)
+        results["regime_a"] = run_regime_a(quick=quick, verbose=verbose, M=M)
 
     # Regime B: Linear
     if regime is None or regime.lower() == 'b':
         print("\n\n")
         from evals.regime_b.run_regime_b import run_regime_b
-        results["regime_b"] = run_regime_b(quick=quick, verbose=verbose)
+        results["regime_b"] = run_regime_b(quick=quick, verbose=verbose, M=M)
 
     # Regime C: Observational Logit
     if regime is None or regime.lower() == 'c':
         print("\n\n")
         from evals.regime_c.run_regime_c import run_regime_c
-        results["regime_c"] = run_regime_c(quick=quick, verbose=verbose)
+        results["regime_c"] = run_regime_c(quick=quick, verbose=verbose, M=M)
 
     # Final Summary
     print("\n\n")
@@ -126,8 +139,12 @@ def run_all_evals(
         print(f"{regime_display:<15} {passed:<10} {failed:<10} {skipped:<10}")
 
     print("\n" + "=" * 80)
-    print("END OF REPORT")
+    print("END OF CONSOLE REPORT")
     print("=" * 80)
+
+    # Generate report files
+    from evals.report import generate_report
+    report_paths = generate_report(results, output_dir=output_dir)
 
     return results
 
@@ -142,10 +159,20 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Run all evaluations")
-    parser.add_argument("--quick", action="store_true", help="Quick mode with smaller samples")
+    parser.add_argument("--quick", action="store_true", help="Quick mode with smaller samples (M=10)")
     parser.add_argument("--quiet", action="store_true", help="Less verbose output")
     parser.add_argument("--regime", type=str, choices=['a', 'b', 'c', 'A', 'B', 'C'],
                         help="Run only specific regime")
+    parser.add_argument("--M", type=int, default=None,
+                        help="Number of MC simulations for coverage tests (default: 10 quick, 100 full)")
+    parser.add_argument("--output-dir", type=str, default="evals/reports",
+                        help="Directory for report output files")
     args = parser.parse_args()
 
-    results = run_all_evals(verbose=not args.quiet, quick=args.quick, regime=args.regime)
+    results = run_all_evals(
+        verbose=not args.quiet,
+        quick=args.quick,
+        regime=args.regime,
+        M=args.M,
+        output_dir=args.output_dir
+    )

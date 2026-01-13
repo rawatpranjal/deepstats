@@ -25,6 +25,12 @@ Implements Farrell, Liang, Misra (2021, 2025) approach.
   python3 -m evals.eval_01_theta 2>&1 | tee evals/reports/eval_01_$(date +%Y%m%d_%H%M%S).txt
   ```
   After running, ALWAYS print: `Report saved to: /Users/pranjal/deepest/evals/reports/<filename>`
+- **ALWAYS SHOW PATHS** - In every chat, always show the full paths of:
+  1. The `.py` file being run or modified
+  2. The `.txt` report file generated
+  Example: "Running `/Users/pranjal/deepest/evals/eval_03_lambda.py` → Report: `/Users/pranjal/deepest/evals/reports/eval_03_20260113_212445.txt`"
+- **ALWAYS SHOW THE CODE** - When implementing new families, features, or making changes, ALWAYS show the full code in your response. Don't just describe what you're doing - show the actual implementation. The user wants to see the code.
+- **RUTHLESS EVALS** - Evals are firewalls. They MUST be brutal. We WANT to see FAIL when implementation is wrong. Tight tolerances, multiple test cases, no mercy. A passing eval that misses bugs is worse than useless.
 - Show all the statistics.
 - NO overrides, placeholders, or deviating from the plan - no matter how hard it gets
 - Follow the plan exactly as specified
@@ -333,6 +339,25 @@ NN_IF           X.XXXXX   X.XXXXX   X.XXXXX   X.XXXXX   T/F     X.XXXXX   N/A
 ### Report Location
 
 Full benchmark: `tutorials/02_logit_oracle.ipynb`
+
+## GLM Family Formulas
+
+| Family | Link | Loss (NLL) | Gradient | Hessian Weight | θ_dim |
+|--------|------|------------|----------|----------------|-------|
+| **Linear** | Identity | `(y-μ)²` | `-2(y-μ)·[1,t]` | `2` (constant) | 2 |
+| **Gaussian** | Identity | `(y-μ)²/(2σ²) + log(σ)` | `[(μ-y)/σ², t(μ-y)/σ², 1-(y-μ)²/σ²]` | Depends on σ | 3 |
+| **Logit** | Logit | `log(1+exp(η)) - y·η` | `(p-y)·[1,t]` | `p(1-p)` | 2 |
+| **Poisson** | Log | `λ - y·log(λ)` | `(λ-y)·[1,t]` | `λ` | 2 |
+| **NegBin** | Log | `-lgamma(y+r) + ...` | `r(μ-y)/(r+μ)·[1,t]` | `rμ(r+y)/(r+μ)²` | 2 |
+| **Gamma** | Log | `y/μ + log(μ)` | `(1-y/μ)·[1,t]` | `y/μ` | 2 |
+| **Weibull** | Log | `-log(k) + k·log(λ) - (k-1)log(y) + zᵏ` | `k(1-z)·[1,t]` | `k²z` | 2 |
+| **Gumbel** | Identity | `z + exp(-z)` | `(-1/σ)(1-exp(-z))·[1,t]` | `exp(-z)/σ²` | 2 |
+| **Tobit** | Identity | Censored normal NLL | Autodiff (Mills ratio) | Autodiff | 3 |
+| **Probit** | Φ(η) | `-y·log(Φ) - (1-y)·log(1-Φ)` | Mills ratio | Autodiff | 2 |
+| **Beta** | Logit | `lgamma(μφ) + lgamma((1-μ)φ) - ...` | Digamma terms | Autodiff | 2 |
+| **ZIP** | Mixed | Mixture: π + (1-π)·Poisson | Autodiff | Autodiff | 4 |
+
+Where: `η = α + β·t`, `μ = g⁻¹(η)`, `z = (y/λ)^k` (Weibull) or `(y-μ)/σ` (Gumbel), `r = 1/overdispersion`, `Φ` = normal CDF
 
 ## References
 

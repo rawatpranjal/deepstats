@@ -8,14 +8,19 @@ import sys
 sys.path.insert(0, "/Users/pranjal/deepest/src")
 
 
-def run_regime_b(quick: bool = False, verbose: bool = True):
+def run_regime_b(quick: bool = False, verbose: bool = True, M: int = None):
     """
     Run all Regime B evaluations.
 
     Args:
         quick: Use smaller samples for faster testing
         verbose: Print detailed output
+        M: Override number of MC simulations for coverage test
     """
+    # Set default M based on quick mode
+    if M is None:
+        M = 10 if quick else 100  # INCREASED from 20
+
     results = {}
 
     print("\n" + "#" * 80)
@@ -48,7 +53,6 @@ def run_regime_b(quick: bool = False, verbose: bool = True):
     # Eval 05: Coverage
     print("\n\n")
     from evals.regime_b.eval_05_coverage import run_eval_05_coverage
-    M = 10 if quick else 20
     n = 300 if quick else 500
     results["eval_05"] = run_eval_05_coverage(M=M, n=n, verbose=verbose)
 

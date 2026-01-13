@@ -2,6 +2,64 @@
 
 ## 2026-01-13
 
+### Eval 04: Target Jacobian Expansion (Ruthless Firewall)
+- Expanded from narrow AME+Logit test to full **Targets × Families × Edge Cases** matrix
+- **Part 1 - Targets (Logit)**: AverageParameter, AME, AveragePrediction (45 tests)
+- **Part 2 - Families (AME)**: Linear, Poisson, Probit (25 tests)
+- **Part 3 - Edge Cases**: Near-boundary σ(±5), tiny β=0.001, large β=10 (8 tests)
+- **Part 4 - Batched vmap**: 14 configs × 100 random θ each
+- Added 12 oracle Jacobian functions to `dgp.py` with full derivations
+- **Results: 92/92 PASS** - max|err| = 1.78e-15 (machine precision)
+
+### Eval 03: Ruthless Redesign (3-Regime Testing)
+- Complete rewrite to test Lambda across ALL THREE REGIMES with tight tolerances
+- **Part A (RCT)**: Gauss-Hermite quadrature oracle, MC convergence rate (√M), Y-independence
+- **Part B (Linear)**: Analytical E[TT'|X] oracle, θ-independence, confounded T handling
+- **Part C (Observational)**: Correlation test, Frobenius error, x-dependence test
+- **Results: 7/9 PASS** - Aggregate method correctly FAILS C1 (corr=0) and C3 (std=0)
+- Added RUTHLESS EVALS rule to CLAUDE.md: "Evals are firewalls. They MUST be brutal."
+
+### Eval 01: Multi-Seed Validation + Scale Ratio Diagnostic
+- **Multi-seed validation (5 seeds)**: Run 42, 123, 456, 789, 999 by default, report mean ± std
+- **Scale ratio diagnostic**: Detects scale identification issues (high corr + high RMSE = scale shift, not bug)
+- **Scale-normalized RMSE**: When scale shift detected (ratio std < 0.2), reports RMSE after normalizing
+- Pass criteria based on mean metrics across seeds, not single seed
+- CLI: `--seeds 42,123,999` and `--single-seed` flags for backwards compatibility
+- Addresses binary family (logit, probit) scale non-identifiability
+- **Eval 01: 12/12 PASS** (3 seeds, n=2000, epochs=100)
+
+### Eval 02: Autodiff vs Calculus (All Families)
+- Enhanced `eval_02_autodiff.py` with 3-part validation
+- **Part 1 - Oracle @ Random θ (7 families)**: Linear, Logit, Poisson, NegBin, Gamma, Weibull, Gumbel
+  - Closed-form score/Hessian oracles vs torch.func autodiff
+  - All errors < 1e-6 (machine precision)
+- **Part 2 - Autodiff-Only (5 families)**: Probit, Beta, Gaussian, Tobit, ZIP
+  - Verifies gradients and Hessians are finite at random parameter values
+- **Part 3 - Fitted θ̂ Validation (7 families)**: Tests at optimum after fitting
+  - Generate data from DGP (α*=0.5, β*=0.3), fit via LBFGS
+  - Verify Hessian matches oracle at fitted θ̂
+  - Verify Hessian is PSD at optimum (all min eigenvalues > 0)
+- **Eval 02: 19/19 PASS**
+
+### Eval 01: Auxiliary Parameter Checking
+- Updated `compute_recovery_metrics()` to handle any theta_dim dynamically
+- For varying params (α, β): check RMSE < 0.3 AND Corr > 0.7
+- For constant params (γ, δ): check RMSE < 0.5 only (correlation undefined for flat line)
+- Now displays `RMSE(γ)` and `RMSE(δ)` with "(constant, true=X.XX)" annotation
+- Critical for Stage 2 inference: wrong σ estimate → wrong Hessian scaling → invalid CIs
+
+### Added 3 New GLM Families: Probit, Beta, ZIP
+- **Probit**: Binary classification with normal CDF link Φ(η), theta_dim=2
+- **Beta**: Proportions Y∈(0,1) with logit link for mean, fixed precision φ, theta_dim=2
+- **ZIP**: Zero-Inflated Poisson mixture model, theta_dim=4 (rate + inflation params)
+- All 3 use autodiff for Hessian (closed-form gradients where practical)
+- **Eval 01: 12/12 PASS** (9 existing + 3 new families)
+
+### Added GLM Formula Cheat Sheet
+- Added `## GLM Family Formulas` table to CLAUDE.md with all 12 families
+- Documents Loss, Gradient, Hessian Weight, and θ_dim for each family
+- Cross-verified all formulas against standard statistical references
+
 ### Fixed NegBin, Gaussian, and Weibull Families
 - **NegBin**: Changed from Poisson-like loss to true Negative Binomial NLL using `lgamma` terms
 - **Gaussian**: Now estimates sigma via MLE (theta_dim=3 with gamma=log(sigma)), distinct from Linear

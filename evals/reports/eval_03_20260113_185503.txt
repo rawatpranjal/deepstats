@@ -1,0 +1,135 @@
+============================================================
+EVAL 03: LAMBDA ESTIMATION (RUTHLESS)
+============================================================
+
+This eval tests Lambda estimation across ALL THREE REGIMES.
+We WANT to see FAIL when implementation is wrong.
+
+============================================================
+PART A: Regime A (RCT) - ComputeLambda
+============================================================
+
+  Test A1: Quadrature vs MC (50k samples)
+    Lambda_quad =
+      [[0.198986, -0.029888],
+       [-0.029888, 0.144326]]
+    Lambda_mc =
+      [[0.198964, -0.029879],
+       [-0.029879, 0.144401]]
+    Relative error: 0.03%
+    Test A1: PASS (threshold < 1%)
+
+  Test A2: MC convergence rate
+    M=  100: error=0.034347
+    M=  500: error=0.009617
+    M= 1000: error=0.007973
+    M= 5000: error=0.006212
+    Fitted rate: 0.43 (should be ~0.5)
+    Test A2: PASS (0.3 < rate < 0.7)
+
+  Test A3: Y-independence
+    ||Lambda1 - Lambda2|| = 0.00e+00
+    Test A3: PASS (should be 0)
+
+============================================================
+PART B: Regime B (Linear) - AnalyticLambda
+============================================================
+
+  Test B1: Lambda = E[TT'|X] analytical
+    x=0.00: E[T|X]=0.0000, E[T^2|X]=1.0000, error=0.00e+00
+    x=0.25: E[T|X]=0.1250, E[T^2|X]=1.0156, error=0.00e+00
+    x=0.50: E[T|X]=0.2500, E[T^2|X]=1.0625, error=0.00e+00
+    x=0.75: E[T|X]=0.3750, E[T^2|X]=1.1406, error=0.00e+00
+    x=1.00: E[T|X]=0.5000, E[T^2|X]=1.2500, error=0.00e+00
+    Test B1: PASS (max error < 1%)
+
+  Test B2: theta-independence
+    Testing at x=0.5 with different theta values
+    Max ||Lambda(theta) - Lambda(theta')|| = 0.00e+00
+    Test B2: PASS (should be 0)
+
+  Test B3: Confounded T at x=0.25
+    n_samples near x: 996
+    Lambda_empirical =
+      [[1.0000, 0.1551],
+       [0.1551, 0.9677]]
+    Lambda_oracle =
+      [[1.0000, 0.1250],
+       [0.1250, 1.0156]]
+    Relative error: 4.5%
+
+  Test B3: Confounded T at x=0.50
+    n_samples near x: 966
+    Lambda_empirical =
+      [[1.0000, 0.2042],
+       [0.2042, 1.0863]]
+    Lambda_oracle =
+      [[1.0000, 0.2500],
+       [0.2500, 1.0625]]
+    Relative error: 4.6%
+
+  Test B3: Confounded T at x=0.75
+    n_samples near x: 1009
+    Lambda_empirical =
+      [[1.0000, 0.3327],
+       [0.3327, 1.1633]]
+    Lambda_oracle =
+      [[1.0000, 0.3750],
+       [0.3750, 1.1406]]
+    Relative error: 4.0%
+    Test B3: PASS (max error < 10%)
+
+============================================================
+PART C: Regime C (Obs) - EstimateLambda
+============================================================
+
+  DGP: Regime C (Confounded Logit)
+    alpha*(x) = 0.0 + 0.5*sin(x)
+    beta*(x) = 1.0 + 0.5*x
+    T | X ~ N(beta*(x), 0.5^2)
+
+  Computing Oracle Lambda(x) for 500 points (MC=5000)...
+
+  Test C1: Corr(lambda_1_hat, lambda_1_oracle)
+    Oracle lambda_1: mean=0.2519, std=0.0985
+    Estimated lambda_1: mean=0.2365, std=0.0000
+    Correlation: 0.0000
+    Test C1: FAIL (threshold > 0.70)
+
+  Test C2: Mean Frobenius error
+    Mean error: 0.1211
+    Max error: 0.1837
+    Test C2: PASS (threshold < 0.15)
+
+  Test C3: x-dependence captured
+    Lambda_hat element-wise std: 0.000000
+    Oracle element-wise std: 0.0609
+    Test C3: FAIL (threshold > 0.01)
+    WARNING: Lambda_hat is CONSTANT (ignores x-dependence)
+
+============================================================
+SUMMARY
+============================================================
+
+  Part A (RCT):
+    A1: Quadrature vs MC............PASS (0.03%)
+    A2: MC convergence rate.........PASS (rate=0.43)
+    A3: Y-independence..............PASS (diff=0.00e+00)
+
+  Part B (Linear):
+    B1: Lambda = E[TT'|X]...........PASS (error=0.00e+00)
+    B2: theta-independence..........PASS (diff=0.00e+00)
+    B3: Confounded T................PASS (error=4.6%)
+
+  Part C (Observational):
+    C1: Corr(lambda_1_hat, lambda_1*)..FAIL (0.00)
+    C2: Mean Frobenius..............PASS (0.1211)
+    C3: x-dependence................FAIL (std=0.0000)
+
+============================================================
+EVAL 03: 7/9 PASSED
+STATUS: FAIL
+
+Failing tests indicate implementation bugs or method limitations.
+This is EXPECTED behavior - the eval is working correctly.
+============================================================

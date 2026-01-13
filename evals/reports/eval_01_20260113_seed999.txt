@@ -1,0 +1,112 @@
+======================================================================
+EVAL 01: PARAMETER RECOVERY (ALL FAMILIES)
+======================================================================
+
+Config: n=5000, epochs=200, seed=999
+Families: linear, gaussian, logit, poisson, negbin, gamma, weibull, gumbel, tobit, probit, beta, zip
+
+----------------------------------------------------------------------
+RUNNING TESTS
+----------------------------------------------------------------------
+
+  LINEAR
+    Y: mean=0.4640, std=1.5350
+    RMSE(α)=0.0477, RMSE(β)=0.0356
+    Corr(α)=0.9873, Corr(β)=0.9987
+    Status: PASS
+
+  GAUSSIAN
+    Y: mean=0.4640, std=1.5350
+    RMSE(α)=0.0526, RMSE(β)=0.0475
+    Corr(α)=0.9906, Corr(β)=0.9980
+    RMSE(γ)=0.0277 (constant, true=0.00)
+    Status: PASS
+
+  LOGIT
+    Y: mean=0.4838, std=0.4997
+    P(Y=1)=0.484
+    RMSE(α)=0.2304, RMSE(β)=0.6771
+    Corr(α)=0.9850, Corr(β)=0.9696
+    Status: FAIL
+
+  POISSON
+    Y: mean=1.7650, std=1.5852
+    RMSE(α)=0.0403, RMSE(β)=0.0255
+    Corr(α)=0.9977, Corr(β)=0.9918
+    Status: PASS
+
+  NEGBIN
+    Y: mean=1.7690, std=2.0820
+    RMSE(α)=0.0481, RMSE(β)=0.0280
+    Corr(α)=0.9926, Corr(β)=0.9814
+    Status: PASS
+
+  GAMMA
+    Y: mean=3.3953, std=4.4796
+    RMSE(α)=0.0390, RMSE(β)=0.0194
+    Corr(α)=0.9973, Corr(β)=0.9965
+    Status: PASS
+
+  WEIBULL
+    Y: mean=3.0556, std=3.9302
+    RMSE(α)=0.0293, RMSE(β)=0.0171
+    Corr(α)=0.9970, Corr(β)=0.9989
+    Status: PASS
+
+  GUMBEL
+    Y: mean=1.1163, std=1.7299
+    RMSE(α)=0.0425, RMSE(β)=0.0306
+    Corr(α)=0.9943, Corr(β)=0.9988
+    Status: PASS
+
+  TOBIT
+    Y: mean=1.1161, std=1.0793
+    P(Y=0)=0.228 (censored)
+    RMSE(α)=0.1580, RMSE(β)=0.0870
+    Corr(α)=0.9883, Corr(β)=0.9969
+    RMSE(γ)=0.0638 (constant, true=0.00)
+    Status: PASS
+
+  PROBIT
+    Y: mean=0.4678, std=0.4990
+    P(Y=1)=0.468
+    RMSE(α)=0.1156, RMSE(β)=0.1546
+    Corr(α)=0.9704, Corr(β)=0.9784
+    Status: PASS
+
+  BETA
+    Y: mean=0.6109, std=0.2222
+    RMSE(α)=0.0232, RMSE(β)=0.0425
+    Corr(α)=0.9985, Corr(β)=0.9987
+    Status: PASS
+
+  ZIP
+    Y: mean=0.9248, std=1.4393
+    P(Y=0)=0.595 (zeros)
+    RMSE(α)=0.0445, RMSE(β)=0.0373
+    Corr(α)=0.9910, Corr(β)=0.9830
+    RMSE(γ)=0.0472 (constant, true=0.00)
+    RMSE(δ)=0.0761 (constant, true=0.00)
+    Status: PASS
+
+======================================================================
+SUMMARY
+======================================================================
+
+Family       RMSE(α)    RMSE(β)    Corr(α)    Corr(β)    Status  
+----------------------------------------------------------------------
+linear       0.0477     0.0356     0.9873     0.9987     PASS    
+gaussian     0.0526     0.0475     0.9906     0.9980     PASS    
+logit        0.2304     0.6771     0.9850     0.9696     FAIL    
+poisson      0.0403     0.0255     0.9977     0.9918     PASS    
+negbin       0.0481     0.0280     0.9926     0.9814     PASS    
+gamma        0.0390     0.0194     0.9973     0.9965     PASS    
+weibull      0.0293     0.0171     0.9970     0.9989     PASS    
+gumbel       0.0425     0.0306     0.9943     0.9988     PASS    
+tobit        0.1580     0.0870     0.9883     0.9969     PASS    
+probit       0.1156     0.1546     0.9704     0.9784     PASS    
+beta         0.0232     0.0425     0.9985     0.9987     PASS    
+zip          0.0445     0.0373     0.9910     0.9830     PASS    
+----------------------------------------------------------------------
+Overall: 11/12 PASS
+======================================================================

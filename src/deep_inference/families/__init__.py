@@ -10,6 +10,9 @@ from .gumbel import GumbelFamily
 from .tobit import TobitFamily
 from .negbin import NegBinFamily
 from .weibull import WeibullFamily
+from .probit import ProbitFamily
+from .beta import BetaFamily
+from .zip import ZIPFamily
 
 FAMILY_REGISTRY = {
     "linear": LinearFamily,
@@ -21,6 +24,9 @@ FAMILY_REGISTRY = {
     "tobit": TobitFamily,
     "negbin": NegBinFamily,
     "weibull": WeibullFamily,
+    "probit": ProbitFamily,
+    "beta": BetaFamily,
+    "zip": ZIPFamily,
 }
 
 
@@ -39,6 +45,9 @@ def get_family(name: str, **kwargs) -> BaseFamily:
               - 'tobit': Y = max(0, alpha + beta*T + sigma*eps)
               - 'negbin': Y ~ NegBin(exp(alpha + beta*T), r)
               - 'weibull': Y ~ Weibull(shape, exp(alpha + beta*T))
+              - 'probit': P(Y=1) = Phi(alpha + beta*T) (normal CDF link)
+              - 'beta': Y ~ Beta(mu*phi, (1-mu)*phi), mu=sigmoid(alpha+beta*T)
+              - 'zip': Zero-Inflated Poisson mixture model
         **kwargs: Additional arguments passed to family constructor.
                   Examples:
                   - target='ame' for logit (average marginal effect)
@@ -67,6 +76,9 @@ __all__ = [
     "TobitFamily",
     "NegBinFamily",
     "WeibullFamily",
+    "ProbitFamily",
+    "BetaFamily",
+    "ZIPFamily",
     "get_family",
     "FAMILY_REGISTRY",
 ]

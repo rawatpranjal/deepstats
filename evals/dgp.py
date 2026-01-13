@@ -246,6 +246,151 @@ def oracle_target_jacobian(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarra
     return np.array([dH_dalpha, dH_dbeta])
 
 
+# === ORACLE TARGET JACOBIANS BY (TARGET, FAMILY) ===
+
+def oracle_jacobian_average_parameter(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Average Parameter target: H(θ) = β.
+
+    Jacobian: [∂H/∂α, ∂H/∂β] = [0, 1]
+
+    Works for all families (target doesn't depend on family).
+    """
+    return np.array([0.0, 1.0])
+
+
+def oracle_jacobian_ame_linear(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Linear AME: H(θ) = β.
+
+    For linear model E[Y] = α + βT, the marginal effect is constant = β.
+    Jacobian: [0, 1]
+    """
+    return np.array([0.0, 1.0])
+
+
+def oracle_jacobian_ame_logit(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Logit AME: H(θ) = σ(α + βt̃)·(1 - σ(α + βt̃))·β.
+
+    Jacobian derivation:
+        Let s = σ(α + βt̃), then H = s(1-s)β
+
+        ∂H/∂α = β·s(1-s)(1-2s)
+        ∂H/∂β = s(1-s) + β·t̃·s(1-s)(1-2s)
+    """
+    alpha, beta = theta[0], theta[1]
+    s = expit(alpha + beta * t_tilde)
+    dsdt = s * (1 - s)  # σ'(z)
+    d2sdt2 = dsdt * (1 - 2 * s)  # σ''(z) = σ'(z)(1-2σ(z))
+
+    dH_dalpha = beta * d2sdt2
+    dH_dbeta = dsdt + beta * t_tilde * d2sdt2
+
+    return np.array([dH_dalpha, dH_dbeta])
+
+
+def oracle_jacobian_ame_poisson(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Poisson AME: H(θ) = β·exp(α + βt̃).
+
+    For Poisson with E[Y] = exp(α + βT), the marginal effect is:
+        ∂E[Y]/∂T = β·exp(α + βT)
+
+    Jacobian:
+        ∂H/∂α = β·exp(α + βt̃)
+        ∂H/∂β = exp(α + βt̃)·(1 + β·t̃)
+    """
+    alpha, beta = theta[0], theta[1]
+    mu = np.exp(alpha + beta * t_tilde)
+    H_alpha = beta * mu
+    H_beta = mu * (1 + beta * t_tilde)
+    return np.array([H_alpha, H_beta])
+
+
+def oracle_jacobian_ame_probit(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Probit AME: H(θ) = φ(α + βt̃)·β.
+
+    For Probit with P(Y=1) = Φ(α + βT), the marginal effect is:
+        ∂P/∂T = φ(α + βT)·β  where φ = standard normal PDF
+
+    Jacobian:
+        Let η = α + βt̃, φ = φ(η)
+        ∂H/∂α = β·φ'(η) = β·(-η)·φ(η) = -β·η·φ
+        ∂H/∂β = φ + β·t̃·φ'(η) = φ·(1 - β·t̃·η)
+    """
+    from scipy.stats import norm
+    alpha, beta = theta[0], theta[1]
+    eta = alpha + beta * t_tilde
+    phi = norm.pdf(eta)
+    # φ'(η) = -η·φ(η)
+    H_alpha = -beta * eta * phi
+    H_beta = phi * (1 - beta * t_tilde * eta)
+    return np.array([H_alpha, H_beta])
+
+
+def oracle_jacobian_prediction_linear(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Linear prediction: H(θ) = α + βt̃.
+
+    Jacobian: [1, t̃]
+    """
+    return np.array([1.0, t_tilde])
+
+
+def oracle_jacobian_prediction_logit(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Logit prediction: H(θ) = σ(α + βt̃).
+
+    Jacobian:
+        ∂H/∂α = σ(1-σ)
+        ∂H/∂β = t̃·σ(1-σ)
+    """
+    alpha, beta = theta[0], theta[1]
+    s = expit(alpha + beta * t_tilde)
+    dsdt = s * (1 - s)
+    return np.array([dsdt, t_tilde * dsdt])
+
+
+def oracle_jacobian_prediction_poisson(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Poisson prediction: H(θ) = exp(α + βt̃).
+
+    Jacobian:
+        ∂H/∂α = exp(α + βt̃)
+        ∂H/∂β = t̃·exp(α + βt̃)
+    """
+    alpha, beta = theta[0], theta[1]
+    mu = np.exp(alpha + beta * t_tilde)
+    return np.array([mu, t_tilde * mu])
+
+
+def oracle_jacobian_prediction_probit(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Probit prediction: H(θ) = Φ(α + βt̃).
+
+    Jacobian:
+        ∂H/∂α = φ(α + βt̃)
+        ∂H/∂β = t̃·φ(α + βt̃)
+    """
+    from scipy.stats import norm
+    alpha, beta = theta[0], theta[1]
+    eta = alpha + beta * t_tilde
+    phi = norm.pdf(eta)
+    return np.array([phi, t_tilde * phi])
+
+
+def oracle_jacobian_elasticity_poisson(theta: np.ndarray, t_bar: float = 1.0) -> np.ndarray:
+    """
+    Poisson elasticity at T = t̄: H(θ) = β·t̄.
+
+    For log-linear model, elasticity = β·T (at T=t̄).
+    Jacobian: [0, t̄]
+    """
+    return np.array([0.0, t_bar])
+
+
 def oracle_lambda_conditional(x: float, dgp: CanonicalDGP, n_samples: int = 10000) -> np.ndarray:
     """
     Oracle Λ(x) = E[ℓ_θθ | X=x] via Monte Carlo integration.

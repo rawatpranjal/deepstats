@@ -1,0 +1,63 @@
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/numpy/lib/function_base.py:2897: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/numpy/lib/function_base.py:2898: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[None, :]
+============================================================
+EVAL 03: LAMBDA ESTIMATION
+============================================================
+
+DGP:
+  α*(x) = 0.0 + 0.5·sin(x)
+  β*(x) = 1.0 + 0.5·x
+  T | X ~ N(β*(x), 0.5²)
+
+Oracle: Λ(x) = E[ℓ_θθ | X=x]
+  = E[p(1-p)·[[1,T],[T,T²]] | X=x]
+  where p = σ(α*(x) + β*(x)·T)
+
+Generating data (n=1000, seed=42)...
+
+Computing Oracle Λ(x) (MC samples=5000)...
+
+Training EstimateLambda (aggregate method)...
+
+============================================================
+RESULTS
+============================================================
+
+--- Single Point Example (x=0) ---
+  X[275] = 0.0061
+
+  Oracle Λ:
+    [0.1907, 0.1730]
+    [0.1730, 0.2003]
+  Eigenvalues: [0.02247211 0.36856474]
+
+  Estimated Λ̂:
+    [0.1587, 0.1077]
+    [0.1077, 0.1289]
+  Eigenvalues: [0.03505629 0.25256392]
+
+--- Aggregate Metrics ---
+  Mean Frobenius Error: 0.1191
+  Max Frobenius Error: 0.2000
+  Min eigenvalue (Λ̂): 0.035056
+  Non-PSD count: 0/1000
+  Corr(λ₁, λ₁*): nan
+  Mean λ₁ (hat): 0.2526
+  Mean λ₁ (oracle): 0.2569
+
+--- Note ---
+  EstimateLambda(aggregate) returns mean(Hessians), losing x-dependence.
+  This is stable but may miss heterogeneity in Λ(x).
+
+============================================================
+VALIDATION CRITERIA
+============================================================
+  All eigenvalues > 0 (PSD): PASS
+  Mean Frobenius Error < 1.0: PASS
+  Min eigenvalue > 0: PASS
+
+============================================================
+EVAL 03: PASS
+============================================================

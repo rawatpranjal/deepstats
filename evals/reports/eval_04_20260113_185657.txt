@@ -1,0 +1,58 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/pranjal/deepest/evals/eval_04_jacobian.py", line 572, in <module>
+    result = run_eval_04(verbose=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pranjal/deepest/evals/eval_04_jacobian.py", line 517, in run_eval_04
+    part1 = run_part1_targets(verbose=verbose)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pranjal/deepest/evals/eval_04_jacobian.py", line 316, in run_part1_targets
+    r = run_single_test(
+        ^^^^^^^^^^^^^^^^
+  File "/Users/pranjal/deepest/evals/eval_04_jacobian.py", line 174, in run_single_test
+    autodiff_jac = autodiff_jacobian(target_fn, theta, t_tilde)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pranjal/deepest/evals/eval_04_jacobian.py", line 156, in autodiff_jacobian
+    return torch.func.grad(lambda th: target_fn(x_t, th, t_tilde_t))(theta_t).numpy()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Can't call numpy() on Tensor that requires grad. Use tensor.detach().numpy() instead.
+======================================================================
+EVAL 04: TARGET JACOBIAN (EXPANDED)
+======================================================================
+
+Tests autodiff ∂H/∂θ against closed-form oracle formulas
+across multiple targets, families, and edge cases.
+
+======================================================================
+PART 1: TARGET COVERAGE (Family = Logit)
+======================================================================
+
+--- 1a. AverageParameter: H(θ) = β ---
+  θ=[0. 1.], t̃=0.0
+    H(θ) = 1.000000
+    Oracle:   [0.000000, 1.000000]
+    Autodiff: [0.000000, 1.000000]
+    Abs Err: 0.00e+00, Rel Err: 0.00e+00 [PASS]
+  θ=[1.  0.5], t̃=0.0
+    H(θ) = 0.500000
+    Oracle:   [0.000000, 1.000000]
+    Autodiff: [0.000000, 1.000000]
+    Abs Err: 0.00e+00, Rel Err: 0.00e+00 [PASS]
+  θ=[-0.5  2. ], t̃=0.0
+    H(θ) = 2.000000
+    Oracle:   [0.000000, 1.000000]
+    Autodiff: [0.000000, 1.000000]
+    Abs Err: 0.00e+00, Rel Err: 0.00e+00 [PASS]
+  θ=[ 0.1 -1. ], t̃=0.0
+    H(θ) = -1.000000
+    Oracle:   [0.000000, 1.000000]
+    Autodiff: [0.000000, 1.000000]
+    Abs Err: 0.00e+00, Rel Err: 0.00e+00 [PASS]
+  θ=[2.  0.1], t̃=0.0
+    H(θ) = 0.100000
+    Oracle:   [0.000000, 1.000000]
+    Autodiff: [0.000000, 1.000000]
+    Abs Err: 0.00e+00, Rel Err: 0.00e+00 [PASS]
+
+--- 1b. AME Logit: H(θ) = σ(α+βt̃)(1-σ)β ---

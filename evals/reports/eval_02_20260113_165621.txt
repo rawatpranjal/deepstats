@@ -1,0 +1,33 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/pranjal/deepest/evals/eval_02_autodiff.py", line 451, in <module>
+    success = main(seed=args.seed)
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pranjal/deepest/evals/eval_02_autodiff.py", line 399, in main
+    from deep_inference.families import (
+ImportError: cannot import name 'ProbitFamily' from 'deep_inference.families' (/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/deep_inference/families.py)
+======================================================================
+EVAL 02: AUTODIFF VS CALCULUS (ALL FAMILIES)
+======================================================================
+
+Config: seed=42, n_trials=20
+
+----------------------------------------------------------------------
+PART 1: ORACLE COMPARISON (Closed-Form Families)
+----------------------------------------------------------------------
+
+Family       Score Err       Hessian Err     Status  
+----------------------------------------------------------------------
+linear       0.00e+00        0.00e+00        PASS    
+logit        1.67e-16        1.11e-16        PASS    
+poisson      1.74e-09        2.57e-09        PASS    
+negbin       1.74e-09        2.57e-09        PASS    
+gamma        2.22e-16        4.44e-16        PASS    
+weibull      8.88e-16        7.11e-15        PASS    
+gumbel       0.00e+00        1.78e-15        PASS    
+
+----------------------------------------------------------------------
+PART 2: AUTODIFF-ONLY VALIDATION (Complex Families)
+----------------------------------------------------------------------
+
