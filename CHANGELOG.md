@@ -2,6 +2,20 @@
 
 ## 2026-01-13
 
+### Eval 01 Investigation
+- Created `evals/eval.md` documenting learnings from each eval
+- **Finding 1**: Default `patience=10` too aggressive, stops training at epoch ~15
+- **Finding 2**: Flat loss surface - α and β compensate (Δloss=0.0003 for α+0.1,β-0.1)
+- **Finding 3**: n=20k helps but RMSE(β)<0.1 unrealistic for this DGP
+- Recommendation: Increase patience to 50+, relax RMSE(β) threshold to 0.2
+
+### Enriched Evaluation Framework
+- Added automatic report generation: JSON, Markdown, TXT summary in `evals/reports/`
+- Increased default MC simulations from M=20 to M=100 for better coverage estimates
+- Added `--M` and `--output-dir` CLI flags to `run_all.py`
+- Created `evals/common/` with cross-fitting isolation and numerical stability tests
+- Report links printed at end of evaluation run
+
 ### Comprehensive 3-Regime Evaluation Framework
 - Reorganized `evals/` to support all 3 Lambda regimes with isolated ground-truth tests
 - **Regime A (RCT Logit)**: ComputeLambda (Monte Carlo), 4 evals for randomized experiments
