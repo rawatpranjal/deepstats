@@ -118,7 +118,8 @@ def _generate_weibull(alpha, beta, T, rng, shape=2.0):
     """Generate Weibull samples with scale = exp(alpha + beta*T)."""
     scale = np.exp(np.clip(alpha + beta * T, -10, 5))
     # numpy's weibull is standardized, multiply by scale
-    return scale * rng.weibull(shape)
+    # BUG FIX: must pass size parameter to generate n samples, not 1!
+    return scale * rng.weibull(shape, size=len(T))
 
 
 def _generate_tobit(alpha, beta, T, rng, sigma=1.0):

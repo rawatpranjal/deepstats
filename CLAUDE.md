@@ -20,6 +20,11 @@ Implements Farrell, Liang, Misra (2021, 2025) approach.
 - **SHOW ME THE FACTS** - Report EVERY metric, EVERY statistic, EVERY number computed. No summaries. No opinions. No hiding. Raw data only. The user does not trust you - prove yourself with transparency.
 - **BENCHMARKING** - The goal is to benchmark the Neural Network against the Oracle. Show ALL methods side by side: Oracle (Naive SE), Oracle (Delta SE), NN Naive, NN IF. Show estimates, SEs, CIs, coverage, bias for EVERY method. This is what benchmarking means.
 - **VERBOSE STDOUT REPORTS** - All validation runs MUST capture full stdout to a report file. Use `tee` to save output: `python3 -m evals.run_all 2>&1 | tee evals/evals_report.txt`. Never summarize - the raw output IS the proof.
+- **ALWAYS SAVE EVAL REPORTS** - When running any eval, ALWAYS save output to `evals/reports/` and show the full path:
+  ```bash
+  python3 -m evals.eval_01_theta 2>&1 | tee evals/reports/eval_01_$(date +%Y%m%d_%H%M%S).txt
+  ```
+  After running, ALWAYS print: `Report saved to: /Users/pranjal/deepest/evals/reports/<filename>`
 - Show all the statistics.
 - NO overrides, placeholders, or deviating from the plan - no matter how hard it gets
 - Follow the plan exactly as specified

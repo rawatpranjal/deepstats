@@ -2,11 +2,13 @@
 
 ## 2026-01-13
 
-### Fixed NegBin and Gaussian Families
+### Fixed NegBin, Gaussian, and Weibull Families
 - **NegBin**: Changed from Poisson-like loss to true Negative Binomial NLL using `lgamma` terms
 - **Gaussian**: Now estimates sigma via MLE (theta_dim=3 with gamma=log(sigma)), distinct from Linear
-- Both families pass autodiff verification (gradient/Hessian error < 1e-6)
+- **Weibull DGP bug fix**: `_generate_weibull` was missing `size=` parameter, generating 1 sample broadcast to all n
+- Both NegBin/Gaussian pass autodiff verification (gradient/Hessian error < 1e-6)
 - Gaussian gamma recovery: RMSE=0.013, σ̂=0.989 vs σ*=1.0
+- **Eval 01: 9/9 PASS** (Weibull was 8/9 before fix)
 
 ### Multi-Family Parameter Recovery (Eval 01)
 - Extended `eval_01_theta.py` to test all 9 families: Linear, Gaussian, Logit, Poisson, NegBin, Gamma, Weibull, Gumbel, Tobit
