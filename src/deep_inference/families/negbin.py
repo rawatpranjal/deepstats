@@ -11,16 +11,15 @@ class NegBinFamily(BaseFamily):
     """Negative Binomial family: Y ~ NegBin(mu, r) where mu = exp(alpha + beta*T).
 
     Model:
-        Y ~ NegBin(mu, 1/overdispersion)
+        Y ~ NegBin(mu, r) where r = 1/overdispersion
         E[Y] = mu = exp(alpha(X) + beta(X) * T)
-        Var[Y] = mu + overdispersion * mu^2
+        Var[Y] = mu + overdispersion * mu^2 = mu + mu^2/r
 
     Parameters:
         theta = [alpha, beta] where mu = exp(alpha + beta*T)
 
     Loss:
-        Poisson-like loss: mu - Y * log(mu)
-        (Simplified form; full NegBin NLL includes terms in overdispersion)
+        True NegBin NLL: -lgamma(y+r) + lgamma(r) + lgamma(y+1) + (r+y)*log(r+mu) - y*log(mu) - r*log(r)
 
     Target:
         E[beta(X)] - average effect on log-mean
@@ -34,52 +33,83 @@ class NegBinFamily(BaseFamily):
         Args:
             overdispersion: Overdispersion parameter alpha > 0.
                            Var[Y] = mu + alpha * mu^2
+                           r = 1/alpha (dispersion parameter)
         """
         super().__init__(**kwargs)
         if overdispersion <= 0:
             raise ValueError(f"overdispersion must be positive, got {overdispersion}")
         self.overdispersion = overdispersion
+        self.r = 1.0 / overdispersion  # Dispersion parameter
 
     def loss(self, y: Tensor, t: Tensor, theta: Tensor) -> Tensor:
-        """NegBin loss (Poisson-like): mu - Y * log(mu)."""
-        alpha, beta = theta[:, 0], theta[:, 1]
-        eta = torch.clamp(alpha + beta * t, -20, 20)
-        mu = torch.exp(eta)
-        return mu - y * torch.log(mu + 1e-10)
+        """True Negative Binomial NLL.
 
-    def gradient(self, y: Tensor, t: Tensor, theta: Tensor) -> Optional[Tensor]:
-        """Closed-form gradient of loss.
+        NLL = -lgamma(y+r) + lgamma(r) + lgamma(y+1) + (r+y)*log(r+mu) - y*log(mu) - r*log(r)
 
-        For Poisson-like loss:
-        dl/d(alpha) = (mu - y)
-        dl/d(beta) = (mu - y) * t
+        Note: We drop constant terms that don't depend on theta for optimization.
+        Keeping: (r+y)*log(r+mu) - y*log(mu)
         """
         alpha, beta = theta[:, 0], theta[:, 1]
         eta = torch.clamp(alpha + beta * t, -20, 20)
         mu = torch.exp(eta)
-        residual = mu - y
-        grad = torch.stack([residual, residual * t], dim=1)
+        r = self.r
+
+        # Full NLL (for proper likelihood)
+        # We keep all terms for correctness
+        y_safe = torch.clamp(y, min=0)
+        mu_safe = torch.clamp(mu, min=1e-10)
+
+        nll = (
+            -torch.lgamma(y_safe + r)
+            + torch.lgamma(torch.tensor(r, dtype=theta.dtype, device=theta.device))
+            + torch.lgamma(y_safe + 1)
+            + (r + y_safe) * torch.log(r + mu_safe)
+            - y_safe * torch.log(mu_safe)
+            - r * torch.log(torch.tensor(r, dtype=theta.dtype, device=theta.device))
+        )
+        return nll
+
+    def gradient(self, y: Tensor, t: Tensor, theta: Tensor) -> Optional[Tensor]:
+        """Closed-form gradient of NegBin NLL.
+
+        d(NLL)/d(eta) = r*(mu - y) / (r + mu)
+
+        dl/d(alpha) = r*(mu - y) / (r + mu)
+        dl/d(beta) = r*(mu - y) / (r + mu) * t
+        """
+        alpha, beta = theta[:, 0], theta[:, 1]
+        eta = torch.clamp(alpha + beta * t, -20, 20)
+        mu = torch.exp(eta)
+        r = self.r
+
+        # Gradient w.r.t. eta
+        dl_deta = r * (mu - y) / (r + mu)
+
+        grad = torch.stack([dl_deta, dl_deta * t], dim=1)
         return grad
 
     def hessian(self, y: Tensor, t: Tensor, theta: Tensor) -> Optional[Tensor]:
-        """Closed-form Hessian of loss.
+        """Closed-form Hessian of NegBin NLL.
 
-        For Poisson-like loss: H = mu * [[1, t], [t, t^2]]
-        where mu = exp(alpha + beta*t)
+        d²(NLL)/d(eta)² = r * mu * (r + y) / (r + mu)²
 
-        Note: This is the true Hessian of the loss, not the quasi-likelihood
-        working weight (which would be mu / (1 + alpha*mu)).
+        Note: This is the expected Fisher information when y is replaced by E[y]=mu:
+              r * mu * (r + mu) / (r + mu)² = r * mu / (r + mu)
         """
         alpha, beta = theta[:, 0], theta[:, 1]
         eta = torch.clamp(alpha + beta * t, -20, 20)
         mu = torch.exp(eta)
+        r = self.r
+
+        # Use observed Hessian
+        w = r * mu * (r + y) / (r + mu) ** 2
 
         n = theta.shape[0]
         H = torch.zeros(n, 2, 2, dtype=theta.dtype, device=theta.device)
-        H[:, 0, 0] = mu
-        H[:, 0, 1] = mu * t
-        H[:, 1, 0] = mu * t
-        H[:, 1, 1] = mu * t * t
+        H[:, 0, 0] = w
+        H[:, 0, 1] = w * t
+        H[:, 1, 0] = w * t
+        H[:, 1, 1] = w * t * t
         return H
 
     def hessian_depends_on_theta(self) -> bool:

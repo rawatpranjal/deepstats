@@ -1,124 +1,144 @@
-"""Gaussian family implementation with closed-form optimizations."""
+"""Gaussian family implementation with MLE for sigma."""
 
-import math
 import torch
 from torch import Tensor
+from typing import Optional
 
 from .base import BaseFamily
 
 
 class GaussianFamily(BaseFamily):
     """
-    Gaussian structural model.
+    Gaussian structural model with MLE for sigma.
 
-    Model: Y ~ N(mu, sigma^2) where mu = alpha(X) + beta(X) * T
+    Model: Y ~ N(mu, sigma^2) where mu = alpha(X) + beta(X) * T, sigma = exp(gamma(X))
 
     Loss: Gaussian NLL = (y - mu)^2 / (2*sigma^2) + log(sigma)
+                       = (y - mu)^2 * exp(-2*gamma) / 2 + gamma
 
     Parameters:
-        theta = (alpha, beta) where
+        theta = (alpha, beta, gamma) where
         - alpha(x): baseline outcome
         - beta(x): treatment effect
+        - gamma(x): log standard deviation (sigma = exp(gamma))
 
     Target: E[beta(X)] (average treatment effect)
 
-    Note: sigma is a fixed hyperparameter, not learned.
+    Note: Unlike Linear family, this estimates sigma via MLE.
     """
 
-    theta_dim = 2
-
-    def __init__(self, sigma: float = 1.0, **kwargs):
-        """
-        Initialize GaussianFamily.
-
-        Args:
-            sigma: Standard deviation (fixed, not learned). Default 1.0.
-        """
-        super().__init__(**kwargs)
-        if sigma <= 0:
-            raise ValueError(f"sigma must be positive, got {sigma}")
-        self.sigma = sigma
+    theta_dim = 3
 
     def loss(self, y: Tensor, t: Tensor, theta: Tensor) -> Tensor:
         """
-        Gaussian negative log-likelihood.
+        Gaussian negative log-likelihood with learned sigma.
 
         NLL = (y - mu)^2 / (2*sigma^2) + log(sigma)
+            = (y - mu)^2 * exp(-2*gamma) / 2 + gamma
 
         Args:
             y: (n,) outcomes
             t: (n,) treatments
-            theta: (n, 2) parameters [alpha, beta]
+            theta: (n, 3) parameters [alpha, beta, gamma]
 
         Returns:
             (n,) per-observation losses
         """
         alpha = theta[:, 0]
         beta = theta[:, 1]
+        gamma = torch.clamp(theta[:, 2], -10, 10)  # Clamp for stability
+
         mu = alpha + beta * t
+        sigma_sq = torch.exp(2 * gamma)
 
-        return 0.5 * ((y - mu) / self.sigma) ** 2 + math.log(self.sigma)
+        return 0.5 * (y - mu) ** 2 / sigma_sq + gamma
 
-    def gradient(self, y: Tensor, t: Tensor, theta: Tensor) -> Tensor:
+    def gradient(self, y: Tensor, t: Tensor, theta: Tensor) -> Optional[Tensor]:
         """
         Closed-form gradient.
 
-        l_theta = (mu - y) / sigma^2 * (1, t)'
+        dl/d(alpha) = (mu - y) / sigma^2
+        dl/d(beta) = t * (mu - y) / sigma^2
+        dl/d(gamma) = 1 - (y - mu)^2 / sigma^2
 
         Args:
             y: (n,) outcomes
             t: (n,) treatments
-            theta: (n, 2) parameters [alpha, beta]
+            theta: (n, 3) parameters [alpha, beta, gamma]
 
         Returns:
-            (n, 2) gradient tensor
+            (n, 3) gradient tensor
         """
         alpha = theta[:, 0]
         beta = theta[:, 1]
-        mu = alpha + beta * t
+        gamma = torch.clamp(theta[:, 2], -10, 10)
 
-        residual = (mu - y) / (self.sigma ** 2)
+        mu = alpha + beta * t
+        sigma_sq = torch.exp(2 * gamma)
+        residual = (mu - y) / sigma_sq
+        sq_residual = (y - mu) ** 2 / sigma_sq
 
         grad_alpha = residual
         grad_beta = residual * t
+        grad_gamma = 1 - sq_residual
 
-        return torch.stack([grad_alpha, grad_beta], dim=1)
+        return torch.stack([grad_alpha, grad_beta, grad_gamma], dim=1)
 
-    def hessian(self, y: Tensor, t: Tensor, theta: Tensor) -> Tensor:
+    def hessian(self, y: Tensor, t: Tensor, theta: Tensor) -> Optional[Tensor]:
         """
         Closed-form Hessian.
 
-        l_theta_theta = 1/sigma^2 * [[1, t], [t, t^2]]
+        L = (y - mu)^2 * exp(-2*gamma) / 2 + gamma
 
-        Note: The Hessian does NOT depend on theta (only on t and sigma).
-        This means two-way splitting is sufficient.
+        H = [[1/sigma^2,  t/sigma^2,    -2*(mu-y)/sigma^2     ],
+             [t/sigma^2,  t^2/sigma^2,  -2*t*(mu-y)/sigma^2   ],
+             [-2*(mu-y)/sigma^2, -2*t*(mu-y)/sigma^2, 2*(y-mu)^2/sigma^2]]
 
         Args:
             y: (n,) outcomes
             t: (n,) treatments
-            theta: (n, 2) parameters [alpha, beta] (unused)
+            theta: (n, 3) parameters [alpha, beta, gamma]
 
         Returns:
-            (n, 2, 2) Hessian tensor
+            (n, 3, 3) Hessian tensor
         """
-        n = len(y)
-        scale = 1.0 / (self.sigma ** 2)
+        alpha = theta[:, 0]
+        beta = theta[:, 1]
+        gamma = torch.clamp(theta[:, 2], -10, 10)
 
-        H = torch.zeros(n, 2, 2, dtype=theta.dtype, device=theta.device)
+        mu = alpha + beta * t
+        sigma_sq = torch.exp(2 * gamma)
+
+        scale = 1.0 / sigma_sq
+        residual = (mu - y) / sigma_sq
+        sq_residual = (y - mu) ** 2 / sigma_sq
+
+        n = len(y)
+        H = torch.zeros(n, 3, 3, dtype=theta.dtype, device=theta.device)
+
+        # d2L/d(alpha)^2, d2L/d(alpha)d(beta), d2L/d(beta)^2
         H[:, 0, 0] = scale
         H[:, 0, 1] = scale * t
         H[:, 1, 0] = scale * t
         H[:, 1, 1] = scale * t ** 2
 
+        # d2L/d(alpha)d(gamma), d2L/d(beta)d(gamma)
+        # d/d(gamma)[(mu-y)*exp(-2*gamma)] = (mu-y)*(-2)*exp(-2*gamma) = -2*(mu-y)/sigma^2
+        H[:, 0, 2] = -2 * residual
+        H[:, 2, 0] = -2 * residual
+        H[:, 1, 2] = -2 * residual * t
+        H[:, 2, 1] = -2 * residual * t
+
+        # d2L/d(gamma)^2
+        H[:, 2, 2] = 2 * sq_residual
+
         return H
 
     def hessian_depends_on_theta(self) -> bool:
         """
-        Gaussian Hessian does not depend on theta.
-
-        This means two-way splitting is sufficient.
+        Gaussian MLE Hessian depends on theta through sigma = exp(gamma).
         """
-        return False
+        return True
 
     def residual(self, y: Tensor, t: Tensor, theta: Tensor) -> Tensor:
         """
@@ -127,7 +147,7 @@ class GaussianFamily(BaseFamily):
         Args:
             y: (n,) outcomes
             t: (n,) treatments
-            theta: (n, 2) parameters [alpha, beta]
+            theta: (n, 3) parameters [alpha, beta, gamma]
 
         Returns:
             (n,) residuals

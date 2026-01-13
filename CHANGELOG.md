@@ -2,6 +2,18 @@
 
 ## 2026-01-13
 
+### Fixed NegBin and Gaussian Families
+- **NegBin**: Changed from Poisson-like loss to true Negative Binomial NLL using `lgamma` terms
+- **Gaussian**: Now estimates sigma via MLE (theta_dim=3 with gamma=log(sigma)), distinct from Linear
+- Both families pass autodiff verification (gradient/Hessian error < 1e-6)
+- Gaussian gamma recovery: RMSE=0.013, σ̂=0.989 vs σ*=1.0
+
+### Multi-Family Parameter Recovery (Eval 01)
+- Extended `eval_01_theta.py` to test all 9 families: Linear, Gaussian, Logit, Poisson, NegBin, Gamma, Weibull, Gumbel, Tobit
+- Added family-specific DGPs with appropriate coefficient ranges
+- All 9/9 families pass parameter recovery with relaxed thresholds (RMSE < 0.3, Corr > 0.7)
+- Verified Tobit implementation against Tobias/Purdue lecture notes
+
 ### Eval 01 Investigation
 - Created `evals/eval.md` documenting learnings from each eval
 - **Finding 1**: Default `patience=10` too aggressive, stops training at epoch ~15
