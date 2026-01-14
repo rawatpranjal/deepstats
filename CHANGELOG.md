@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-01-14
+
+### Eval 01: Ruthless Redesign
+- **Tighter thresholds**: RMSE < 0.15 (was 0.3), Corr > 0.8 (was 0.7) — theory-aligned for n=2000
+- **Stricter pass logic**: PASS (all seeds), UNSTABLE (60%+), FAIL (<60%) — no more mean-aggregation hiding failures
+- **Worst-case reporting**: Summary shows Max RMSE(β), Min Corr(β) to expose instability
+- **10 seeds default**: Up from 5 for robust validation
+- **Removed scale identification claim**: Was incorrect for likelihood-based models
+- **Challenging DGPs**: Added `logit_highdim`, `linear_highdim` (d_X=10, interactions, sin(2πx), x²)
+- **Results**: 9 PASS, 1 UNSTABLE (negbin), 2 FAIL (logit, probit) — exposing real instability
+
+### Eval 08: Regularization Diagnostics
+- Created new eval `/Users/pranjal/deepest/evals/eval_08_regularization.py`
+- **Part A: Cross-Fitting Necessity** - Tests whether cross-fitting is required for valid inference
+  - A1: No-split vs cross-fit (K=5) comparison
+  - A2: Minimum folds K=2,5,10,20 analysis
+- **Part B: Ridge Calibration** - Tests adaptive ridge formula for SE ratio calibration
+  - B1: Fixed ridge across n=500..10000 (confirms U-shape miscalibration)
+  - B2: Adaptive ridge = c/sqrt(n) formula
+  - B3: Grid search for optimal c
+- Implements dedicated `run_nosplit_simulation()` that trains and evaluates on same data
+
 ## 2026-01-13
 
 ### Lambda Method Comparison (Eval 07 Round G)
