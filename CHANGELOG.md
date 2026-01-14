@@ -2,6 +2,12 @@
 
 ## 2026-01-13
 
+### Lambda Method Comparison (Eval 07 Round G)
+- Tested aggregate vs lgbm vs ridge Lambda methods with M=50 multi-seed validation
+- **LGBM**: Added heavy regularization (n_estimators=20, max_depth=2, reg_alpha=5.0, reg_lambda=5.0) for stable Lambda estimates
+- **Ridge**: Confirmed BROKEN - Bias=66, SE ratio=0.5 (never use)
+- Updated CLAUDE.md Lambda Method Recommendations with test results
+
 ### Eval 03: Regularization Ablation Study (Part D)
 - Added `--reg-study` CLI flag to run regularization ablation (12 configs, ~60s)
 - Exposed regularization params in EstimateLambda: `mlp_alpha`, `rf_max_depth`, `lgbm_reg_lambda`

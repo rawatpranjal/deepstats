@@ -412,11 +412,11 @@ For `structural_dml()` with nonlinear models (logit, poisson, etc.), choose `lam
 
 | Method | Speed | Stability | SE Calibration | Recommendation |
 |--------|-------|-----------|----------------|----------------|
-| **aggregate** | Fast | Excellent (always PSD) | Coverage ~98%, SE ratio ~1.04 | Default for stability |
-| **lgbm** | Fast | Good (with heavy reg) | Coverage ~96%, SE ratio ~1.05 | Best for SE calibration |
+| **aggregate** | Fast | Excellent (always PSD) | Coverage ~98%, SE ratio ~0.95 | Default for stability |
+| **lgbm** | Fast | Good (with heavy reg) | Coverage ~96%, SE ratio ~1.1 | Best for SE calibration |
 | **mlp** | Very slow (~4min/seed) | Variable | Untested at scale | Not recommended |
 | **rf** | Medium | Variable | Untested | Not recommended |
-| **ridge** | Fast | Variable | Untested | Not recommended |
+| **ridge** | Fast | **BROKEN** | Bias=66, SE ratio=0.5 | **Never use** |
 
 ### Why aggregate can fail coverage checks
 
