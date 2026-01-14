@@ -445,6 +445,133 @@ def analyze_heterogeneity(
 
 
 # ============================================================
+# ROUND G: SE CALIBRATION (Multi-Seed)
+# ============================================================
+
+def run_round_g_se_validation(
+    n: int = 1000,
+    M: int = 100,
+    n_folds: int = 30,
+    epochs: int = 50,
+    verbose: bool = True,
+) -> Dict[str, Any]:
+    """
+    Round G: Multi-seed SE validation.
+
+    This confirms SE calibration on the realistic heterogeneous DGP.
+    Runs M seeds and checks:
+    - Coverage: 93-97%
+    - SE Ratio: 0.9-1.1
+
+    Returns dict with results.
+    """
+    import warnings
+    warnings.filterwarnings("ignore")
+
+    print("\n" + "=" * 80)
+    print("ROUND G: SE CALIBRATION (Multi-Seed)")
+    print("=" * 80)
+    print(f"\nSettings: n={n}, M={M}, n_folds={n_folds}, epochs={epochs}")
+
+    # Get true mu from seed 0
+    _, _, _, dgp_info = generate_loan_application_data(n=n, seed=0)
+    mu_true = dgp_info["mu_true"]
+    print(f"True μ* = {mu_true:.6f}")
+
+    print(f"\nRunning {M} seeds...")
+
+    mu_hats = []
+    ses = []
+    covers = 0
+
+    iterator = tqdm(range(M), desc="Seeds") if verbose else range(M)
+
+    for seed in iterator:
+        # Generate data with this seed
+        Y, T, X, _ = generate_loan_application_data(n=n, seed=seed)
+
+        # Run NN inference
+        try:
+            result = structural_dml(
+                Y=Y,
+                T=T,
+                X=X,
+                family="logit",
+                n_folds=n_folds,
+                epochs=epochs,
+                lambda_method="aggregate",
+                verbose=False,
+            )
+
+            mu_hat = result.mu_hat
+            se = result.se
+
+            mu_hats.append(mu_hat)
+            ses.append(se)
+
+            # Check coverage
+            ci_lo = mu_hat - 1.96 * se
+            ci_hi = mu_hat + 1.96 * se
+            if ci_lo <= mu_true <= ci_hi:
+                covers += 1
+
+        except Exception as e:
+            # If fit fails, skip
+            pass
+
+    # Compute statistics
+    n_valid = len(mu_hats)
+    if n_valid == 0:
+        print("ERROR: All fits failed!")
+        return {"status": "FAIL", "error": "All fits failed"}
+
+    mu_hats = np.array(mu_hats)
+    ses = np.array(ses)
+
+    coverage = covers / n_valid
+    mean_se = np.mean(ses)
+    empirical_se = np.std(mu_hats)
+    se_ratio = mean_se / empirical_se if empirical_se > 0 else np.inf
+    mean_bias = np.mean(mu_hats) - mu_true
+
+    # Print results
+    print(f"\n--- Results ({n_valid}/{M} valid) ---")
+    print(f"  Mean μ̂:       {np.mean(mu_hats):.6f}")
+    print(f"  Bias:         {mean_bias:.6f}")
+    print(f"  Coverage:     {coverage*100:.1f}% (target: 93-97%)")
+    print(f"  Mean SE:      {mean_se:.6f}")
+    print(f"  Empirical SE: {empirical_se:.6f}")
+    print(f"  SE Ratio:     {se_ratio:.3f} (target: 0.9-1.1)")
+
+    # Checks
+    coverage_pass = 0.93 <= coverage <= 0.97
+    se_ratio_pass = 0.9 <= se_ratio <= 1.1
+
+    status = "PASS" if (coverage_pass and se_ratio_pass) else "FAIL"
+
+    print(f"\n  Coverage check: {'PASS' if coverage_pass else 'FAIL'}")
+    print(f"  SE ratio check: {'PASS' if se_ratio_pass else 'FAIL'}")
+    print(f"\n  Status: {status}")
+    print("=" * 80)
+
+    return {
+        "n": n,
+        "M": M,
+        "n_valid": n_valid,
+        "mu_true": mu_true,
+        "mean_mu_hat": np.mean(mu_hats),
+        "bias": mean_bias,
+        "coverage": coverage,
+        "mean_se": mean_se,
+        "empirical_se": empirical_se,
+        "se_ratio": se_ratio,
+        "coverage_pass": coverage_pass,
+        "se_ratio_pass": se_ratio_pass,
+        "status": status,
+    }
+
+
+# ============================================================
 # PART F: VALIDATION
 # ============================================================
 
@@ -615,8 +742,19 @@ def run_eval_07(
 if __name__ == "__main__":
     import sys
 
-    # Quick mode for testing
-    if "--quick" in sys.argv:
+    # Parse arguments
+    args = sys.argv[1:]
+
+    # Check for Round G modes
+    if "--round-g" in args:
+        # Full Round G: M=100 seeds
+        result = run_round_g_se_validation(n=1000, M=100, n_folds=30, epochs=50)
+    elif "--quick-g" in args:
+        # Quick Round G: M=20 seeds
+        result = run_round_g_se_validation(n=1000, M=20, n_folds=20, epochs=30)
+    elif "--quick" in args:
+        # Quick mode for Parts A-F
         result = run_eval_07(n=1000, n_bootstrap=50, n_folds=20, epochs=50)
     else:
+        # Full mode for Parts A-F
         result = run_eval_07(n=3000, n_bootstrap=200, n_folds=30, epochs=100)

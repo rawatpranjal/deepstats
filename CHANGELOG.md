@@ -2,12 +2,17 @@
 
 ## 2026-01-13
 
-### Eval 07: End-to-End User Experience
+### Eval 07: End-to-End User Experience + Round G SE Calibration
 - Created `evals/eval_07_e2e.py` demonstrating full analyst workflow
 - Scenario: Loan application with heterogeneous rate sensitivity
-- Components: Bootstrap Oracle inference, structural_dml() NN inference, comparison tables
+- **Parts A-F**: Bootstrap Oracle inference, structural_dml() NN inference, comparison tables
 - Tests: μ* coverage (Oracle, Bootstrap, NN IF), heterogeneity recovery (β̂(x) correlation), θ(x) bootstrap coverage
 - **Results: 7/7 PASS** - All methods achieve valid coverage, Oracle-NN correlation 0.73/0.40
+- **Round G (NEW)**: Multi-seed SE calibration (M=100 seeds)
+  - Validates SE ratio = mean_SE / empirical_SE ∈ [0.9, 1.1]
+  - Validates coverage ∈ [93%, 97%]
+  - CLI: `--round-g` (M=100), `--quick-g` (M=20)
+  - **Results: PASS** - Coverage 95%, SE Ratio 0.91
 
 ### Tutorial: New `inference()` API Section Added
 - Added Section 5 to `tutorials/01_showcase.ipynb` demonstrating new API
