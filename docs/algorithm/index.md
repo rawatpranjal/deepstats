@@ -1,374 +1,294 @@
 # Algorithm
 
-A general-purpose algorithm for structural deep learning with valid inference, based on the Farrell-Liang-Misra framework.
+Implementation of Farrell-Liang-Misra influence function-based inference for neural networks.
 
 ---
 
-## The Setup
+## Overview
 
-**You have:**
-- A parametric structural model defined by a loss function $\ell(y, t, \theta)$
-- Observed data $\{(y_i, t_i, x_i)\}_{i=1}^n$
-- A target quantity of interest $H(x, \theta; \tilde{t})$
+The package provides valid confidence intervals for neural network estimates by:
 
-**You want:**
-- Estimates of heterogeneous parameters $\theta^*(x)$
-- Valid inference on $\mu^* = E[H(X, \theta^*(X); \tilde{t})]$
+1. Training a structural network θ̂(x) via cross-fitting
+2. Computing influence functions ψᵢ to correct for regularization bias
+3. Using √n-consistent variance estimation
+
+**Core formula:**
+$$\psi_i = H(\hat{\theta}_i) - H_\theta \cdot \Lambda(x_i)^{-1} \cdot \ell_\theta(z_i, \hat{\theta}_i)$$
 
 ---
 
-## Algorithm Overview
+## Algorithm Flow
 
 ```
-INPUT:
-  - Loss function l(y, t, theta) defining your structural model
-  - Target function H(x, theta; t_tilde) defining your parameter of interest
-  - Data {(y_i, t_i, x_i)}
-  - Number of folds K (recommend K >= 20)
+For each fold k = 1, ..., K:
+    1. Train θ̂_k(x) on I_k^c (training set)
+    2. Compute scores: ℓ_θ(zᵢ, θ̂_k(xᵢ)) for i ∈ I_k
+    3. Compute Hessians: ℓ_θθ(zᵢ, θ̂_k(xᵢ)) for i ∈ I_k
+    4. Estimate Λ̂_k(x) from Hessians
+    5. Assemble ψᵢ = h - H_θ · Λ̂⁻¹ · ℓ_θ
 
-OUTPUT:
-  - Point estimate mu_hat
-  - Standard error SE(mu_hat)
-  - 95% confidence interval
+Aggregate:
+    μ̂ = (1/n) Σᵢ ψᵢ
+    SE = √(Var(ψ)/n)
 ```
 
 ---
 
-## Phase 0: Model Specification
+## Lambda Estimation (Critical)
 
-Define your structural model components:
+The conditional Hessian Λ(x) = E[ℓ_θθ|X=x] has three estimation regimes:
 
-| Component | Description | Example (Logit) |
-|-----------|-------------|-----------------|
-| $\ell(y, t, \theta)$ | Loss function | Binary cross-entropy |
-| $H(x, \theta; \tilde{t})$ | Target functional | $\beta(x)$ or AME |
-| $\theta(x)$ | Parameters | $[\alpha(x), \beta(x)]$ |
+### Regime A: Randomized Experiments (`ComputeLambda`)
 
----
-
-## Phase 1: Data Splitting
-
-Split data into K disjoint folds $I_1, I_2, \ldots, I_K$ of equal size.
-
-**For three-way splitting** (required when $\Lambda$ depends on $\theta$):
-- Further split each $I_k^c$ into two parts: $I_k^a$ and $I_k^b$
-
-**When is three-way needed?**
-- Two-way: $\Lambda(x)$ doesn't depend on $\theta(x)$ (linear models)
-- Three-way: $\Lambda(x)$ depends on $\theta(x)$ (logit, probit, Tobit, etc.)
-
----
-
-## Phase 2: First-Stage Estimation
-
-For each fold $k = 1, \ldots, K$:
-
-### Step 2a: Estimate Parameter Functions
-
-Train structural DNN on training fold:
-
-$$\hat{\theta}_k(\cdot) = \arg\min_{\theta \in \mathcal{F}_{dnn}} \sum_{i \in I_k^a} \ell(y_i, t_i, \theta(x_i))$$
-
-### Step 2b: Compute Hessians
-
-For each data point $i \in I_k^b$:
-- Compute $\ell_{\theta\theta}(y_i, t_i, \hat{\theta}_k(x_i))$ via automatic differentiation
-
-### Step 2c: Estimate Conditional Hessian
-
-Regress Hessian values on $x$ to get $\hat{\Lambda}_k(x)$:
-
-$$\hat{\Lambda}_k(\cdot) = \text{NonparametricRegression}\left(\{(x_i, \ell_{\theta\theta}(y_i, t_i, \hat{\theta}_k(x_i)))\}_{i \in I_k^b}\right)$$
-
----
-
-## Phase 3: Compute Influence Function Values
-
-For each fold $k$ and each observation $i \in I_k$ (held-out):
-
-### Step 3a: Compute Derivatives
-
-Using automatic differentiation:
-- $\ell_\theta(y_i, t_i, \hat{\theta}_k(x_i))$ - gradient of loss w.r.t. $\theta$
-- $H_\theta(x_i, \hat{\theta}_k(x_i); \tilde{t})$ - Jacobian of target w.r.t. $\theta$
-
-### Step 3b: Evaluate Influence Function
-
-$$\psi_{ik} = H(x_i, \hat{\theta}_k(x_i); \tilde{t}) - H_\theta(x_i, \hat{\theta}_k(x_i); \tilde{t}) \cdot \hat{\Lambda}_k(x_i)^{-1} \cdot \ell_\theta(y_i, t_i, \hat{\theta}_k(x_i))$$
-
----
-
-## Phase 4: Aggregate and Compute Standard Errors
-
-### Point Estimate
-
-$$\hat{\mu} = \frac{1}{n} \sum_k \sum_{i \in I_k} \psi_{ik}$$
-
-### Variance Estimate
-
-$$\hat{\Psi} = \frac{1}{K} \sum_k \frac{1}{|I_k|} \sum_{i \in I_k} (\psi_{ik} - \hat{\mu}_k)^2$$
-
-where $\hat{\mu}_k = \frac{1}{|I_k|} \sum_{i \in I_k} \psi_{ik}$
-
-### Standard Error and CI
-
-$$SE(\hat{\mu}) = \sqrt{\hat{\Psi}/n}$$
-
-$$CI_{95\%} = [\hat{\mu} - 1.96 \cdot SE(\hat{\mu}), \hat{\mu} + 1.96 \cdot SE(\hat{\mu})]$$
-
----
-
-## Neural Network Architecture
-
-### The Parameter Layer
-
-The key architectural insight is the **parameter layer**:
-
-```
-Standard NN (for prediction):
-    Input -> Hidden -> Hidden -> ... -> Output y_hat
-    Loss = (y - y_hat)^2
-
-Structural NN (for parameter estimation):
-    Input x -> Hidden -> Hidden -> ... -> Parameter layer theta_hat(x)
-                                               |
-    Treatment t ---------------------------> Model layer: l(y, t, theta_hat(x))
-    Outcome y ------------------------------>
+When treatment T is randomized and independent of X:
+```python
+# Monte Carlo integration over treatment distribution
+Λ(x) = E_T[ℓ_θθ(Y, T, θ(x)) | X=x]
+     ≈ (1/M) Σₘ ℓ_θθ(y, tₘ, θ(x))  where tₘ ~ P(T)
 ```
 
-### PyTorch Implementation
+Use: `inference(..., is_randomized=True, treatment_dist=Normal(0, 1))`
+
+### Regime B: Linear Models (`AnalyticLambda`)
+
+For linear models, Λ(x) = E[TT'|X=x] has closed form:
+```python
+# No θ-dependence, so 2-way splitting suffices
+Λ(x) = E[(1,T)(1,T)' | X=x]
+```
+
+Use: `inference(..., model='linear')` (auto-detected)
+
+### Regime C: Observational Nonlinear (`EstimateLambda`)
+
+For logit, Poisson, etc. in observational settings:
+
+| Method | Correlation | Coverage | Speed | Use Case |
+|--------|-------------|----------|-------|----------|
+| `ridge` | 0.508 | **96%** | 0.08s | **Recommended (default)** |
+| `aggregate` | 0.000 | 95% | 0.02s | Ignores heterogeneity |
+| `lgbm` | 0.978 | 96% | 1.2s | High accuracy |
+| `rf` | 0.904 | ~90% | 0.3s | Moderate accuracy |
+| `mlp` | 0.997 | **67%** | 12.5s | **AVOID** - invalid SEs |
+
+**Key finding:** MLP achieves highest correlation (0.997) but produces **invalid standard errors** (67% coverage instead of 95%). Ridge is the safe default with validated 96% coverage.
+
+Use: `structural_dml(..., lambda_method='ridge')` (default) or `inference(..., lambda_method='lgbm')`
+
+---
+
+## Three-Way Splitting
+
+### When It's Needed
+
+Three-way splitting is required when Λ(x) depends on θ(x).
+
+**Two-way suffices:**
+- Linear models (Λ = E[TT'|X], no θ-dependence)
+- Randomized experiments (can compute Λ analytically)
+
+**Three-way required:**
+- Logit, Poisson, Gamma, Weibull, etc.
+- Hessian weights depend on θ: e.g., p(1-p) for logit where p = σ(θ'x)
+
+### Auto-Detection
+
+The package auto-detects θ-dependence:
+```python
+# From core/algorithm.py
+def detect_theta_dependence(family, X, T, theta):
+    """Sample 100 observations, perturb θ, check if Hessian changes."""
+    sample_idx = np.random.choice(len(X), min(100, len(X)))
+    H1 = family.hessian(Y[sample_idx], T[sample_idx], theta[sample_idx])
+    H2 = family.hessian(Y[sample_idx], T[sample_idx], theta[sample_idx] + 0.1)
+    return not np.allclose(H1, H2, rtol=1e-5)
+```
+
+### How It Works
+
+When `three_way=True` (or auto-detected):
+```
+For each fold k:
+    Training set I_k^c is split:
+    - 60% for training θ̂_k(x)
+    - 40% for fitting Λ̂_k(x)
+```
+
+This prevents overfitting: θ̂ and Λ̂ are estimated on independent data.
+
+---
+
+## Regularization
+
+### Lambda Inversion
+
+Inverting Λ(x) can be unstable when Hessians are near-singular. The package uses Tikhonov regularization:
 
 ```python
-class StructuralDNN(nn.Module):
-    def __init__(self, dim_x, dim_theta, hidden_sizes):
-        super().__init__()
-
-        # Hidden layers for learning theta(x)
-        layers = []
-        prev_size = dim_x
-        for h in hidden_sizes:
-            layers.append(nn.Linear(prev_size, h))
-            layers.append(nn.ReLU())
-            prev_size = h
-        self.hidden = nn.Sequential(*layers)
-
-        # Parameter layer: outputs theta(x)
-        self.param_layer = nn.Linear(prev_size, dim_theta)
-
-    def forward(self, x):
-        """Returns parameter vector theta(x)"""
-        h = self.hidden(x)
-        theta = self.param_layer(h)
-        return theta
-
-    def structural_loss(self, y, t, x):
-        theta = self.forward(x)
-        return self.loss_fn(y, t, theta)
+# From utils/linalg.py
+def batch_inverse(Lambda, ridge=1e-4):
+    """Invert with ridge regularization for stability."""
+    Lambda_reg = Lambda + ridge * torch.eye(Lambda.shape[-1])
+    return torch.linalg.inv(Lambda_reg)
 ```
+
+**Default:** `ridge=1e-4`
+
+### Diagnostics
+
+The package tracks `min_lambda_eigenvalue`:
+```
+Warning: min_lambda_eigenvalue=1.23e-06 < 1e-4
+Consider increasing ridge regularization or checking model fit.
+```
+
+**When to increase regularization:**
+- Near-singular Hessians (min eigenvalue < 1e-4)
+- Logit with p ≈ 0 or p ≈ 1 (separation issues)
+- Overdispersed count models
 
 ---
 
-## Computing Derivatives with Autodiff
+## Variance Estimation
+
+### Within-Fold Formula
 
 ```python
-def compute_influence_components(model, y, t, x, H_func):
-    """
-    Compute all components needed for the influence function
-    using automatic differentiation.
-    """
-    x.requires_grad_(True)
+# From core/algorithm.py
+Ψ̂ = (1/K) Σ_k Var_k(ψ)
+  = (1/K) Σ_k (1/|I_k|) Σ_{i ∈ I_k} (ψᵢ - μ̂_k)²
 
-    # Get theta_hat(x)
-    theta = model(x)
-
-    # Compute l_theta: gradient of loss w.r.t. theta
-    loss = model.loss_fn(y, t, theta)
-    ell_theta = torch.autograd.grad(loss, theta, create_graph=True)[0]
-
-    # Compute l_theta_theta: Hessian of loss w.r.t. theta
-    ell_theta_theta = []
-    for j in range(len(theta)):
-        grad_j = torch.autograd.grad(ell_theta[j], theta, retain_graph=True)[0]
-        ell_theta_theta.append(grad_j)
-    ell_theta_theta = torch.stack(ell_theta_theta)
-
-    # Compute H and H_theta
-    H_val = H_func(x, theta)
-    H_theta = torch.autograd.grad(H_val, theta)[0]
-
-    return theta, ell_theta, ell_theta_theta, H_val, H_theta
+SE = √(Ψ̂/n)
 ```
+
+Where μ̂_k is the fold-specific mean.
+
+### High Correction Variance Warning
+
+```
+Warning: High correction variance ratio (43.96).
+This suggests the influence function correction dominates the estimate variance.
+Consider using more cross-fitting folds (K >= 50).
+```
+
+This warns when:
+```python
+correction_variance / total_variance > 10
+```
+
+Indicates the bias correction term H_θ · Λ⁻¹ · ℓ_θ has high variance, often from:
+- Insufficient cross-fitting folds
+- Poor θ̂(x) estimation in some regions
+- Near-singular Lambda
 
 ---
 
-## Estimating $\Lambda(x)$
+## Two APIs
 
-The conditional Hessian $\Lambda(x) = E[\ell_{\theta\theta}(Y, T, \theta(X)) | X = x]$ requires nonparametric regression:
+### Legacy: `structural_dml()`
+
+For the 8 built-in GLM families:
+```python
+from deep_inference import structural_dml
+
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='logit',           # linear, logit, poisson, gamma, ...
+    # lambda_method='ridge' is default (validated coverage)
+    n_folds=50,
+    epochs=100,
+)
+```
+
+### New: `inference()`
+
+For flexible targets and custom models:
+```python
+from deep_inference import inference
+
+result = inference(
+    Y=Y, T=T, X=X,
+    model='logit',
+    target='ame',              # ame, beta, or custom
+    # lambda_method='ridge' is default (validated coverage)
+    is_randomized=False,
+)
+```
+
+Both use the same core algorithm; `inference()` adds:
+- Regime detection (A/B/C)
+- Custom target functions
+- Treatment distribution specification
+
+---
+
+## Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `core/algorithm.py` | Main `structural_dml_core()` with fold logic |
+| `engine/crossfit.py` | Modular `CrossFitter` class |
+| `engine/assembler.py` | Influence function assembly |
+| `engine/variance.py` | SE computation |
+| `lambda_/estimate.py` | MLP/LGBM Lambda estimation |
+| `lambda_/selector.py` | Regime detection |
+| `autodiff/` | Score, Hessian, Jacobian computation |
+
+---
+
+## Pseudocode (Actual Implementation)
 
 ```python
-def estimate_Lambda(x_train, hessian_values, x_eval):
-    """
-    Regress Hessian values on x to get Lambda_hat(x).
-    Can use any nonparametric method: neural net, random forest, kernel, etc.
-    """
-    # Option 1: Another neural network
-    Lambda_model = train_regression_nn(x_train, hessian_values)
-    return Lambda_model(x_eval)
+def structural_dml_core(Y, T, X, family, lambda_method, n_folds, ...):
+    # Phase 1: Create folds
+    kf = KFold(n_splits=n_folds, shuffle=True)
 
-    # Option 2: Random forest (often more stable)
-    Lambda_model = RandomForestRegressor().fit(x_train, hessian_values)
-    return Lambda_model.predict(x_eval)
+    # Detect if 3-way splitting needed
+    three_way = detect_theta_dependence(family, X, T, initial_theta)
+
+    psi_all = []
+    for fold_idx, (train_idx, eval_idx) in enumerate(kf.split(X)):
+        # Phase 2a: Train θ̂(x)
+        if three_way:
+            theta_train = train_idx[:int(0.6 * len(train_idx))]
+            lambda_train = train_idx[int(0.6 * len(train_idx)):]
+        else:
+            theta_train = train_idx
+            lambda_train = train_idx
+
+        model = train_structural_net(X[theta_train], T[theta_train], Y[theta_train])
+        theta_hat = model(X[eval_idx])
+
+        # Phase 2b: Compute Hessians on lambda_train
+        hessians = family.hessian(Y[lambda_train], T[lambda_train], theta_hat_train)
+
+        # Phase 2c: Fit Lambda
+        if lambda_method == 'aggregate':
+            Lambda = hessians.mean(axis=0)  # Single matrix for all x
+        else:
+            Lambda_model = train_lambda_estimator(X[lambda_train], hessians)
+            Lambda = Lambda_model(X[eval_idx])
+
+        # Phase 3: Assemble influence function
+        for i in eval_idx:
+            score = family.gradient(Y[i], T[i], theta_hat[i])
+            h = target.h(theta_hat[i])
+            h_jacobian = target.jacobian(theta_hat[i])
+
+            Lambda_inv = batch_inverse(Lambda[i], ridge=1e-4)
+            psi_i = h - h_jacobian @ Lambda_inv @ score
+            psi_all.append(psi_i)
+
+    # Phase 4: Aggregate
+    mu_hat = np.mean(psi_all)
+    se = np.sqrt(np.var(psi_all) / n)
+
+    return DMLResult(mu_hat=mu_hat, se=se, ...)
 ```
 
 ---
 
-## Model-Specific Examples
+## References
 
-### Example 1: Heterogeneous Logit
-
-```
-Model: P[Y=1|X=x, T=t] = G(alpha(x) + beta(x)*t)
-       where G(u) = 1/(1+exp(-u))
-
-Loss: l(y, t, theta(x)) = -y*log(G(theta'*t_1))
-                         - (1-y)*log(1-G(theta'*t_1))
-      where theta = (alpha, beta)', t_1 = (1, t)'
-
-Derivatives:
-  l_theta = -(y - G(theta'*t_1)) * t_1
-  l_theta_theta = G(theta'*t_1) * (1-G(theta'*t_1)) * t_1 * t_1'
-
-Target (Average Marginal Effect):
-  H(x, theta; t_tilde) = G(theta'*t_tilde) * (1-G(theta'*t_tilde)) * beta
-```
-
-### Example 2: Heterogeneous Linear Model
-
-```
-Model: E[Y|X=x, T=t] = alpha(x) + beta(x)*t
-
-Loss: l(y, t, theta(x)) = (y - alpha(x) - beta(x)*t)^2
-
-Derivatives:
-  l_theta = -2*(y - alpha - beta*t) * (1, t)'
-  l_theta_theta = 2 * [[1, t], [t, t^2]]
-
-Lambda(x) = 2 * E[T_1 * T_1' | X=x]
-
-Target (Average Treatment Effect):
-  H(x, theta; t_tilde) = beta(x)
-  H_theta = (0, 1)
-```
-
-### Example 3: Heterogeneous Tobit
-
-```
-Model: Y = max(0, Y*), Y*|X,T ~ N(alpha(x) + beta(x)*t, sigma(x)^2)
-
-Loss: l = -1{y=0} * log(Phi(-theta_1't_1/theta_2))
-        - 1{y>0} * [log(theta_2) + (1/2)*((y-theta_1't_1)*theta_2)^2]
-      where theta_1 = (alpha,beta)/sigma, theta_2 = 1/sigma
-
-Derivatives: Complex but computed automatically
-
-Target: E[beta(X)] or E[dE[Y|X,T]/dT]
-```
-
-### Example 4: Optimal Personalized Pricing
-
-```
-First stage: Same as logit model above
-
-Target: Optimal price r_opt(x) solving:
-  max_r  Pi(r, x) = P[Y=1|x,r] * (r - c)
-
-H is implicitly defined by FOC: dPi/dr = 0
-
-Use envelope theorem: At optimum, dPi/dr = 0, so
-  H_theta = dr_opt/d_theta via implicit function theorem
-  Or: just use numerical differentiation
-```
-
----
-
-## Practical Recommendations
-
-### Hyperparameter Guidelines
-
-| Parameter | Recommendation | Notes |
-|-----------|---------------|-------|
-| K (folds) | 20-50 | More folds = more stable, but slower |
-| Hidden layers | 2-3 | Deeper rarely helps for heterogeneity |
-| Width | 10-50 nodes | Depends on sample size |
-| Activation | ReLU | Standard choice |
-| Optimizer | Adam | Learning rate ~0.001 |
-| Epochs | Early stopping | Monitor validation loss |
-
-### When Three-Way Splitting is Needed
-
-**Two-way splitting suffices when:**
-- $\Lambda(x)$ doesn't depend on $\theta(x)$ (linear models)
-- T is randomly assigned and independent of X
-
-**Three-way splitting required when:**
-- $\Lambda(x) = E[\ell_{\theta\theta}|X]$ depends on $\theta(x)$ through $G'(\theta' \cdot t)$ terms
-- Most nonlinear models (logit, probit, Tobit, etc.)
-
-### Diagnosing Problems
-
-**If confidence intervals are huge:**
-- Check overlap: $\Lambda(x)$ may be nearly singular for some $x$
-- Check positivity in propensity scores
-- Consider trimming extreme regions
-
-**If point estimates are unstable across runs:**
-- Increase K (more folds)
-- Use short-stacking (ensemble multiple methods)
-- Simplify network architecture
-
-**If bias correction term dominates:**
-- First stage may be poorly estimated
-- Consider more data or simpler model
-- Check that structural model is appropriate
-
----
-
-## Complete Pseudocode Summary
-
-```
-ALGORITHM: StructuralDML
-
-INPUT: Data (Y, T, X), loss l, target H, folds K
-
-1. SPLIT data into K folds
-
-2. FOR k = 1 to K:
-     a. Train structural DNN on fold k's complement:
-        theta_k(.) = argmin sum_{i not in I_k} l(y_i, t_i, theta(x_i))
-
-     b. Compute Hessians via autodiff:
-        {l_theta_theta(y_i, t_i, theta_k(x_i))} for i not in I_k
-
-     c. Estimate Lambda_k(.) by regressing Hessians on X
-
-     d. FOR i in I_k (held-out):
-          Compute psi_ik = H - H_theta * Lambda_k^{-1} * l_theta
-
-3. AGGREGATE:
-     mu_hat = mean(psi_ik)
-     SE = sqrt(var(psi_ik)/n)
-
-OUTPUT: mu_hat, SE, 95% CI = [mu_hat +/- 1.96*SE]
-```
-
----
-
-## Key Innovations
-
-This algorithm is remarkably general. Any structural model with a smooth loss function and any smooth target functional can be handled.
-
-The key contributions from Farrell-Liang-Misra:
-
-1. **The architecture** that directs neural network flexibility toward the parameters
-2. **The generic influence function formula** using ordinary derivatives
-3. **The insight that automatic differentiation** makes this all computationally tractable
+- Farrell, Liang, Misra (2021): "Deep Neural Networks for Estimation and Inference" *Econometrica*
+- Farrell, Liang, Misra (2025): "Deep Learning for Individual Heterogeneity" *Working Paper*

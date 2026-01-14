@@ -1,46 +1,61 @@
-# Eval 05: Influence Function Coverage
+# Eval 05: Influence Function Assembly
 
-Monte Carlo validation of the complete influence function assembly.
+Validates the complete influence function ψ assembly from Theorem 2.
+
+## Formula
+
+$$\psi_i = H(\theta_i) - H_\theta(\theta_i) \cdot \Lambda(x_i)^{-1} \cdot \ell_\theta(y_i, t_i, \theta_i)$$
 
 ## Configuration
 
 | Parameter | Value |
 |-----------|-------|
-| Simulations | M = 50 |
-| Sample Size | n = 1000 |
-| DGP | Canonical Logit |
+| n | 1000 |
 | Seed | 42 |
+| True μ* | 0.241 |
 
 ## Results
 
-| Metric | Value | Target | Status |
-|--------|-------|--------|--------|
-| Coverage | 88% (44/50) | 85-97% | PASS |
-| SE Ratio | 0.873 | 0.8-1.2 | PASS |
-| Mean Bias | 0.002 | < 0.1 | PASS |
-| Corr(ψ̂, ψ*) | 1.000 | > 0.99 | PASS |
+### Assembly Comparison
 
-**Result: 4/4 rounds PASS**
+| Metric | Package | Oracle |
+|--------|---------|--------|
+| Mean(ψ) | 0.241 | 0.240 |
+| Std(ψ) | 1.050 | 0.997 |
 
-## Rounds
+### Assembly Quality
 
-### Round A: Mechanical Assembly
-- Validates ψ̂ = score - Λ⁻¹·H_θ·(θ̂ - θ̃) matches oracle
-- Corr(ψ̂, ψ*) = 1.000
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| Corr(ψ̂, ψ*) | 0.995 | > 0.9 | PASS |
+| Bias | 0.001 | < 0.1 | PASS |
+| RMSE | 0.114 | < 0.5 | PASS |
 
-### Round B: Neyman Orthogonality
-- Validates ψ is orthogonal to nuisance perturbations
-- δ = 0.01: bias = 0.000415
-- δ = 0.05: bias = 0.000934
-- δ = 0.10: bias = 0.001479
+### Inference Check
 
-### Round C: Variance Formula
-- Validates SE = √(Var(ψ)/n)
-- 95% CI covers true μ*
+| Quantity | Value |
+|----------|-------|
+| True μ* | 0.241 |
+| Mean(ψ_oracle) | 0.240 |
+| Mean(ψ_package) | 0.241 |
+| Oracle bias from true | -0.001 |
+| Package bias from true | -0.000 |
 
-### Round D: Multi-Seed Coverage
-- M = 50 independent simulations
-- Coverage = 88% (within 85-97% target)
+## Summary
+
+| Test | Result |
+|------|--------|
+| Corr(ψ̂, ψ*) > 0.9 | PASS |
+| \|Bias\| < 0.1 | PASS |
+| RMSE < 0.5 | PASS |
+| **Overall** | **PASS** |
+
+## Key Findings
+
+- Package ψ correlates 0.995 with oracle ψ
+- Bias is negligible (< 0.01)
+- Standard deviation within 5% of oracle
+- Assembly correctly combines H, H_θ, Λ⁻¹, and ℓ_θ
 
 ## Run Command
 

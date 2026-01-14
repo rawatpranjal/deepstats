@@ -47,39 +47,6 @@ def compute_gradient(
     return gradients
 
 
-def compute_gradient_vectorized(
-    loss_fn: Callable[[Tensor, Tensor, Tensor], Tensor],
-    y: Tensor,
-    t: Tensor,
-    theta: Tensor,
-) -> Tensor:
-    """
-    Vectorized gradient computation using jacobian.
-
-    More efficient for small batches.
-
-    Args:
-        loss_fn: Loss function (y, t, theta) -> (n,) per-observation losses
-        y: (n,) outcomes
-        t: (n,) treatments
-        theta: (n, d_theta) parameters
-
-    Returns:
-        (n, d_theta) gradient tensor
-    """
-    theta_grad = theta.clone().requires_grad_(True)
-    losses = loss_fn(y, t, theta_grad)  # (n,)
-
-    # Sum losses and compute gradient (gives sum of per-obs gradients)
-    # This works because loss is separable across observations
-    total_loss = losses.sum()
-    grad = torch.autograd.grad(total_loss, theta_grad)[0]
-
-    # For separable losses, this gives correct per-observation gradients
-    # since ∂(Σℓᵢ)/∂θᵢ = ∂ℓᵢ/∂θᵢ when θᵢ only affects ℓᵢ
-    return grad
-
-
 def compute_hessian(
     loss_fn: Callable[[Tensor, Tensor, Tensor], Tensor],
     y: Tensor,
@@ -125,50 +92,6 @@ def compute_hessian(
             )[0][0]  # (d_theta,)
 
             hessians[i, j, :] = grad_j
-
-    return hessians
-
-
-def compute_hessian_functional(
-    loss_fn: Callable[[Tensor, Tensor, Tensor], Tensor],
-    y: Tensor,
-    t: Tensor,
-    theta: Tensor,
-) -> Tensor:
-    """
-    Compute Hessian using torch.func for better efficiency.
-
-    Args:
-        loss_fn: Loss function (y, t, theta) -> (n,) per-observation losses
-        y: (n,) outcomes
-        t: (n,) treatments
-        theta: (n, d_theta) parameters
-
-    Returns:
-        (n, d_theta, d_theta) Hessian tensor
-    """
-    n, d_theta = theta.shape
-    hessians = torch.zeros(n, d_theta, d_theta, dtype=theta.dtype, device=theta.device)
-
-    # Define loss for single observation
-    def single_loss(theta_single, y_single, t_single):
-        return loss_fn(y_single.unsqueeze(0), t_single.unsqueeze(0), theta_single.unsqueeze(0))[0]
-
-    for i in range(n):
-        # Use torch.func.hessian if available
-        try:
-            from torch.func import hessian
-            hess_fn = hessian(lambda th: single_loss(th, y[i], t[i]))
-            hessians[i] = hess_fn(theta[i])
-        except ImportError:
-            # Fall back to manual computation
-            theta_i = theta[i:i+1].clone().requires_grad_(True)
-            loss_i = loss_fn(y[i:i+1], t[i:i+1], theta_i)[0]
-            grad_i = torch.autograd.grad(loss_i, theta_i, create_graph=True)[0][0]
-
-            for j in range(d_theta):
-                grad_j = torch.autograd.grad(grad_i[j], theta_i, retain_graph=(j < d_theta - 1))[0][0]
-                hessians[i, j, :] = grad_j
 
     return hessians
 

@@ -1,34 +1,71 @@
 """
 Eval 03: Lambda Estimation (RUTHLESS)
 
-Tests Lambda estimation across ALL THREE REGIMES with tight tolerances.
-We WANT to see FAIL when implementation is wrong.
+================================================================================
+WHAT IS LAMBDA?
+================================================================================
 
-Structure:
-    Part A: Regime A (RCT) - ComputeLambda
-        A1: Quadrature oracle vs MC (error < 1%)
-        A2: MC convergence rate is sqrt(M)
-        A3: Independence from Y realization
+Lambda (Λ) is the expected Hessian of the loss function:
 
-    Part B: Regime B (Linear) - AnalyticLambda
-        B1: Lambda = E[TT'|X] matches analytical (error < 1%)
-        B2: Lambda independent of theta
-        B3: Handles confounded T correctly
+    Λ(x) = E[ℓ_θθ(Y, T, θ(x)) | X = x]
 
-    Part C: Regime C (Observational) - EstimateLambda
-        C1: Corr(lambda_1_hat, lambda_1_star) > 0.7
-        C2: Mean Frobenius error < 0.15
-        C3: x-dependence captured (NOT constant)
+It appears in the influence function variance formula (Theorem 2):
 
-Pass Criteria:
-    - Regime A/B: Relative error < 1% (computation = exact)
-    - Regime C: Correlation > 0.7, Frobenius < 0.15, std > 0.01
-    - All: Min eigenvalue > 1e-6 (PSD required)
+    Var(ψ) = E[Λ⁻¹ · H_θ' · (ℓ_θ · ℓ_θ') · H_θ · Λ⁻¹]
+
+If Λ is wrong → SE is wrong → CI coverage is wrong → inference is invalid.
+
+================================================================================
+WHY THIS EVAL MATTERS
+================================================================================
+
+Lambda estimation is the HARDEST component of the influence function pipeline:
+- θ̂(x) errors are orthogonalized away (Neyman orthogonality)
+- H_θ is computed via autodiff (exact)
+- But Λ̂(x) errors directly bias the variance estimate
+
+Three regimes require different Lambda strategies:
+- Regime A (RCT): Λ = E[ℓ_θθ | T⊥X], can compute via MC over known T dist
+- Regime B (Linear): Λ = E[TT' | X], analytical formula exists
+- Regime C (Observational): Λ(x) varies with x, must estimate via regression
+
+================================================================================
+STRUCTURE
+================================================================================
+
+Part A: Regime A (RCT) - ComputeLambda
+    A1: Quadrature oracle vs MC (error < 1%)
+    A2: MC convergence rate is sqrt(M)
+    A3: Independence from Y realization
+
+Part B: Regime B (Linear) - AnalyticLambda
+    B1: Lambda = E[TT'|X] matches analytical (error < 1%)
+    B2: Lambda independent of theta
+    B3: Handles confounded T correctly
+
+Part C: Regime C (Observational) - EstimateLambda
+    C1: Corr(lambda_1_hat, lambda_1_star) > 0.7
+    C2: Mean Frobenius error < 0.15
+    C3: x-dependence captured (NOT constant)
+
+Part D: Regularization Ablation (--reg-study flag)
+    Tests MLP, Ridge, RF, LightGBM with different regularization levels
+
+================================================================================
+PASS CRITERIA
+================================================================================
+
+- Regime A/B: Relative error < 1% (computation should be exact)
+- Regime C: Correlation > 0.7, Frobenius < 0.15, std > 0.01
+- All: Min eigenvalue > 1e-6 (PSD required for valid variance)
+
+We WANT to see FAIL when implementation is wrong - this is a firewall.
 """
 
 import sys
 import time
 import numpy as np
+import torch
 from scipy.special import expit, roots_hermite
 
 sys.path.insert(0, "/Users/pranjal/deepest/src")
@@ -204,6 +241,60 @@ def run_part_a(verbose: bool = True) -> dict:
         status = "PASS" if pass_a3 else "FAIL"
         print(f"    Test A3: {status} (should be 0)")
 
+    # --- Test A4: ComputeLambda Package ---
+    # Actually test the package implementation!
+    try:
+        from deep_inference.lambda_.compute import ComputeLambda, Normal
+        from deep_inference.models import Logit
+
+        model = Logit()
+
+        # Create strategy with known treatment distribution
+        strategy = ComputeLambda(
+            treatment_dist=Normal(mean=0, std=1),
+            n_mc_samples=5000,
+            seed=42
+        )
+
+        # Use dummy data for fit (ComputeLambda only needs t_samples)
+        import torch
+        X_dummy = torch.zeros(10, 1)
+        T_dummy = torch.zeros(10)
+        Y_dummy = torch.zeros(10)
+        theta_test = torch.tensor([[theta[0], theta[1]]])
+
+        strategy.fit(X=X_dummy, T=T_dummy, Y=Y_dummy, theta_hat=theta_test, model=model)
+        lambda_pkg = strategy.predict(X_dummy[:1], theta_test)
+
+        lambda_pkg_np = lambda_pkg[0].numpy()
+
+        # Compare to quadrature oracle
+        frob_pkg_diff = np.linalg.norm(lambda_pkg_np - Lambda_quad)
+        rel_error_a4 = frob_pkg_diff / frob_quad * 100
+
+        pass_a4 = rel_error_a4 < 5.0  # Allow 5% for MC variance
+        results["A4"] = {"rel_error": rel_error_a4, "passed": pass_a4}
+
+        if verbose:
+            print(f"\n  Test A4: ComputeLambda package")
+            print(f"    Lambda_pkg =")
+            print(f"      [[{lambda_pkg_np[0,0]:.6f}, {lambda_pkg_np[0,1]:.6f}],")
+            print(f"       [{lambda_pkg_np[1,0]:.6f}, {lambda_pkg_np[1,1]:.6f}]]")
+            print(f"    Relative error vs quadrature: {rel_error_a4:.2f}%")
+            status = "PASS" if pass_a4 else "FAIL"
+            print(f"    Test A4: {status} (threshold < 5%)")
+
+    except ImportError as e:
+        if verbose:
+            print(f"\n  Test A4: ComputeLambda package")
+            print(f"    SKIP - Not available: {e}")
+        results["A4"] = {"passed": False, "error": str(e)}
+    except Exception as e:
+        if verbose:
+            print(f"\n  Test A4: ComputeLambda package")
+            print(f"    ERROR: {e}")
+        results["A4"] = {"passed": False, "error": str(e)}
+
     elapsed = time.time() - start_time
     results["elapsed_time"] = elapsed
 
@@ -348,6 +439,61 @@ def run_part_b(verbose: bool = True) -> dict:
     if verbose:
         status = "PASS" if pass_b3 else "FAIL"
         print(f"    Test B3: {status} (max error < 10%)")
+
+    # --- Test B4: AnalyticLambda Package ---
+    # Actually test the package implementation!
+    try:
+        from deep_inference.lambda_.analytic import AnalyticLambda
+        from deep_inference.models import Linear
+
+        model = Linear()
+
+        # Test at x = 0.5
+        x_test = 0.5
+        Lambda_oracle = oracle_lambda_linear(x_test, dgp)
+
+        # Use data from Test B3
+        strategy = AnalyticLambda(method="aggregate")
+        strategy.fit(X=X, T=T, Y=Y, theta_hat=None, model=model)
+
+        # Predict at single x point
+        X_test = torch.tensor([[x_test]])
+        lambda_pkg = strategy.predict(X_test)
+        lambda_pkg_np = lambda_pkg[0].numpy()
+
+        # Compare to oracle
+        frob_oracle = np.linalg.norm(Lambda_oracle)
+        frob_diff = np.linalg.norm(lambda_pkg_np - Lambda_oracle)
+        rel_error_b4 = frob_diff / frob_oracle * 100
+
+        # Note: aggregate method returns mean(TT'), so it won't match E[TT'|X]
+        # for specific x values. We check if it's in reasonable range.
+        pass_b4 = rel_error_b4 < 20.0  # Allow 20% for aggregate approximation
+
+        results["B4"] = {"rel_error": rel_error_b4, "passed": pass_b4}
+
+        if verbose:
+            print(f"\n  Test B4: AnalyticLambda package (aggregate)")
+            print(f"    Lambda_pkg (mean TT') =")
+            print(f"      [[{lambda_pkg_np[0,0]:.4f}, {lambda_pkg_np[0,1]:.4f}],")
+            print(f"       [{lambda_pkg_np[1,0]:.4f}, {lambda_pkg_np[1,1]:.4f}]]")
+            print(f"    Lambda_oracle at x={x_test} =")
+            print(f"      [[{Lambda_oracle[0,0]:.4f}, {Lambda_oracle[0,1]:.4f}],")
+            print(f"       [{Lambda_oracle[1,0]:.4f}, {Lambda_oracle[1,1]:.4f}]]")
+            print(f"    Relative error: {rel_error_b4:.1f}%")
+            status = "PASS" if pass_b4 else "FAIL"
+            print(f"    Test B4: {status} (threshold < 20%)")
+
+    except ImportError as e:
+        if verbose:
+            print(f"\n  Test B4: AnalyticLambda package")
+            print(f"    SKIP - Not available: {e}")
+        results["B4"] = {"passed": False, "error": str(e)}
+    except Exception as e:
+        if verbose:
+            print(f"\n  Test B4: AnalyticLambda package")
+            print(f"    ERROR: {e}")
+        results["B4"] = {"passed": False, "error": str(e)}
 
     elapsed = time.time() - start_time
     results["elapsed_time"] = elapsed
@@ -644,6 +790,13 @@ def run_part_c(verbose: bool = True) -> dict:
     results["oracle_time"] = oracle_time
     results["method_times"] = method_times
 
+    # Store data for Parts E and F
+    results["_lambda_oracle"] = lambda_oracle
+    results["_X"] = X
+    results["_T"] = T
+    results["_Y"] = Y
+    results["_theta_true"] = theta_true
+
     elapsed = time.time() - start_time
     results["elapsed_time"] = elapsed
 
@@ -658,10 +811,383 @@ def run_part_c(verbose: bool = True) -> dict:
 
 
 # =============================================================================
+# PART D: REGULARIZATION ABLATION STUDY
+# =============================================================================
+
+def run_regularization_study(verbose: bool = True, lambda_oracle=None, X=None, T=None, Y=None, theta_true=None) -> dict:
+    """
+    Part D: Regularization ablation study.
+
+    Tests each method with different regularization settings to understand
+    the effect of regularization on Lambda estimation quality.
+    """
+    start_time = time.time()
+
+    if verbose:
+        print("\n" + "=" * 60)
+        print("PART D: Regularization Ablation Study")
+        print("=" * 60)
+
+    # If data not provided, generate fresh
+    if lambda_oracle is None:
+        dgp = CanonicalDGP()
+        n = 500
+        n_mc_oracle = 5000
+
+        Y, T, X, theta_true, mu_true = generate_canonical_dgp(n=n, seed=42, dgp=dgp)
+        X_np = X.numpy().flatten()
+
+        if verbose:
+            print(f"\n  Generating fresh data (n={n})...")
+            print(f"  Computing Oracle Lambda (MC={n_mc_oracle})...")
+
+        np.random.seed(123)
+        lambda_oracle = np.zeros((n, 2, 2))
+        for i in range(n):
+            lambda_oracle[i] = oracle_lambda_conditional(X_np[i], dgp, n_samples=n_mc_oracle)
+
+    n = len(lambda_oracle)
+
+    # Define regularization configurations
+    configs = [
+        # MLP: L2 penalty via alpha
+        {"method": "mlp", "mlp_alpha": 0, "label": "mlp_noreg"},
+        {"method": "mlp", "mlp_alpha": 0.0001, "label": "mlp_default"},
+        {"method": "mlp", "mlp_alpha": 0.01, "label": "mlp_strong"},
+        # Ridge: L2 penalty via alpha
+        {"method": "ridge", "ridge_alpha": 0.01, "label": "ridge_weak"},
+        {"method": "ridge", "ridge_alpha": 1.0, "label": "ridge_default"},
+        {"method": "ridge", "ridge_alpha": 100.0, "label": "ridge_strong"},
+        # RF: depth constraint
+        {"method": "rf", "rf_max_depth": None, "label": "rf_noreg"},
+        {"method": "rf", "rf_max_depth": 10, "label": "rf_default"},
+        {"method": "rf", "rf_max_depth": 3, "label": "rf_strong"},
+        # LightGBM: L2 penalty
+        {"method": "lgbm", "lgbm_reg_lambda": 0, "label": "lgbm_noreg"},
+        {"method": "lgbm", "lgbm_reg_lambda": 0.1, "label": "lgbm_weak"},
+        {"method": "lgbm", "lgbm_reg_lambda": 1.0, "label": "lgbm_strong"},
+    ]
+
+    results = {}
+
+    try:
+        from deep_inference.lambda_.estimate import EstimateLambda
+        from deep_inference.models import Logit
+
+        model = Logit()
+
+        if verbose:
+            print(f"\n  Testing {len(configs)} configurations...")
+            print("-" * 80)
+
+        for cfg in configs:
+            label = cfg["label"]
+            method = cfg["method"]
+
+            # Build kwargs for EstimateLambda
+            kwargs = {"method": method}
+            if "mlp_alpha" in cfg:
+                kwargs["mlp_alpha"] = cfg["mlp_alpha"]
+            if "ridge_alpha" in cfg:
+                kwargs["ridge_alpha"] = cfg["ridge_alpha"]
+            if "rf_max_depth" in cfg:
+                kwargs["rf_max_depth"] = cfg["rf_max_depth"]
+            if "lgbm_reg_lambda" in cfg:
+                kwargs["lgbm_reg_lambda"] = cfg["lgbm_reg_lambda"]
+
+            try:
+                t0 = time.time()
+                strategy = EstimateLambda(**kwargs)
+                strategy.fit(X=X, T=T, Y=Y, theta_hat=theta_true, model=model)
+                fit_time = time.time() - t0
+
+                t0 = time.time()
+                lambda_hat = strategy.predict(X, theta_true).numpy()
+                predict_time = time.time() - t0
+
+                # Compute metrics
+                metrics = evaluate_lambda_method(
+                    label, lambda_hat, lambda_oracle, n,
+                    fit_time=fit_time, predict_time=predict_time
+                )
+                results[label] = metrics
+
+            except Exception as e:
+                results[label] = {"error": str(e)}
+                if verbose:
+                    print(f"  {label}: ERROR - {e}")
+
+        # Summary table
+        if verbose:
+            print("\n" + "-" * 80)
+            print("  REGULARIZATION EFFECTS")
+            print("-" * 80)
+            header = f"  {'Config':<16} {'Corr':<8} {'Frob':<8} {'Bias':<12} {'VarRatio':<10} {'Time':<8}"
+            print(header)
+            print("  " + "-" * 78)
+
+            current_method = None
+            for cfg in configs:
+                label = cfg["label"]
+                method = cfg["method"]
+
+                # Print separator between methods
+                if method != current_method:
+                    if current_method is not None:
+                        print("  " + "-" * 78)
+                    current_method = method
+
+                m = results.get(label)
+                if m is None or "error" in m:
+                    print(f"  {label:<16} {'ERROR':<8}")
+                else:
+                    print(f"  {label:<16} {m['corr']:<8.4f} {m['frob']:<8.4f} "
+                          f"{m['bias']:<12.6f} {m['var_ratio']:<10.4f} {m['total_time']:<8.2f}")
+
+            # Key findings
+            print("\n  KEY FINDINGS:")
+
+            # Analyze MLP
+            mlp_results = [results.get(f"mlp_{r}") for r in ["noreg", "default", "strong"]]
+            if all(m and "error" not in m for m in mlp_results):
+                best_mlp = max(mlp_results, key=lambda x: x['corr'])
+                print(f"    MLP: Best corr={best_mlp['corr']:.4f} at {best_mlp['method']}")
+
+            # Analyze Ridge
+            ridge_results = [results.get(f"ridge_{r}") for r in ["weak", "default", "strong"]]
+            if all(m and "error" not in m for m in ridge_results):
+                best_ridge = max(ridge_results, key=lambda x: x['corr'])
+                print(f"    Ridge: Best corr={best_ridge['corr']:.4f} at {best_ridge['method']}")
+
+            # Analyze RF
+            rf_results = [results.get(f"rf_{r}") for r in ["noreg", "default", "strong"]]
+            if all(m and "error" not in m for m in rf_results):
+                best_rf = max(rf_results, key=lambda x: x['corr'])
+                print(f"    RF: Best corr={best_rf['corr']:.4f} at {best_rf['method']}")
+
+            # Analyze LightGBM
+            lgbm_results = [results.get(f"lgbm_{r}") for r in ["noreg", "weak", "strong"]]
+            if all(m and "error" not in m for m in lgbm_results):
+                best_lgbm = max(lgbm_results, key=lambda x: x['corr'])
+                print(f"    LightGBM: Best corr={best_lgbm['corr']:.4f} at {best_lgbm['method']}")
+
+    except ImportError as e:
+        if verbose:
+            print(f"  [SKIP] EstimateLambda not available: {e}")
+
+    elapsed = time.time() - start_time
+    results["elapsed_time"] = elapsed
+
+    if verbose:
+        print(f"\n  Part D completed in {elapsed:.2f}s")
+
+    return results
+
+
+# =============================================================================
+# PART E: METHOD FAILURE ANALYSIS (BRUTAL)
+# =============================================================================
+
+def run_method_failure_analysis(method_results: dict, verbose: bool = True) -> dict:
+    """
+    Part E: Explicit method failure analysis.
+
+    Shows exactly where each method fails and whether it's fatal.
+    """
+    if verbose:
+        print("\n" + "=" * 60)
+        print("PART E: METHOD FAILURE ANALYSIS (BRUTAL)")
+        print("=" * 60)
+
+    failure_modes = {}
+
+    for method, m in method_results.items():
+        if "error" in m:
+            failure_modes[method] = {
+                "works": "N/A",
+                "breaks": "Import/Runtime Error",
+                "fatal": "YES",
+                "detail": str(m.get("error", ""))[:50]
+            }
+            continue
+
+        # Analyze failure modes
+        corr = m.get("corr", 0)
+        std = m.get("std", 0)
+        frob = m.get("frob", 1)
+
+        works = []
+        breaks = []
+        fatal = "No"
+
+        # Check C1: Correlation
+        if corr > 0.7:
+            works.append("eigenvalue correlation")
+        else:
+            breaks.append("eigenvalue correlation")
+            if corr < 0.3:
+                fatal = "Moderate"
+
+        # Check C3: x-dependence (most critical for Regime C)
+        if std < 0.001:
+            breaks.append("ZERO x-dependence")
+            fatal = "YES"  # This is fatal for Regime C
+        elif std > 0.01:
+            works.append("x-dependence")
+
+        # Check C2: Frobenius error
+        if frob < 0.15:
+            works.append("Frobenius error")
+        else:
+            breaks.append("Frobenius error")
+
+        failure_modes[method] = {
+            "works": ", ".join(works) if works else "Nothing",
+            "breaks": ", ".join(breaks) if breaks else "Nothing",
+            "fatal": fatal,
+            "corr": corr,
+            "std": std,
+            "frob": frob
+        }
+
+    if verbose:
+        print("\n  METHOD FAILURE MODES:")
+        print("  " + "-" * 78)
+        print(f"  {'Method':<12} {'Works':<25} {'Breaks':<25} {'Fatal?':<10}")
+        print("  " + "-" * 78)
+
+        for method, modes in failure_modes.items():
+            works = modes["works"][:23] if len(modes["works"]) > 23 else modes["works"]
+            breaks = modes["breaks"][:23] if len(modes["breaks"]) > 23 else modes["breaks"]
+            print(f"  {method:<12} {works:<25} {breaks:<25} {modes['fatal']:<10}")
+
+        # Explicit warnings
+        print("\n  CRITICAL WARNINGS:")
+        for method, modes in failure_modes.items():
+            if modes["fatal"] == "YES":
+                print(f"    - {method}: {modes['breaks']} - DO NOT USE FOR REGIME C")
+
+    return failure_modes
+
+
+# =============================================================================
+# PART F: SE PROPAGATION TEST (THE CRITICAL QUESTION)
+# =============================================================================
+
+def run_se_propagation_test(
+    method_results: dict,
+    lambda_oracle: np.ndarray,
+    X: "torch.Tensor",
+    T: "torch.Tensor",
+    Y: "torch.Tensor",
+    theta_true: "torch.Tensor",
+    verbose: bool = True
+) -> dict:
+    """
+    Part F: Does Lambda error actually matter for SE estimation?
+
+    This is THE critical question: if Lambda is 10% wrong, does SE change
+    by 10% or 50%? If errors amplify, we care about Lambda accuracy.
+    If they wash out, maybe we don't.
+
+    Simplified SE computation: SE ≈ sqrt(mean(diag(Lambda^{-1})))
+    """
+    if verbose:
+        print("\n" + "=" * 60)
+        print("PART F: SE PROPAGATION TEST (THE CRITICAL QUESTION)")
+        print("=" * 60)
+        print("\n  Does Lambda error actually affect SE estimates?")
+
+    n = lambda_oracle.shape[0]
+    results = {}
+
+    # Compute SE with oracle Lambda
+    se_oracle = np.zeros(n)
+    for i in range(n):
+        try:
+            Lambda_inv = np.linalg.inv(lambda_oracle[i])
+            se_oracle[i] = np.sqrt(np.mean(np.diag(Lambda_inv)))
+        except np.linalg.LinAlgError:
+            se_oracle[i] = np.nan
+
+    # Compute SE with each method's Lambda
+    try:
+        from deep_inference.lambda_.estimate import EstimateLambda
+        from deep_inference.models import Logit
+
+        model = Logit()
+
+        for method in ["aggregate", "mlp", "ridge", "rf", "lgbm"]:
+            if method not in method_results or "error" in method_results[method]:
+                continue
+
+            # Get Lambda from this method
+            strategy = EstimateLambda(method=method)
+            strategy.fit(X=X, T=T, Y=Y, theta_hat=theta_true, model=model)
+            lambda_hat = strategy.predict(X, theta_true).numpy()
+
+            # Compute SE with estimated Lambda
+            se_hat = np.zeros(n)
+            for i in range(n):
+                try:
+                    Lambda_inv = np.linalg.inv(lambda_hat[i])
+                    se_hat[i] = np.sqrt(np.mean(np.diag(Lambda_inv)))
+                except np.linalg.LinAlgError:
+                    se_hat[i] = np.nan
+
+            # Compute metrics
+            valid = ~np.isnan(se_oracle) & ~np.isnan(se_hat) & (se_oracle > 0)
+            if valid.sum() > 0:
+                se_ratio = np.mean(se_hat[valid] / se_oracle[valid])
+                se_corr = np.corrcoef(se_hat[valid], se_oracle[valid])[0, 1]
+
+                # Worst case
+                se_errors = np.abs(se_hat[valid] - se_oracle[valid]) / se_oracle[valid]
+                worst_se_error = se_errors.max() * 100  # as percentage
+
+                results[method] = {
+                    "se_ratio": se_ratio,
+                    "se_corr": se_corr,
+                    "worst_se_error": worst_se_error,
+                    "mean_se_error": se_errors.mean() * 100
+                }
+
+    except ImportError as e:
+        if verbose:
+            print(f"  [SKIP] EstimateLambda not available: {e}")
+        return results
+
+    if verbose and results:
+        print("\n  " + "-" * 70)
+        print(f"  {'Method':<12} {'SE Ratio':<12} {'SE Corr':<12} {'Mean Error':<12} {'Worst Error':<12}")
+        print("  " + "-" * 70)
+
+        for method, r in results.items():
+            danger = " <- DANGER" if r["worst_se_error"] > 30 else ""
+            print(f"  {method:<12} {r['se_ratio']:<12.3f} {r['se_corr']:<12.3f} "
+                  f"{r['mean_se_error']:<12.1f}% {r['worst_se_error']:<12.1f}%{danger}")
+
+        print("\n  INTERPRETATION:")
+        print("    SE Ratio ~1.0: Lambda errors don't bias SE")
+        print("    SE Corr ~1.0: Lambda errors don't distort SE distribution")
+        print("    Worst Error >30%: Some observations have dangerous SE errors")
+
+        # Key finding
+        if "aggregate" in results and "mlp" in results:
+            agg_worst = results["aggregate"]["worst_se_error"]
+            mlp_worst = results["mlp"]["worst_se_error"]
+            if agg_worst > 2 * mlp_worst:
+                print(f"\n  CRITICAL: Aggregate has {agg_worst:.0f}% worst-case SE error")
+                print(f"            vs MLP's {mlp_worst:.0f}% - Lambda accuracy MATTERS!")
+
+    return results
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
-def run_eval_03(verbose: bool = True) -> dict:
+def run_eval_03(verbose: bool = True, reg_study: bool = False) -> dict:
     """
     Run Lambda estimation evaluation across all regimes.
 
@@ -712,6 +1238,11 @@ def run_eval_03(verbose: bool = True) -> dict:
             print(f"    {test}: MC convergence rate.........{status} (rate={result['rate']:.2f})")
         elif test == "A3":
             print(f"    {test}: Y-independence..............{status} (diff={result['diff']:.2e})")
+        elif test == "A4":
+            if "error" in result:
+                print(f"    {test}: ComputeLambda package.......SKIP ({result.get('error', 'N/A')[:30]})")
+            else:
+                print(f"    {test}: ComputeLambda package.......{status} ({result['rel_error']:.2f}%)")
 
     print("\n  Part B (Linear):")
     for test, result in results_b.items():
@@ -727,6 +1258,11 @@ def run_eval_03(verbose: bool = True) -> dict:
             print(f"    {test}: theta-independence..........{status} (diff={result['max_diff']:.2e})")
         elif test == "B3":
             print(f"    {test}: Confounded T................{status} (error={result['max_error']:.1f}%)")
+        elif test == "B4":
+            if "error" in result:
+                print(f"    {test}: AnalyticLambda package......SKIP ({result.get('error', 'N/A')[:30]})")
+            else:
+                print(f"    {test}: AnalyticLambda package......{status} ({result['rel_error']:.1f}%)")
 
     print("\n  Part C (Observational):")
     skip_keys = {"package_available", "method_results", "best_method", "elapsed_time", "oracle_time", "method_times"}
@@ -774,7 +1310,7 @@ def run_eval_03(verbose: bool = True) -> dict:
         print("This is EXPECTED behavior - the eval is working correctly.")
     print("=" * 60)
 
-    return {
+    result = {
         "part_a": results_a,
         "part_b": results_b,
         "part_c": results_c,
@@ -784,6 +1320,314 @@ def run_eval_03(verbose: bool = True) -> dict:
         "total_time": total_elapsed,
     }
 
+    # Optional: Run regularization study
+    if reg_study:
+        results_d = run_regularization_study(verbose=verbose)
+        result["part_d"] = results_d
+
+    return result
+
+
+def run_eval_03_brutal(verbose: bool = True, reg_study: bool = False) -> dict:
+    """
+    Run BRUTAL Lambda evaluation with method failure analysis and SE propagation.
+
+    This is the full eval that exposes exactly where methods break and whether
+    Lambda errors actually matter for SE estimation.
+    """
+    # Run standard eval
+    result = run_eval_03(verbose=verbose, reg_study=reg_study)
+
+    # Part E: Method Failure Analysis
+    if result["part_c"].get("method_results"):
+        failure_modes = run_method_failure_analysis(
+            result["part_c"]["method_results"],
+            verbose=verbose
+        )
+        result["part_e"] = failure_modes
+
+    # Part F: SE Propagation Test
+    if (result["part_c"].get("_lambda_oracle") is not None and
+        result["part_c"].get("method_results")):
+        se_results = run_se_propagation_test(
+            method_results=result["part_c"]["method_results"],
+            lambda_oracle=result["part_c"]["_lambda_oracle"],
+            X=result["part_c"]["_X"],
+            T=result["part_c"]["_T"],
+            Y=result["part_c"]["_Y"],
+            theta_true=result["part_c"]["_theta_true"],
+            verbose=verbose
+        )
+        result["part_f"] = se_results
+
+    # Final brutal summary
+    if verbose:
+        print("\n" + "=" * 60)
+        print("BRUTAL EVAL SUMMARY")
+        print("=" * 60)
+
+        # Method-by-method pass/fail
+        if result["part_c"].get("method_results"):
+            print("\n  Per-method results:")
+            for method, m in result["part_c"]["method_results"].items():
+                if "error" in m:
+                    print(f"    {method}: ERROR")
+                else:
+                    n_pass = sum([m['pass_c1'], m['pass_c2'], m['pass_c3']])
+                    status = "PASS" if n_pass == 3 else f"{n_pass}/3"
+                    broken = " <- BROKEN" if m.get('std', 1) < 0.001 else ""
+                    print(f"    {method}: {status}{broken}")
+
+        # SE impact summary
+        if "part_f" in result and result["part_f"]:
+            print("\n  SE impact (worst-case error):")
+            for method, r in result["part_f"].items():
+                danger = " <- DANGER" if r["worst_se_error"] > 30 else ""
+                print(f"    {method}: {r['worst_se_error']:.0f}%{danger}")
+
+    return result
+
+
+# =============================================================================
+# PART G: REGULARIZATION STRATEGY COMPARISON
+# =============================================================================
+
+def run_part_g_regularization_strategies(
+    lambda_oracle: np.ndarray = None,
+    X: "torch.Tensor" = None,
+    T: "torch.Tensor" = None,
+    Y: "torch.Tensor" = None,
+    theta_true: "torch.Tensor" = None,
+    verbose: bool = True
+) -> dict:
+    """
+    Part G: Compare regularization strategies on SE estimation.
+
+    Tests Tikhonov, relative eigenvalue floor, and shrinkage approaches
+    to see which produces the most accurate standard error estimates.
+    """
+    start_time = time.time()
+
+    if verbose:
+        print("\n" + "=" * 60)
+        print("PART G: REGULARIZATION STRATEGY COMPARISON")
+        print("=" * 60)
+        print("\nComparing: Absolute floor vs Relative floor vs Tikhonov")
+
+    # If data not provided, generate fresh
+    if lambda_oracle is None:
+        dgp = CanonicalDGP()
+        n = 500
+        n_mc_oracle = 5000
+
+        Y, T, X, theta_true, mu_true = generate_canonical_dgp(n=n, seed=42, dgp=dgp)
+        X_np = X.numpy().flatten()
+
+        if verbose:
+            print(f"\n  Generating fresh data (n={n})...")
+            print(f"  Computing Oracle Lambda (MC={n_mc_oracle})...")
+
+        np.random.seed(123)
+        lambda_oracle = np.zeros((n, 2, 2))
+        for i in range(n):
+            lambda_oracle[i] = oracle_lambda_conditional(X_np[i], dgp, n_samples=n_mc_oracle)
+
+    n = len(lambda_oracle)
+    results = {}
+
+    # Import regularization utilities
+    try:
+        from deep_inference.utils.linalg import batch_inverse, RegularizationStrategy
+        from deep_inference.lambda_.estimate import EstimateLambda
+        from deep_inference.models import Logit
+
+        model = Logit()
+
+        # Define strategies to compare
+        strategies = [
+            {
+                "name": "absolute_1e-4",
+                "reg_strategy": RegularizationStrategy.ABSOLUTE,
+                "min_eigenvalue": 1e-4,
+            },
+            {
+                "name": "absolute_1e-6",
+                "reg_strategy": RegularizationStrategy.ABSOLUTE,
+                "min_eigenvalue": 1e-6,
+            },
+            {
+                "name": "relative_cond100",
+                "reg_strategy": RegularizationStrategy.RELATIVE,
+                "max_condition": 100,
+            },
+            {
+                "name": "relative_cond50",
+                "reg_strategy": RegularizationStrategy.RELATIVE,
+                "max_condition": 50,
+            },
+            {
+                "name": "tikhonov_0.01",
+                "reg_strategy": RegularizationStrategy.TIKHONOV,
+                "tikhonov_scale": 0.01,
+            },
+            {
+                "name": "tikhonov_0.001",
+                "reg_strategy": RegularizationStrategy.TIKHONOV,
+                "tikhonov_scale": 0.001,
+            },
+        ]
+
+        # Get Lambda estimates using aggregate method (simplest)
+        strategy = EstimateLambda(method="aggregate")
+        strategy.fit(X=X, T=T, Y=Y, theta_hat=theta_true, model=model)
+        lambda_hat = strategy.predict(X, theta_true)
+
+        # Compute oracle SE for comparison
+        se_oracle = np.zeros(n)
+        for i in range(n):
+            try:
+                Lambda_inv = np.linalg.inv(lambda_oracle[i])
+                se_oracle[i] = np.sqrt(np.mean(np.diag(Lambda_inv)))
+            except np.linalg.LinAlgError:
+                se_oracle[i] = np.nan
+
+        if verbose:
+            print(f"\n  Testing {len(strategies)} regularization strategies...")
+            print("-" * 80)
+
+        for strat in strategies:
+            name = strat["name"]
+            reg_strategy = strat["reg_strategy"]
+
+            try:
+                # Compute inverse with this strategy
+                kwargs = {"strategy": reg_strategy}
+                if "min_eigenvalue" in strat:
+                    kwargs["min_eigenvalue"] = strat["min_eigenvalue"]
+                if "max_condition" in strat:
+                    kwargs["max_condition"] = strat["max_condition"]
+                if "tikhonov_scale" in strat:
+                    kwargs["tikhonov_scale"] = strat["tikhonov_scale"]
+
+                lambda_inv = batch_inverse(lambda_hat, **kwargs)
+
+                # Compute SE for each observation
+                se_hat = np.zeros(n)
+                for i in range(n):
+                    se_hat[i] = np.sqrt(np.mean(np.diag(lambda_inv[i].numpy())))
+
+                # Compute metrics
+                valid = ~np.isnan(se_oracle) & ~np.isnan(se_hat) & (se_oracle > 0)
+                if valid.sum() > 0:
+                    se_ratio = np.mean(se_hat[valid] / se_oracle[valid])
+                    se_corr = np.corrcoef(se_hat[valid], se_oracle[valid])[0, 1]
+                    se_errors = np.abs(se_hat[valid] - se_oracle[valid]) / se_oracle[valid]
+                    mean_se_error = se_errors.mean() * 100
+                    worst_se_error = se_errors.max() * 100
+                    p95_se_error = np.percentile(se_errors, 95) * 100
+
+                    # Condition number stats
+                    cond_numbers = []
+                    for i in range(n):
+                        eigvals = np.linalg.eigvalsh(lambda_hat[i].numpy())
+                        cond = eigvals[-1] / max(eigvals[0], 1e-10)
+                        cond_numbers.append(cond)
+                    mean_cond = np.mean(cond_numbers)
+                    max_cond = np.max(cond_numbers)
+
+                    results[name] = {
+                        "se_ratio": se_ratio,
+                        "se_corr": se_corr,
+                        "mean_se_error": mean_se_error,
+                        "p95_se_error": p95_se_error,
+                        "worst_se_error": worst_se_error,
+                        "mean_cond": mean_cond,
+                        "max_cond": max_cond,
+                    }
+
+                    if verbose:
+                        print(f"  {name:<20} ratio={se_ratio:.3f} corr={se_corr:.3f} "
+                              f"mean_err={mean_se_error:.1f}% p95={p95_se_error:.1f}% "
+                              f"cond={mean_cond:.1f}")
+
+            except Exception as e:
+                if verbose:
+                    print(f"  {name:<20} ERROR: {e}")
+                results[name] = {"error": str(e)}
+
+        # Summary table
+        if verbose and results:
+            print("\n" + "-" * 80)
+            print("  STRATEGY COMPARISON SUMMARY")
+            print("-" * 80)
+            header = f"  {'Strategy':<20} {'SE Ratio':<10} {'SE Corr':<10} {'Mean Err':<10} {'P95 Err':<10} {'Max Cond':<10}"
+            print(header)
+            print("  " + "-" * 78)
+
+            for name, r in results.items():
+                if "error" in r:
+                    print(f"  {name:<20} {'ERROR':<10}")
+                else:
+                    best = " *" if r["se_ratio"] > 0.95 and r["se_ratio"] < 1.05 else ""
+                    print(f"  {name:<20} {r['se_ratio']:<10.3f} {r['se_corr']:<10.3f} "
+                          f"{r['mean_se_error']:<10.1f} {r['p95_se_error']:<10.1f} "
+                          f"{r['max_cond']:<10.1f}{best}")
+
+            # Find best strategy
+            best_name = None
+            best_score = float('inf')
+            for name, r in results.items():
+                if "error" not in r:
+                    # Score = |ratio - 1| + mean_error/100
+                    score = abs(r["se_ratio"] - 1) + r["mean_se_error"] / 100
+                    if score < best_score:
+                        best_score = score
+                        best_name = name
+
+            if best_name:
+                print(f"\n  BEST STRATEGY: {best_name}")
+
+    except ImportError as e:
+        if verbose:
+            print(f"  [SKIP] Required modules not available: {e}")
+
+    elapsed = time.time() - start_time
+    results["elapsed_time"] = elapsed
+
+    if verbose:
+        print(f"\n  Part G completed in {elapsed:.2f}s")
+
+    return results
+
 
 if __name__ == "__main__":
-    result = run_eval_03(verbose=True)
+    import argparse
+    parser = argparse.ArgumentParser(description="Eval 03: Lambda Estimation")
+    parser.add_argument("--reg-study", action="store_true",
+                        help="Run regularization ablation study (adds ~2 min)")
+    parser.add_argument("--brutal", action="store_true",
+                        help="Run brutal eval with failure analysis and SE propagation")
+    parser.add_argument("--reg-strategies", action="store_true",
+                        help="Run regularization strategy comparison (Part G)")
+    args = parser.parse_args()
+
+    if args.brutal:
+        result = run_eval_03_brutal(verbose=True, reg_study=args.reg_study)
+    else:
+        result = run_eval_03(verbose=True, reg_study=args.reg_study)
+
+    # Run Part G if requested
+    if args.reg_strategies:
+        if result.get("part_c", {}).get("_lambda_oracle") is not None:
+            part_g = run_part_g_regularization_strategies(
+                lambda_oracle=result["part_c"]["_lambda_oracle"],
+                X=result["part_c"]["_X"],
+                T=result["part_c"]["_T"],
+                Y=result["part_c"]["_Y"],
+                theta_true=result["part_c"]["_theta_true"],
+                verbose=True
+            )
+            result["part_g"] = part_g
+        else:
+            part_g = run_part_g_regularization_strategies(verbose=True)
+            result["part_g"] = part_g

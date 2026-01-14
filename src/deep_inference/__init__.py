@@ -258,6 +258,7 @@ def inference(
     hidden_dims: List[int] = [64, 32],
     epochs: int = 100,
     lr: float = 0.01,
+    patience: int = 50,
     # Other
     ridge: float = 1e-4,
     verbose: bool = False,
@@ -396,6 +397,7 @@ def inference(
         n_folds=n_folds,
         epochs=epochs,
         lr=lr,
+        patience=patience,
         hidden_dims=hidden_dims,
         ridge=ridge,
         verbose=verbose,

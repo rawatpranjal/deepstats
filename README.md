@@ -151,6 +151,8 @@ Comprehensive eval suite validates every mathematical component. [Full results â
 | 03 | Lambda Estimation | 9/9 PASS |
 | 04 | Target Jacobian | 92/92 PASS |
 | 05 | Influence Functions | Coverage 88% |
+| 06 | Frequentist Coverage | PASS |
+| 07 | End-to-End | 7/7 PASS |
 
 ## Citation
 

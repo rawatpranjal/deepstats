@@ -120,32 +120,6 @@ def compute_hessian_loop(
     return hessians
 
 
-def compute_hessian_diagonal(
-    loss_fn: Callable[[Tensor, Tensor, Tensor], Tensor],
-    y: Tensor,
-    t: Tensor,
-    theta: Tensor,
-    use_vmap: bool = True,
-) -> Tensor:
-    """
-    Compute only the diagonal of the Hessian (faster for large d_theta).
-
-    Args:
-        loss_fn: Loss function for single observation
-        y: (n,) outcomes
-        t: (n,) or (n, d_t) treatments
-        theta: (n, d_theta) parameters
-        use_vmap: Whether to use vmap
-
-    Returns:
-        (n, d_theta) diagonal of Hessian
-    """
-    # Full Hessian then extract diagonal
-    # (Could be optimized with specialized diagonal computation)
-    H = compute_hessian(loss_fn, y, t, theta, use_vmap=use_vmap)
-    return torch.diagonal(H, dim1=1, dim2=2)
-
-
 def detect_hessian_theta_dependence(
     loss_fn: Callable[[Tensor, Tensor, Tensor], Tensor],
     y_sample: Tensor,
@@ -183,52 +157,6 @@ def detect_hessian_theta_dependence(
     H_2 = compute_hessian_loop(loss_fn, y, t, theta_2)
 
     # Check if they differ (relative tolerance)
-    rel_diff = torch.abs(H_1 - H_2) / (torch.abs(H_1) + 1e-8)
-    max_rel_diff = rel_diff.max().item()
-
-    return max_rel_diff > tol
-
-
-def detect_hessian_y_dependence(
-    loss_fn: Callable[[Tensor, Tensor, Tensor], Tensor],
-    y_sample: Tensor,
-    t_sample: Tensor,
-    theta_dim: int,
-    n_test: int = 10,
-    tol: float = 0.01,
-) -> bool:
-    """
-    Detect if Hessian depends on Y values.
-
-    If ℓ_θθ varies with Y, we cannot compute Λ under randomization
-    (must estimate instead).
-
-    Args:
-        loss_fn: Loss function for single observation
-        y_sample: Sample outcomes for testing
-        t_sample: Sample treatments for testing
-        theta_dim: Dimension of parameter vector
-        n_test: Number of test points
-        tol: Tolerance for detecting dependence
-
-    Returns:
-        True if Hessian depends on Y
-    """
-    n = min(len(y_sample), n_test)
-    t = t_sample[:n]
-
-    # Same theta for both
-    theta = torch.randn(n, theta_dim)
-
-    # Two different Y values
-    y_1 = y_sample[:n]
-    y_2 = torch.randn_like(y_1)  # Different Y
-
-    # Compute Hessians at each
-    H_1 = compute_hessian_loop(loss_fn, y_1, t, theta)
-    H_2 = compute_hessian_loop(loss_fn, y_2, t, theta)
-
-    # Check if they differ
     rel_diff = torch.abs(H_1 - H_2) / (torch.abs(H_1) + 1e-8)
     max_rel_diff = rel_diff.max().item()
 

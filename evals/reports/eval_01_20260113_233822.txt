@@ -1,0 +1,284 @@
+======================================================================
+EVAL 01: PARAMETER RECOVERY (ALL FAMILIES)
+======================================================================
+
+Config: n=2000, epochs=100, seeds=[42, 123, 456]
+Families: linear, gaussian, logit, poisson, negbin, gamma, weibull, gumbel, tobit, probit, beta, zip
+
+----------------------------------------------------------------------
+RUNNING TESTS
+----------------------------------------------------------------------
+
+  LINEAR (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0469    0.0572    0.9859    0.9971    PASS  
+    123    0.0687    0.1222    0.9784    0.9959    PASS  
+    456    0.0558    0.0639    0.9727    0.9976    PASS  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.0571 ± 0.0090
+      RMSE(β): 0.0811 ± 0.0292
+      Corr(α): 0.9790 ± 0.0054
+      Corr(β): 0.9969 ± 0.0007
+
+    Worst-case:
+      Max RMSE(α): 0.0687
+      Max RMSE(β): 0.1222
+      Min Corr(α): 0.9727
+      Min Corr(β): 0.9959
+
+    Status: PASS (3/3 seeds pass)
+
+  GAUSSIAN (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0640    0.0768    0.9673    0.9978    PASS  
+    123    0.0568    0.0935    0.9831    0.9964    PASS  
+    456    0.0640    0.0772    0.9669    0.9958    PASS  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.0616 ± 0.0034
+      RMSE(β): 0.0825 ± 0.0078
+      Corr(α): 0.9725 ± 0.0076
+      Corr(β): 0.9967 ± 0.0008
+
+    Worst-case:
+      Max RMSE(α): 0.0640
+      Max RMSE(β): 0.0935
+      Min Corr(α): 0.9669
+      Min Corr(β): 0.9958
+
+    Status: PASS (3/3 seeds pass)
+
+  LOGIT (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0875    0.1241    0.9752    0.9951    PASS  
+    123    0.1507    0.1742    0.9682    0.9830    FAIL  
+    456    0.1111    0.1637    0.9810    0.9680    FAIL  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.1164 ± 0.0261
+      RMSE(β): 0.1540 ± 0.0216
+      Corr(α): 0.9748 ± 0.0052
+      Corr(β): 0.9820 ± 0.0111
+
+    Worst-case:
+      Max RMSE(α): 0.1507
+      Max RMSE(β): 0.1742
+      Min Corr(α): 0.9682
+      Min Corr(β): 0.9680
+
+    Status: FAIL (1/3 seeds pass)
+
+  POISSON (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0615    0.0371    0.9968    0.9934    PASS  
+    123    0.0329    0.0249    0.9896    0.9851    PASS  
+    456    0.0503    0.0356    0.9938    0.9738    PASS  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.0482 ± 0.0118
+      RMSE(β): 0.0325 ± 0.0055
+      Corr(α): 0.9934 ± 0.0029
+      Corr(β): 0.9841 ± 0.0080
+
+    Worst-case:
+      Max RMSE(α): 0.0615
+      Max RMSE(β): 0.0371
+      Min Corr(α): 0.9896
+      Min Corr(β): 0.9738
+
+    Status: PASS (3/3 seeds pass)
+
+  NEGBIN (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.1825    0.1023    0.9519    0.9369    FAIL  
+    123    0.0551    0.0454    0.9894    0.9905    PASS  
+    456    0.0501    0.0455    0.9771    0.9899    PASS  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.0959 ± 0.0613
+      RMSE(β): 0.0644 ± 0.0268
+      Corr(α): 0.9728 ± 0.0156
+      Corr(β): 0.9725 ± 0.0251
+
+    Worst-case:
+      Max RMSE(α): 0.1825
+      Max RMSE(β): 0.1023
+      Min Corr(α): 0.9519
+      Min Corr(β): 0.9369
+
+    Status: UNSTABLE (2/3 seeds pass)
+
+  GAMMA (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0810    0.0368    0.9981    0.9925    PASS  
+    123    0.0987    0.0550    0.9964    0.9908    PASS  
+    456    0.0285    0.0448    0.9975    0.9937    PASS  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.0694 ± 0.0298
+      RMSE(β): 0.0455 ± 0.0074
+      Corr(α): 0.9973 ± 0.0007
+      Corr(β): 0.9923 ± 0.0012
+
+    Worst-case:
+      Max RMSE(α): 0.0987
+      Max RMSE(β): 0.0550
+      Min Corr(α): 0.9964
+      Min Corr(β): 0.9908
+
+    Status: PASS (3/3 seeds pass)
+
+  WEIBULL (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0378    0.0156    0.9996    0.9992    PASS  
+    123    0.0545    0.0282    0.9975    0.9964    PASS  
+    456    0.0417    0.0230    0.9979    0.9987    PASS  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.0447 ± 0.0071
+      RMSE(β): 0.0223 ± 0.0052
+      Corr(α): 0.9983 ± 0.0009
+      Corr(β): 0.9981 ± 0.0012
+
+    Worst-case:
+      Max RMSE(α): 0.0545
+      Max RMSE(β): 0.0282
+      Min Corr(α): 0.9975
+      Min Corr(β): 0.9964
+
+    Status: PASS (3/3 seeds pass)
+
+  GUMBEL (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0670    0.0790    0.9791    0.9930    PASS  
+    123    0.0486    0.0714    0.9885    0.9977    PASS  
+    456    0.1250    0.0485    0.9063    0.9980    PASS  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.0802 ± 0.0325
+      RMSE(β): 0.0663 ± 0.0129
+      Corr(α): 0.9580 ± 0.0367
+      Corr(β): 0.9962 ± 0.0023
+
+    Worst-case:
+      Max RMSE(α): 0.1250
+      Max RMSE(β): 0.0790
+      Min Corr(α): 0.9063
+      Min Corr(β): 0.9930
+
+    Status: PASS (3/3 seeds pass)
+
+  TOBIT (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0513    0.0589    0.9982    0.9990    PASS  
+    123    0.0767    0.0556    0.9960    0.9975    PASS  
+    456    0.0629    0.0645    0.9958    0.9984    PASS  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.0636 ± 0.0104
+      RMSE(β): 0.0597 ± 0.0037
+      Corr(α): 0.9967 ± 0.0011
+      Corr(β): 0.9983 ± 0.0006
+
+    Worst-case:
+      Max RMSE(α): 0.0767
+      Max RMSE(β): 0.0645
+      Min Corr(α): 0.9958
+      Min Corr(β): 0.9975
+
+    Status: PASS (3/3 seeds pass)
+
+  PROBIT (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0917    0.1454    0.9936    0.9927    PASS  
+    123    0.1269    0.1702    0.9776    0.9834    FAIL  
+    456    0.0956    0.2028    0.9773    0.9562    FAIL  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.1047 ± 0.0157
+      RMSE(β): 0.1728 ± 0.0235
+      Corr(α): 0.9828 ± 0.0076
+      Corr(β): 0.9774 ± 0.0155
+
+    Worst-case:
+      Max RMSE(α): 0.1269
+      Max RMSE(β): 0.2028
+      Min Corr(α): 0.9773
+      Min Corr(β): 0.9562
+
+    Status: FAIL (1/3 seeds pass)
+
+  BETA (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0417    0.0379    0.9955    0.9911    PASS  
+    123    0.0731    0.0710    0.9881    0.9666    PASS  
+    456    0.0425    0.0473    0.9973    0.9959    PASS  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.0524 ± 0.0146
+      RMSE(β): 0.0520 ± 0.0139
+      Corr(α): 0.9936 ± 0.0040
+      Corr(β): 0.9845 ± 0.0129
+
+    Worst-case:
+      Max RMSE(α): 0.0731
+      Max RMSE(β): 0.0710
+      Min Corr(α): 0.9881
+      Min Corr(β): 0.9666
+
+    Status: PASS (3/3 seeds pass)
+
+  ZIP (3 seeds)
+    Per-seed results:
+    Seed   RMSE(α)   RMSE(β)   Corr(α)   Corr(β)   Status
+    42     0.0347    0.0944    0.9960    0.9500    PASS  
+    123    0.0933    0.0395    0.9714    0.9613    PASS  
+    456    0.0618    0.0679    0.9941    0.9907    PASS  
+
+    Aggregate (mean ± std):
+      RMSE(α): 0.0633 ± 0.0239
+      RMSE(β): 0.0673 ± 0.0224
+      Corr(α): 0.9872 ± 0.0112
+      Corr(β): 0.9673 ± 0.0171
+
+    Worst-case:
+      Max RMSE(α): 0.0933
+      Max RMSE(β): 0.0944
+      Min Corr(α): 0.9714
+      Min Corr(β): 0.9500
+
+    Status: PASS (3/3 seeds pass)
+
+======================================================================
+SUMMARY
+======================================================================
+
+Family       RMSE(β) mean±std RMSE(β) max  Corr(β) min  Seeds      Status    
+--------------------------------------------------------------------------------
+linear       0.081±0.029      0.122        0.996        3/3        PASS      
+gaussian     0.083±0.008      0.094        0.996        3/3        PASS      
+logit        0.154±0.022      0.174        0.968        1/3        FAIL      
+poisson      0.033±0.005      0.037        0.974        3/3        PASS      
+negbin       0.064±0.027      0.102        0.937        2/3        UNSTABLE  
+gamma        0.046±0.007      0.055        0.991        3/3        PASS      
+weibull      0.022±0.005      0.028        0.996        3/3        PASS      
+gumbel       0.066±0.013      0.079        0.993        3/3        PASS      
+tobit        0.060±0.004      0.065        0.998        3/3        PASS      
+probit       0.173±0.024      0.203        0.956        1/3        FAIL      
+beta         0.052±0.014      0.071        0.967        3/3        PASS      
+zip          0.067±0.022      0.094        0.950        3/3        PASS      
+--------------------------------------------------------------------------------
+Overall: 9 PASS, 1 UNSTABLE, 2 FAIL
+======================================================================

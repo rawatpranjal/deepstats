@@ -2,9 +2,9 @@
 Base protocol and types for Lambda strategies.
 """
 
-from typing import Protocol, Optional, runtime_checkable
+from typing import Protocol, Optional, runtime_checkable, Literal
 from enum import Enum, auto
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import torch
 from torch import Tensor
 
@@ -53,6 +53,52 @@ REGIME_INFO = {
         lambda_method="estimate",
     ),
 }
+
+
+@dataclass
+class RegularizationConfig:
+    """
+    Configuration for Lambda regularization.
+
+    Controls how Λ matrices are regularized for numerical stability:
+    1. Eigenvalue floor: How to handle small/negative eigenvalues
+    2. Shrinkage: Bias-variance tradeoff via Ledoit-Wolf style shrinkage
+    3. Inversion: How to compute Λ⁻¹ safely
+
+    Default settings use relative eigenvalue floor + Tikhonov inversion,
+    which provides scale-invariant regularization.
+    """
+
+    # Eigenvalue floor strategy
+    eigenvalue_strategy: Literal["absolute", "relative"] = "relative"
+    """'absolute': floor at fixed value; 'relative': floor at max_eig/max_condition"""
+
+    absolute_floor: float = 1e-4
+    """Minimum eigenvalue when using absolute strategy."""
+
+    max_condition: float = 100.0
+    """Maximum condition number when using relative strategy."""
+
+    # Shrinkage (Ledoit-Wolf style)
+    apply_shrinkage: bool = False
+    """Whether to apply shrinkage toward a well-conditioned target."""
+
+    shrinkage_intensity: float = 0.1
+    """Shrinkage intensity α: Λ_shrunk = (1-α)Λ + α·target"""
+
+    shrinkage_target: Literal["scaled_identity", "diagonal"] = "scaled_identity"
+    """Shrinkage target: 'scaled_identity' = (trace/d)·I, 'diagonal' = diag(Λ)"""
+
+    # Inversion strategy
+    inversion_strategy: Literal["direct", "tikhonov"] = "tikhonov"
+    """'direct': Λ⁻¹ with eigenvalue clamping; 'tikhonov': (Λ + εI)⁻¹"""
+
+    tikhonov_scale: float = 0.01
+    """ε = tikhonov_scale · trace(Λ)/d for scale-aware regularization."""
+
+
+# Default config for backward compatibility
+DEFAULT_REGULARIZATION_CONFIG = RegularizationConfig()
 
 
 @runtime_checkable

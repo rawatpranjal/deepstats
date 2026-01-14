@@ -88,17 +88,13 @@ print(f"95% CI:   [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 
 ## Expected Results
 
-From Monte Carlo validation (M=30, N=10,000, K=50 folds):
+From [Eval 01: Parameter Recovery](../validation/eval_01.md):
 
-| Method | Coverage | SE Ratio | Target |
-|--------|----------|----------|--------|
-| Naive | ~10-30% | ~0.3-0.5 | — |
-| **Influence** | **~97%** | **~1.1** | 93-97% |
+| Family | Corr(α) | Corr(β) | Status |
+|--------|---------|---------|--------|
+| gumbel | 0.967 | 0.991 | PASS |
 
-### Interpretation
-
-- Gumbel family shows excellent calibration
-- Coverage at upper end of target range (slightly conservative)
+The influence function correction produces valid confidence intervals. See [Validation](../validation/index.md) for full results.
 
 ## Real-World Applications
 

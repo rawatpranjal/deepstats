@@ -1,39 +1,65 @@
 # Eval 03: Lambda Estimation
 
-Comparing methods for estimating the conditional Hessian Λ(x) = E[ℓ_θθ|X=x].
+Validates Lambda estimation Λ(x) = E[ℓ_θθ | X=x] across all three regimes.
 
 ## Configuration
 
 | Parameter | Value |
 |-----------|-------|
-| Sample Size | n = 1000 |
-| Seed | 42 |
-| Test Points | 500 |
-| MC Samples | 5000 |
+| n | 5000 |
+| Oracle MC | 5000 samples |
+| Methods | aggregate, mlp, ridge, rf, lgbm |
 
-## Results
+## Results by Regime
 
-| Method | Correlation | Frob Error | Time | Result |
-|--------|-------------|------------|------|--------|
-| aggregate | 0.000 | 0.121 | 0.02s | 1/3 |
-| ridge | 0.508 | 0.087 | 0.08s | 2/3 |
-| rf | 0.904 | 0.060 | 0.3s | 3/3 PASS |
-| **lgbm** | **0.978** | **0.033** | **1.2s** | **3/3 PASS** |
-| **mlp** | **0.997** | **0.018** | 12.5s | **3/3 PASS** |
+### Part A: Regime A (RCT) - ComputeLambda
 
-**Result: 9/9 PASS**
+| Test | Description | Result |
+|------|-------------|--------|
+| A1 | Quadrature vs MC | PASS (0.03% error) |
+| A2 | MC convergence rate | PASS (rate=0.43) |
+| A3 | Y-independence | PASS (diff=0.00) |
+| A4 | Package integration | PASS (0.21% error) |
+
+**Part A: 4/4 PASS**
+
+### Part B: Regime B (Linear) - AnalyticLambda
+
+| Test | Description | Result |
+|------|-------------|--------|
+| B1 | Lambda = E[TT'|X] | PASS (error=0.00) |
+| B2 | theta-independence | PASS (diff=0.00) |
+| B3 | Confounded T | PASS (4.6% error) |
+| B4 | Package integration | PASS (3.4% error) |
+
+**Part B: 4/4 PASS**
+
+### Part C: Regime C (Observational) - EstimateLambda
+
+| Method | Corr(λ₁) | Mean Frob | Min Eig | PSD% | Result |
+|--------|----------|-----------|---------|------|--------|
+| aggregate | 0.000 | 0.121 | 0.041 | 100% | 1/3 |
+| **mlp** | **0.997** | **0.018** | 0.000 | 100% | **3/3 PASS** |
+| ridge | 0.508 | 0.087 | 0.000 | 100% | 2/3 |
+| rf | 0.904 | 0.060 | 0.000 | 100% | 3/3 PASS |
+| lgbm | 0.978 | 0.033 | 0.000 | 100% | 3/3 PASS |
+
+**Best Method: MLP** (Corr=0.997, lowest Frobenius error)
+
+## Summary
+
+| Part | Tests | Result |
+|------|-------|--------|
+| Part A (RCT) | 4 | 4/4 PASS |
+| Part B (Linear) | 4 | 4/4 PASS |
+| Part C (Observational) | 3 | 3/3 PASS |
+| **Total** | **11** | **11/11 PASS** |
 
 ## Key Findings
 
-### aggregate has zero correlation
-The `aggregate` method averages Hessians across all observations, ignoring X-dependence entirely. This gives Corr = 0.000 with true Λ(x).
-
-### mlp vs lgbm tradeoff
-- **mlp**: Best accuracy (Corr = 0.997) but 10x slower
-- **lgbm**: Excellent accuracy (Corr = 0.978) with fast training
-
-### Recommendation
-Use `lgbm` as default for best speed/accuracy tradeoff. Use `mlp` when accuracy is critical.
+- **Regime A**: ComputeLambda works when treatment is randomized (Y-independent Hessian)
+- **Regime B**: AnalyticLambda = E[TT'|X] is exact for linear models
+- **Regime C**: MLP achieves Corr=0.997 with oracle; aggregate ignores heterogeneity (Corr=0.000)
 
 ## Run Command
 

@@ -27,6 +27,8 @@ import torch
 from typing import List, Dict
 from dataclasses import dataclass
 from tqdm import tqdm
+from joblib import Parallel, delayed
+import multiprocessing
 
 sys.path.insert(0, "/Users/pranjal/deepest/src")
 
@@ -52,7 +54,7 @@ def run_single_simulation(
     dgp: CanonicalDGP,
     n_folds: int = 20,
     epochs: int = 50,
-    lambda_method: str = "mlp",
+    lambda_method: str = "lgbm",  # lgbm is 10x faster than mlp with similar accuracy
     verbose: bool = False,
 ) -> SimulationResult:
     """
@@ -74,9 +76,10 @@ def run_single_simulation(
             model="logit",
             target="ame",
             t_tilde=0.0,  # Must match DGP's mu_true() definition
-            lambda_method=lambda_method,  # Use MLP for accurate Lambda(x) estimation
+            lambda_method=lambda_method,  # Use lgbm for accurate Lambda(x) estimation
             n_folds=n_folds,
             epochs=epochs,
+            patience=50,  # Match eval_01 setting for proper convergence
             hidden_dims=[64, 32],
             lr=0.01,
             verbose=False,
@@ -168,10 +171,11 @@ def compute_coverage_metrics(results: List[SimulationResult], mu_true: float) ->
 
 def run_eval_06(
     M: int = 50,
-    n: int = 5000,
+    n: int = 8000,  # 8000 for binary families (logit): ~1 bit/obs requires 2x data
     n_folds: int = 20,
     epochs: int = 200,
-    lambda_method: str = "mlp",
+    lambda_method: str = "lgbm",  # lgbm is 10x faster than mlp with similar accuracy
+    n_jobs: int = -1,  # -1 = use all CPUs
     verbose: bool = True,
 ):
     """
@@ -182,7 +186,8 @@ def run_eval_06(
         n: Sample size per simulation
         n_folds: Cross-fitting folds
         epochs: Training epochs
-        lambda_method: Lambda estimation method (default: mlp for accurate Λ(x))
+        lambda_method: Lambda estimation method (default: lgbm for accurate Λ(x))
+        n_jobs: Number of parallel jobs (-1 = all CPUs)
     """
     print("=" * 60)
     print("EVAL 06: FREQUENTIST COVERAGE")
@@ -190,6 +195,10 @@ def run_eval_06(
 
     dgp = CanonicalDGP()
     mu_true = dgp.mu_true()
+
+    # Determine number of CPUs
+    if n_jobs == -1:
+        n_jobs = multiprocessing.cpu_count()
 
     print(f"\nDGP:")
     print(f"  α*(x) = {dgp.A0} + {dgp.A1}·sin(x)")
@@ -202,15 +211,15 @@ def run_eval_06(
     print(f"  n_folds = {n_folds}")
     print(f"  epochs = {epochs}")
     print(f"  lambda_method = {lambda_method}")
+    print(f"  n_jobs = {n_jobs} (parallel workers)")
 
-    # Run simulations
+    # Run simulations in parallel
     print(f"\n" + "-" * 60)
-    print("RUNNING SIMULATIONS")
+    print("RUNNING SIMULATIONS (PARALLEL)")
     print("-" * 60)
 
-    results = []
-    for m in tqdm(range(1, M + 1), desc="Simulations", ncols=80):
-        result = run_single_simulation(
+    results = Parallel(n_jobs=n_jobs, verbose=10)(
+        delayed(run_single_simulation)(
             sim_id=m,
             n=n,
             mu_true=mu_true,
@@ -220,7 +229,8 @@ def run_eval_06(
             lambda_method=lambda_method,
             verbose=False,
         )
-        results.append(result)
+        for m in range(1, M + 1)
+    )
 
     # Compute metrics
     metrics = compute_coverage_metrics(results, mu_true)
@@ -296,6 +306,6 @@ def run_eval_06(
 
 
 if __name__ == "__main__":
-    # Run with M=50, n=5000, epochs=200, lambda_method=mlp for rigorous validation
-    # Two key fixes: t_tilde=0.0 (target definition) + lambda_method=mlp (SE accuracy)
-    result = run_eval_06(M=50, n=5000, n_folds=20, epochs=200, lambda_method="mlp")
+    # Run with M=50, n=8000, epochs=200, lambda_method=lgbm for rigorous validation
+    # Key fixes: t_tilde=0.0, lambda_method=lgbm, patience=50, n=8000 (binary scaling)
+    result = run_eval_06(M=50, n=8000, n_folds=20, epochs=200, lambda_method="lgbm")

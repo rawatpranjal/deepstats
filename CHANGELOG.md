@@ -1,17 +1,111 @@
 # Changelog
 
+## 2026-01-14
+
+### Eval 07: Enhanced Round G (3x More Signal, <5% More Compute)
+- **New metrics extracted from existing runs**:
+  - SE Ratio tail behavior: [p5, p95] percentiles expose worst-case behavior
+  - Condition(Λ) statistics: mean and max across seeds
+  - Psi skewness: detects heavy-tailed influence functions
+- **Failure correlation analysis**: Compares diagnostics between failed vs passed seeds
+- **Asymmetric verdicts**: FAIL (undercoverage), WARN (overcoverage), PASS (valid)
+  - Undercoverage is dangerous; overcoverage is just inefficient
+- **Enhanced output format**: Shows SE ratio range, condition numbers, psi stats
+- **File**: `/Users/pranjal/deepest/archive/evals_experimental/eval_07_e2e.py`
+
+### Eval 06: Binary Family Sample Size Fix
+- **Increased n from 5000 to 8000** for eval_06_coverage.py (matches eval_01's binary scaling)
+- **Rationale**: Binary outcomes (logit) carry ~1 bit/observation, requiring 2x data for convergence
+- Previous run at n=5000: Coverage 72%, z-mean=-1.29 (systematic bias)
+- Expected improvement: Coverage 85-99%, z-mean ≈ 0
+
+### Lambda Defaults: Safe by Default
+- **Changed default `lambda_method`** from 'mlp' to 'ridge' (validated 96% coverage)
+- **Changed default `ridge_alpha`** from 1.0 to 1000.0 (heavy regularization required)
+- **Added MLP warning**: Using `lambda_method='mlp'` now emits UserWarning about invalid SEs
+- Updated files: `algorithm.py`, `lambda_estimator.py`, `estimate.py`
+- Updated documentation: `docs/algorithm/index.md`, `docs/tutorials/logit.md`, `docs/api/lambda.md`, `CLAUDE.md`
+- **Key finding**: MLP achieves 0.997 correlation but only 67% coverage; ridge achieves 0.508 correlation but 96% coverage
+
+### Lambda Regularization Improvements
+- **Scale-aware regularization**: Added three regularization strategies for Lambda inversion:
+  - `TIKHONOV`: (Λ + εI)⁻¹ where ε = scale * trace(Λ)/d (new default)
+  - `RELATIVE`: Bound condition number by clamping min eigenvalue to max_eig/max_condition
+  - `ABSOLUTE`: Legacy behavior with fixed eigenvalue threshold
+- **RegularizationConfig dataclass**: New config class in `lambda_/base.py` for consistent regularization settings
+- **Ledoit-Wolf shrinkage**: Added `_shrink_lambda()` method to `EstimateLambda` for bias-variance tradeoff
+- **Updated `_project_to_psd()`**: Now supports relative eigenvalue floor (bounds condition number ≤ 100)
+- **Updated `batch_inverse()`**: Accepts `strategy` parameter (default: TIKHONOV) for configurable regularization
+- **Part G added to eval_03**: `--reg-strategies` flag compares regularization strategies on SE estimation
+- **Backward compatible**: Legacy code continues to work via `batch_inverse_legacy()` and default parameters
+
+### Eval 05: Round E - Per-Observation Lambda
+- **Round E added**: Compares aggregate vs per-observation Λ(xᵢ) across sample sizes
+- **Key finding**: Aggregate Lambda shows U-shaped SE ratio; per-obs is stable (~1.0 for all n)
+- **Large-n investigation**: Confirmed SE formula is correct; "overestimation" is MC noise
+- **Per-obs Lambda gives 26x smaller Var(ψ)** than aggregate (0.038 vs 0.995)
+- **Coverage**: Per-obs achieves 97% (nominal), aggregate overcoverage at 99%
+
+### Eval 03: Brutal Overhaul
+- **Package code tests**: Added A4 (ComputeLambda) and B4 (AnalyticLambda) - now tests actual package code, not just oracle math
+- **Part E: Method Failure Analysis**: Explicitly shows which methods fail and why
+  - Aggregate identified as BROKEN for Regime C (zero x-dependence, fatal)
+- **Part F: SE Propagation Test**: Tests whether Lambda errors actually affect SE estimation
+  - Key finding: Aggregate under-estimates SE (ratio=0.73), dangerous for inference
+- **Removed sklearn warnings**: Suppressed LightGBM feature name warnings in estimate.py
+- **--brutal flag**: Run with `python3 -m evals.eval_03_lambda --brutal` for full analysis
+- **Results**: 11/11 PASS (A4 and B4 now tested)
+
+### Eval 02: Strengthened Autodiff Validation
+- **Added Gaussian oracle**: Part 1 now tests 8 families (was 7) with closed-form comparison
+- **Replaced "is finite" with finite-difference validation**: Part 2 now validates Probit, Beta, Tobit, ZIP against numerical FD approximation instead of just checking values are finite
+- **Real error metrics**: FD families now show actual error magnitudes (1e-11 to 1e-7) instead of Yes/No
+- **Results**: 31/31 PASS — all 12 families now have real correctness validation
+
+### Eval 01: Auto-Scale Sample Size for Binary Families
+- **Auto-scaling**: Binary families (logit/probit) now use n=8000, others use n=5000
+- **Rationale**: Binary outcomes carry ~1 bit/observation, requiring 2x samples for same precision
+- **CLI default changed**: `--n` now defaults to None (auto-scale) instead of fixed 5000
+- **Results**: 11/12 PASS, logit still UNSTABLE (7/10) — this is expected behavior for binary families
+
+### Eval 01: Ruthless Redesign
+- **Tighter thresholds**: RMSE < 0.15 (was 0.3), Corr > 0.8 (was 0.7) — theory-aligned for n=2000
+- **Stricter pass logic**: PASS (all seeds), UNSTABLE (60%+), FAIL (<60%) — no more mean-aggregation hiding failures
+- **Worst-case reporting**: Summary shows Max RMSE(β), Min Corr(β) to expose instability
+- **10 seeds default**: Up from 5 for robust validation
+- **Removed scale identification claim**: Was incorrect for likelihood-based models
+- **Challenging DGPs**: Added `logit_highdim`, `linear_highdim` (d_X=10, interactions, sin(2πx), x²)
+- **Results**: 9 PASS, 1 UNSTABLE (negbin), 2 FAIL (logit, probit) — exposing real instability
+
+### Eval 08: Regularization Diagnostics
+- Created new eval `/Users/pranjal/deepest/evals/eval_08_regularization.py`
+- **Part A: Cross-Fitting Necessity** - Tests whether cross-fitting is required for valid inference
+  - A1: No-split vs cross-fit (K=5) comparison
+  - A2: Minimum folds K=2,5,10,20 analysis
+- **Part B: Ridge Calibration** - Tests adaptive ridge formula for SE ratio calibration
+  - B1: Fixed ridge across n=500..10000 (confirms U-shape miscalibration)
+  - B2: Adaptive ridge = c/sqrt(n) formula
+  - B3: Grid search for optimal c
+- Implements dedicated `run_nosplit_simulation()` that trains and evaluates on same data
+
 ## 2026-01-13
 
-### Documentation: Streamlined with Separate Eval Pages
-- README.md: Shortened validation to summary table only
-- docs/validation/index.md: Overview linking to individual eval pages
-- NEW: docs/validation/eval_01.md - Parameter Recovery details
-- NEW: docs/validation/eval_03.md - Lambda Estimation details
-- NEW: docs/validation/eval_05.md - Coverage details
+### Lambda Method Comparison (Eval 07 Round G)
+- Tested aggregate vs lgbm vs ridge Lambda methods with M=50 multi-seed validation
+- **LGBM**: Heavy regularization (n_estimators=20, max_depth=2, reg_alpha=5.0, reg_lambda=5.0)
+- **Ridge**: Heavy regularization (alpha=1000.0) - without this, Bias=66, SE ratio=0.5
+- All three methods now pass: aggregate (96%, 1.0), lgbm (98%, 1.0), ridge (94%, 0.91)
+- Updated CLAUDE.md Lambda Method Recommendations with test results
 
-### PyPI Release v0.1.2
-- Published `deep-inference` v0.1.2 to PyPI
-- Includes complete documentation overhaul and new `inference()` API
+### Eval 03: Regularization Ablation Study (Part D)
+- Added `--reg-study` CLI flag to run regularization ablation (12 configs, ~60s)
+- Exposed regularization params in EstimateLambda: `mlp_alpha`, `rf_max_depth`, `lgbm_reg_lambda`
+- **Key findings:**
+  - MLP: No effect (all ~0.997 corr regardless of alpha)
+  - Ridge: Slight improvement with MORE reg (0.52 at α=100 vs 0.51 at α=1)
+  - **RF: HUGE improvement** with shallow trees (0.992 at depth=3 vs 0.871 at depth=None)
+  - LightGBM: Minimal effect (0.978 across all settings)
+- **Conclusion**: RF default (max_depth=10) is overfitting; max_depth=3 is optimal
 
 ### Documentation Overhaul: New API Alignment
 - Updated `CLAUDE.md` package structure to reflect new modules (models/, targets/, lambda_/, engine/)

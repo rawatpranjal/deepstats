@@ -15,6 +15,11 @@ This requires 3-way cross-fitting:
 """
 
 from typing import Optional, TYPE_CHECKING, Literal
+import warnings
+
+# Suppress sklearn warnings about feature names (LightGBM fitted with names, predict without)
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
+
 import torch
 from torch import Tensor
 
@@ -40,20 +45,40 @@ class EstimateLambda(BaseLambdaStrategy):
 
     def __init__(
         self,
-        method: Literal["mlp", "rf", "ridge", "aggregate", "lgbm"] = "aggregate",
-        ridge_alpha: float = 1.0,
+        method: Literal["mlp", "rf", "ridge", "aggregate", "lgbm"] = "ridge",
+        ridge_alpha: float = 1000.0,
+        mlp_alpha: float = 0.0001,
+        rf_max_depth: Optional[int] = 10,
+        lgbm_reg_lambda: float = 0.0,
     ):
         """
         Initialize EstimateLambda strategy.
 
         Args:
-            method: Regression method ("aggregate" [default], "mlp", "rf", "ridge")
-                    "aggregate" is the most stable and recommended for most cases.
-                    Other methods may produce non-PSD matrices requiring projection.
-            ridge_alpha: Regularization for ridge regression
+            method: Regression method ("ridge" [default], "aggregate", "lgbm", "mlp", "rf")
+                    "ridge" is recommended for validated coverage.
+                    "aggregate" is stable when Hessian doesn't depend on X.
+                    "mlp" can produce invalid standard errors - use with caution.
+            ridge_alpha: L2 regularization for ridge regression (default 1000.0)
+            mlp_alpha: L2 regularization for MLP (default 0.0001)
+            rf_max_depth: Max tree depth for RF (default 10, None=unlimited)
+            lgbm_reg_lambda: L2 regularization for LightGBM (default 0.0)
         """
+        # Warn about potentially dangerous methods
+        if method in ("mlp", "neural"):
+            warnings.warn(
+                f"Lambda method '{method}' can produce invalid standard errors "
+                "despite high correlation with oracle. Consider method='ridge' "
+                "(default) or 'lgbm' for validated coverage. "
+                "See docs/algorithm/index.md for details.",
+                UserWarning
+            )
+
         self.method = method
         self.ridge_alpha = ridge_alpha
+        self.mlp_alpha = mlp_alpha
+        self.rf_max_depth = rf_max_depth
+        self.lgbm_reg_lambda = lgbm_reg_lambda
         self._model = None
         self._mean_hessian = None
         self._d_theta = None
@@ -146,6 +171,7 @@ class EstimateLambda(BaseLambdaStrategy):
             hidden_layer_sizes=(64, 32),
             max_iter=200,
             early_stopping=True,
+            alpha=self.mlp_alpha,  # L2 regularization
             random_state=42,
         )
         self._mlp.fit(X_np, targets_np)
@@ -173,7 +199,7 @@ class EstimateLambda(BaseLambdaStrategy):
 
         self._rf = RandomForestRegressor(
             n_estimators=100,
-            max_depth=10,
+            max_depth=self.rf_max_depth,  # Depth regularization
             random_state=42,
         )
         self._rf.fit(X_np, targets_np)
@@ -193,6 +219,7 @@ class EstimateLambda(BaseLambdaStrategy):
             n_estimators=100,
             max_depth=6,
             learning_rate=0.1,
+            reg_lambda=self.lgbm_reg_lambda,  # L2 regularization
             random_state=42,
             verbose=-1,
         )
@@ -253,20 +280,68 @@ class EstimateLambda(BaseLambdaStrategy):
 
         return Lambda
 
+    def _shrink_lambda(
+        self,
+        Lambda: Tensor,
+        shrinkage: float = 0.1,
+        shrinkage_target: str = "scaled_identity",
+    ) -> Tensor:
+        """
+        Apply Ledoit-Wolf style shrinkage toward a well-conditioned target.
+
+        Shrinkage reduces extreme eigenvalues while preserving trace,
+        providing a bias-variance tradeoff.
+
+        Args:
+            Lambda: (n, d, d) batch of matrices
+            shrinkage: Shrinkage intensity α ∈ [0, 1]
+                       Λ_shrunk = (1 - α) * Λ + α * target
+            shrinkage_target: Target type
+                - "scaled_identity": target = (trace/d) * I
+                - "diagonal": target = diag(Λ)
+
+        Returns:
+            (n, d, d) shrunk matrices
+        """
+        n, d, _ = Lambda.shape
+        device = Lambda.device
+        dtype = Lambda.dtype
+
+        if shrinkage_target == "scaled_identity":
+            # Target = (trace/d) * I for each matrix
+            traces = torch.einsum('nii->n', Lambda)  # (n,)
+            eye = torch.eye(d, dtype=dtype, device=device)
+            targets = (traces / d).unsqueeze(-1).unsqueeze(-1) * eye.unsqueeze(0)
+        elif shrinkage_target == "diagonal":
+            # Target = diag(Λ)
+            diag_vals = torch.diagonal(Lambda, dim1=1, dim2=2)  # (n, d)
+            targets = torch.diag_embed(diag_vals)  # (n, d, d)
+        else:
+            raise ValueError(f"Unknown shrinkage_target: {shrinkage_target}")
+
+        return (1 - shrinkage) * Lambda + shrinkage * targets
+
     def _project_to_psd(
-        self, Lambda: Tensor, min_eigenvalue: float = 1e-4
+        self,
+        Lambda: Tensor,
+        min_eigenvalue: float = 1e-4,
+        max_condition: float = 100.0,
+        use_relative: bool = True,
     ) -> Tensor:
         """
         Project matrices to the nearest positive semi-definite matrices.
 
-        Uses eigendecomposition and clamps negative eigenvalues.
+        Uses eigendecomposition and clamps eigenvalues.
 
         Args:
             Lambda: (n, d, d) batch of matrices
-            min_eigenvalue: Minimum eigenvalue to enforce
+            min_eigenvalue: Minimum eigenvalue for absolute floor (used if use_relative=False)
+            max_condition: Maximum condition number for relative floor (used if use_relative=True)
+            use_relative: If True, use relative floor (min_eig = max_eig / max_condition)
+                          If False, use absolute floor (min_eig = min_eigenvalue)
 
         Returns:
-            (n, d, d) PSD matrices
+            (n, d, d) PSD matrices with bounded condition number
         """
         n = Lambda.shape[0]
         Lambda_psd = Lambda.clone()
@@ -275,8 +350,16 @@ class EstimateLambda(BaseLambdaStrategy):
             # Eigendecomposition
             eigvals, eigvecs = torch.linalg.eigh(Lambda[i])
 
-            # Clamp negative eigenvalues to minimum
-            eigvals_clamped = torch.clamp(eigvals, min=min_eigenvalue)
+            if use_relative:
+                # Relative floor: bound condition number
+                max_eig = eigvals[-1]  # Largest eigenvalue (eigh returns sorted)
+                min_allowed = max_eig / max_condition
+                # Still enforce a small absolute floor to avoid numerical issues
+                min_allowed = max(min_allowed, 1e-10)
+                eigvals_clamped = torch.clamp(eigvals, min=min_allowed)
+            else:
+                # Absolute floor (legacy behavior)
+                eigvals_clamped = torch.clamp(eigvals, min=min_eigenvalue)
 
             # Reconstruct: V @ diag(D) @ V'
             Lambda_psd[i] = eigvecs @ torch.diag(eigvals_clamped) @ eigvecs.T

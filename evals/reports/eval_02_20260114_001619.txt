@@ -1,0 +1,76 @@
+======================================================================
+EVAL 02: AUTODIFF VS CALCULUS (ALL FAMILIES)
+======================================================================
+
+Config: seed=42, n_trials=20
+
+----------------------------------------------------------------------
+PART 1: ORACLE COMPARISON (Closed-Form Families)
+----------------------------------------------------------------------
+
+Family       Score Err       Hessian Err     Status  
+----------------------------------------------------------------------
+linear       0.00e+00        0.00e+00        PASS    
+logit        1.67e-16        1.11e-16        PASS    
+poisson      1.74e-09        2.57e-09        PASS    
+negbin       1.74e-09        2.57e-09        PASS    
+gamma        2.22e-16        4.44e-16        PASS    
+weibull      8.88e-16        7.11e-15        PASS    
+gumbel       0.00e+00        1.78e-15        PASS    
+gaussian     8.88e-16        1.78e-15        PASS    
+
+----------------------------------------------------------------------
+PART 2: FINITE-DIFFERENCE VALIDATION (No Oracle)
+----------------------------------------------------------------------
+
+Family       Score Err       Hessian Err     Status  
+----------------------------------------------------------------------
+probit       3.10e-11        2.34e-08        PASS    
+beta         2.51e-11        2.32e-08        PASS    
+tobit        9.80e-11        4.83e-08        PASS    
+zip          1.97e-10        1.01e-07        PASS    
+
+----------------------------------------------------------------------
+PART 4: PACKAGE INTEGRATION (Autodiff vs Closed-Form)
+----------------------------------------------------------------------
+
+Family       Grad Err     Hess Err     Symm Err     Status  
+----------------------------------------------------------------------
+linear       4.44e-16     0.00e+00     0.00e+00     PASS    
+logit        2.22e-16     2.22e-16     1.11e-16     PASS    
+poisson      7.17e-10     1.16e-09     4.44e-16     PASS    
+negbin       4.44e-16     1.11e-15     6.66e-16     PASS    
+gamma        2.22e-16     4.44e-16     4.44e-16     PASS    
+weibull      5.55e-16     3.55e-15     2.66e-15     PASS    
+gumbel       0.00e+00     0.00e+00     0.00e+00     PASS    
+probit       4.44e-16     N/A          8.88e-16     PASS    
+beta         2.22e-16     N/A          2.22e-16     PASS    
+gaussian     2.22e-16     4.44e-16     4.44e-16     PASS    
+tobit        N/A          N/A          4.44e-16     PASS    
+zip          N/A          N/A          8.88e-16     PASS    
+
+----------------------------------------------------------------------
+PART 3: FITTED PARAMETER VALIDATION (At Optimum)
+----------------------------------------------------------------------
+
+Family       θ̂                   Hess Err     Min Eig      PSD    Status  
+----------------------------------------------------------------------
+linear       [0.52, 0.26]         0.00e+00     0.9598       Yes    PASS    
+logit        [0.52, 0.30]         6.94e-18     0.2024       Yes    PASS    
+poisson      [0.48, 0.33]         9.99e-11     1.2494       Yes    PASS    
+negbin       [0.49, 0.29]         9.99e-11     0.7439       Yes    PASS    
+gamma        [0.52, 0.36]         1.82e-17     0.9447       Yes    PASS    
+weibull      [0.50, 0.29]         8.88e-16     3.9801       Yes    PASS    
+gumbel       [0.50, 0.32]         2.22e-16     0.9950       Yes    PASS    
+
+======================================================================
+SUMMARY
+======================================================================
+
+Part 1 (Oracle @ Random θ):  8/8 PASS
+Part 2 (Finite-Diff):        4/4 PASS
+Part 4 (Package Integration):12/12 PASS
+Part 3 (Fitted θ̂):           7/7 PASS
+Overall:                     31/31 PASS
+
+======================================================================

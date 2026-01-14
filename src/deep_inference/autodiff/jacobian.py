@@ -144,31 +144,3 @@ def compute_target_jacobian_loop(
                 jacobians[i, j, :] = grad_ij
 
     return jacobians
-
-
-def compute_gradient_for_scalar_target(
-    target_fn: Callable[[Tensor, Tensor, Tensor], Tensor],
-    x: Tensor,
-    theta: Tensor,
-    t_tilde: Tensor,
-    use_vmap: bool = True,
-) -> Tensor:
-    """
-    Compute gradient for scalar target (special case of Jacobian).
-
-    When H is scalar, H_θ is a vector (gradient), not a matrix.
-
-    Args:
-        target_fn: Target function returning scalar
-        x: (n, d_x) covariates
-        theta: (n, d_theta) parameters
-        t_tilde: Evaluation point
-
-    Returns:
-        (n, d_theta) gradient tensor
-    """
-    return compute_target_jacobian(target_fn, x, theta, t_tilde, use_vmap=use_vmap)
-
-
-# Convenience alias
-compute_H_theta = compute_target_jacobian

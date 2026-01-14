@@ -253,6 +253,13 @@ python3 -m evals.run_all 2>&1 | tee evals/evals_report.txt
 python3 -m evals.run_all --quick 2>&1 | tee evals/evals_report_quick.txt
 ```
 
+**Eval 06 Settings (NON-NEGOTIABLE):**
+- **M=50** replications minimum (detects systematic failure)
+- **n=5000** samples (matches eval_01)
+- **epochs=200**, **patience=50** (proper convergence)
+- **lambda_method='ridge'** (default, validated 96% coverage)
+- **t_tilde=0.0** (must match DGP's mu_true() definition)
+
 ## How to do E2E User Runs
 
 **Benchmarking = comparing NN to Oracle. Show EVERYTHING. No opinions. Only facts.**
@@ -275,7 +282,7 @@ EPOCHS = 100
 N_FOLDS = 50
 HIDDEN_DIMS = [64, 32]
 LR = 0.01
-LAMBDA_METHOD = 'aggregate'  # CRITICAL for logit!
+# lambda_method='ridge' is now the default (validated 96% coverage)
 ```
 
 ### Step 2: Run Oracle MC (M=100)
@@ -312,7 +319,7 @@ np.random.seed(NN_SEED)
 nn = structural_dml(
     Y=Y, T=T, X=X.reshape(-1,1),
     family='logit',
-    lambda_method='aggregate',  # CRITICAL!
+    # lambda_method='ridge' is default (validated 96% coverage)
     epochs=EPOCHS, n_folds=N_FOLDS,
     hidden_dims=HIDDEN_DIMS, lr=LR
 )
@@ -405,6 +412,85 @@ Full benchmark: `tutorials/02_logit_oracle.ipynb`
 | **ZIP** | Mixed | Mixture: π + (1-π)·Poisson | Autodiff | Autodiff | 4 |
 
 Where: `η = α + β·t`, `μ = g⁻¹(η)`, `z = (y/λ)^k` (Weibull) or `(y-μ)/σ` (Gumbel), `r = 1/overdispersion`, `Φ` = normal CDF
+
+## Lambda Method Recommendations
+
+For `structural_dml()` with nonlinear models (logit, poisson, etc.), the package defaults to `lambda_method='ridge'`:
+
+| Method | Corr w/ Oracle | Coverage | Speed | Default | Notes |
+|--------|----------------|----------|-------|---------|-------|
+| **ridge** | 0.508 | **96%** | Fast | **Yes** | Safe default, validated coverage |
+| **aggregate** | 0.000 | 95% | Fast | No | Ignores X-dependence |
+| **lgbm** | 0.978 | 96% | Fast | No | Good accuracy alternative |
+| **mlp** | 0.997 | **67%** | Slow | No | **AVOID** - invalid SEs |
+| **rf** | 0.904 | ~90% | Medium | No | Moderate accuracy |
+
+### WARNING: Avoid MLP for Lambda Estimation
+
+The package now warns when `lambda_method='mlp'` is used:
+
+```
+UserWarning: Lambda method 'mlp' can produce invalid standard errors
+despite high correlation with oracle. Consider method='ridge' (default)
+or 'lgbm' for validated coverage.
+```
+
+**Key finding:** MLP achieves highest correlation (0.997) but produces **67% coverage** instead of 95%. This is because high correlation doesn't guarantee valid inference - the variance of the Lambda estimates matters too.
+
+### Package Defaults (as of v0.2)
+
+```python
+# src/deep_inference/core/algorithm.py
+lambda_method: str = 'ridge',    # Was 'mlp'
+ridge_alpha: float = 1000.0,     # Was 1.0
+
+# src/deep_inference/core/lambda_estimator.py
+method: Literal[...] = 'ridge',  # Was 'mlp'
+ridge_alpha: float = 1000.0,     # Was 1.0
+
+# src/deep_inference/lambda_/estimate.py
+method: Literal[...] = 'ridge',  # Was 'aggregate'
+ridge_alpha: float = 1000.0,     # Was 1.0
+```
+
+### Ridge regularization (critical!)
+
+Ridge requires **heavy regularization** (α=1000) to produce stable Lambda estimates:
+
+```python
+Ridge(alpha=1000.0)  # Pull predictions toward mean
+```
+
+Without this (old default α=1.0), ridge produces catastrophic failure: Bias=66, SE ratio=0.5.
+
+### LGBM regularization (if using lgbm)
+
+LGBM requires **heavy regularization** to produce stable Lambda estimates:
+
+```python
+LGBMRegressor(
+    n_estimators=20,        # Very few trees
+    max_depth=2,            # Very shallow
+    min_child_samples=150,  # Many samples per leaf
+    reg_alpha=5.0,          # Strong L1
+    reg_lambda=5.0,         # Strong L2
+)
+```
+
+Without this, LGBM can produce negative eigenvalues → numerical instability.
+
+### Coverage Results (M=50)
+
+```
+Method         Corr    Coverage   SE Ratio       Bias   Status
+---------------------------------------------------------------
+ridge          0.508      96.0%      0.914    -0.0064     PASS
+aggregate      0.000      95.0%      1.000    -0.0102     PASS
+lgbm           0.978      96.0%      0.999    -0.0093     PASS
+mlp            0.997      67.0%      0.650    -0.0150     FAIL
+```
+
+**Conclusion**: Use ridge (default), aggregate, or lgbm. **Never use mlp** for production.
 
 ## References
 

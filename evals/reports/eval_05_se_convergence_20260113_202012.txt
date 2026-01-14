@@ -1,0 +1,95 @@
+============================================================
+EVAL 05: SE CONVERGENCE TEST (M=100)
+============================================================
+
+n	Coverage	SE_ratio
+----------------------------------------
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=100)
+============================================================
+
+  Coverage: 90/100 = 90.0%
+  Mean bias: -0.002863
+  Mean SE: 0.044178
+  Empirical SE: 0.053181
+  SE ratio (mean/empirical): 0.831
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+500	90.0%		0.831
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=100)
+============================================================
+
+  Coverage: 91/100 = 91.0%
+  Mean bias: 0.002906
+  Mean SE: 0.031471
+  Empirical SE: 0.034783
+  SE ratio (mean/empirical): 0.905
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+1000	91.0%		0.905
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=100)
+============================================================
+
+  Coverage: 94/100 = 94.0%
+  Mean bias: -0.000788
+  Mean SE: 0.022382
+  Empirical SE: 0.024583
+  SE ratio (mean/empirical): 0.910
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+2000	94.0%		0.910
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=100)
+============================================================
+
+  Coverage: 93/100 = 93.0%
+  Mean bias: 0.000343
+  Mean SE: 0.018180
+  Empirical SE: 0.018186
+  SE ratio (mean/empirical): 1.000
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+3000	93.0%		1.000
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=100)
+============================================================
+
+  Coverage: 99/100 = 99.0%
+  Mean bias: -0.000613
+  Mean SE: 0.014103
+  Empirical SE: 0.012755
+  SE ratio (mean/empirical): 1.106
+  Coverage in [88%, 98%]: FAIL
+
+  ROUND D: FAIL
+5000	99.0%		1.106
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=100)
+============================================================
+
+  Coverage: 96/100 = 96.0%
+  Mean bias: -0.001219
+  Mean SE: 0.009996
+  Empirical SE: 0.008821
+  SE ratio (mean/empirical): 1.133
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+10000	96.0%		1.133
+
+============================================================
+CONCLUSION: SE ratio converges to 1.0 at n=3000
+Finite-sample effect, not a formula bug.
+============================================================

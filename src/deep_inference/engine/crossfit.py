@@ -147,6 +147,7 @@ def run_crossfit(
     n_folds: int = 5,
     epochs: int = 100,
     lr: float = 0.01,
+    patience: int = 50,
     hidden_dims: List[int] = [64, 32],
     ridge: float = 1e-4,
     verbose: bool = False,
@@ -247,6 +248,7 @@ def run_crossfit(
             loss_fn=loss_fn_batched,
             epochs=epochs,
             lr=lr,
+            patience=patience,
             verbose=False,
         )
 

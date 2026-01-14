@@ -1,0 +1,174 @@
+======================================================================
+LAMBDA METHOD COMPARISON
+======================================================================
+
+Method		n	Coverage	SE_ratio
+----------------------------------------------------------------------
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=aggregate)
+============================================================
+
+  Coverage: 44/50 = 88.0%
+  Mean bias: 0.001940
+  Mean SE: 0.031560
+  Empirical SE: 0.036159
+  SE ratio (mean/empirical): 0.873
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+aggregate		1000	88.0%		0.873
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=aggregate)
+============================================================
+
+  Coverage: 46/50 = 92.0%
+  Mean bias: -0.004047
+  Mean SE: 0.022483
+  Empirical SE: 0.026910
+  SE ratio (mean/empirical): 0.836
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+aggregate		2000	92.0%		0.836
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=aggregate)
+============================================================
+
+  Coverage: 49/50 = 98.0%
+  Mean bias: -0.000044
+  Mean SE: 0.014100
+  Empirical SE: 0.012264
+  SE ratio (mean/empirical): 1.150
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+aggregate		5000	98.0%		1.150
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=mlp)
+============================================================
+
+  Coverage: 47/50 = 94.0%
+  Mean bias: 0.023027
+  Mean SE: 1.232869
+  Empirical SE: 1.371690
+  SE ratio (mean/empirical): 0.899
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+mlp		1000	94.0%		0.899
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=mlp)
+============================================================
+
+  Coverage: 46/50 = 92.0%
+  Mean bias: 0.082359
+  Mean SE: 0.697490
+  Empirical SE: 0.797278
+  SE ratio (mean/empirical): 0.875
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+mlp		2000	92.0%		0.875
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=mlp)
+============================================================
+
+  Coverage: 46/50 = 92.0%
+  Mean bias: -0.003665
+  Mean SE: 0.307541
+  Empirical SE: 0.342414
+  SE ratio (mean/empirical): 0.898
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+mlp		5000	92.0%		0.898
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=ridge)
+============================================================
+
+  Coverage: 49/50 = 98.0%
+  Mean bias: -0.051479
+  Mean SE: 1.427057
+  Empirical SE: 1.564449
+  SE ratio (mean/empirical): 0.912
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+ridge		1000	98.0%		0.912
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=ridge)
+============================================================
+
+  Coverage: 48/50 = 96.0%
+  Mean bias: 0.002713
+  Mean SE: 1.068424
+  Empirical SE: 1.155004
+  SE ratio (mean/empirical): 0.925
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+ridge		2000	96.0%		0.925
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=ridge)
+============================================================
+
+  Coverage: 49/50 = 98.0%
+  Mean bias: -0.026823
+  Mean SE: 0.662137
+  Empirical SE: 0.644964
+  SE ratio (mean/empirical): 1.027
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+ridge		5000	98.0%		1.027
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=rf)
+============================================================
+
+  Coverage: 48/50 = 96.0%
+  Mean bias: -0.003710
+  Mean SE: 0.071092
+  Empirical SE: 0.081935
+  SE ratio (mean/empirical): 0.868
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+rf		1000	96.0%		0.868
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=rf)
+============================================================
+
+  Coverage: 46/50 = 92.0%
+  Mean bias: -0.004054
+  Mean SE: 0.055185
+  Empirical SE: 0.064143
+  SE ratio (mean/empirical): 0.860
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+rf		2000	92.0%		0.860
+
+============================================================
+ROUND D: MULTI-SEED COVERAGE (M=50, lambda=rf)
+============================================================
+
+  Coverage: 48/50 = 96.0%
+  Mean bias: 0.002450
+  Mean SE: 0.029442
+  Empirical SE: 0.025920
+  SE ratio (mean/empirical): 1.136
+  Coverage in [88%, 98%]: PASS
+
+  ROUND D: PASS
+rf		5000	96.0%		1.136

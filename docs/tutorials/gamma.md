@@ -88,17 +88,13 @@ print(f"95% CI:   [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 
 ## Expected Results
 
-From Monte Carlo validation (M=30, N=10,000, K=50 folds):
+From [Eval 01: Parameter Recovery](../validation/eval_01.md):
 
-| Method | Coverage | SE Ratio | Target |
-|--------|----------|----------|--------|
-| Naive | ~10-30% | ~0.3-0.5 | — |
-| **Influence** | **~95-100%** | **~1.2** | 93-97% |
+| Family | Corr(α) | Corr(β) | Status |
+|--------|---------|---------|--------|
+| gamma | 0.993 | 0.990 | PASS |
 
-### Interpretation
-
-- The Gamma family tends to produce slightly conservative SE estimates (ratio > 1.0)
-- Valid coverage is maintained across different shape parameters
+The influence function correction produces valid confidence intervals. See [Validation](../validation/index.md) for full results.
 
 ## Real-World Applications
 
