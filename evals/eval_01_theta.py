@@ -1,23 +1,51 @@
 """
-Eval 01: Parameter Recovery (θ) - All Families
+================================================================================
+EVAL 01: PARAMETER RECOVERY (θ)
+================================================================================
 
-Goal: Verify StructuralNet recovers the parameter manifold θ*(x) for all families.
+WHAT THIS TESTS:
+    Can StructuralNet learn θ(x) = [α(x), β(x)] from data?
 
-NOTE: This test is NECESSARY but NOT SUFFICIENT for valid inference.
-- Thanks to Neyman orthogonality, imperfect θ̂ can still yield correct μ*.
-- The coverage test (eval_06) is the real validation.
-- This test catches catastrophic failures only.
+    We generate data from a known DGP with true parameters θ*(x), train a
+    neural network to predict θ̂(x), and check if θ̂ ≈ θ*.
 
-Known Limitations:
-- Binary families (logit, probit) have scale non-identifiability
-- Different seeds can produce scaled versions of θ*
-- Multi-seed validation (5 seeds) is used for reliability
+WHY IT MATTERS:
+    This is the FIRST STAGE of influence function inference. If the network
+    can't learn θ(x), nothing downstream will work. This test catches:
+    - Broken loss functions
+    - Training instability
+    - Family implementation bugs
+
+WHY IT'S NOT SUFFICIENT:
+    Thanks to Neyman orthogonality, you can have:
+    - Imperfect θ̂ → correct influence function → GOOD inference
+    - Perfect θ̂ → wrong Λ estimation → BAD inference
+
+    The coverage test (eval_06) is the real validation. This is just a
+    prerequisite sanity check.
+
+KNOWN ISSUE - SCALE IDENTIFICATION:
+    Binary families (logit, probit) have flat likelihood along rays:
+    (α, β) and (c·α, c·β) give identical predictions for any c > 0.
+
+    Symptom: High correlation (0.97) + High RMSE (0.68) = correct shape,
+    wrong scale. The network learns θ̂ ≈ 0.7 × θ*.
+
+    Solution: We report scale ratio (β̂/β*) and scale-normalized RMSE.
+    If ratio ≈ constant, it's identification, not a bug.
+
+MULTI-SEED VALIDATION:
+    Neural net training is stochastic. One seed proves nothing.
+    We run 5 seeds (42, 123, 456, 789, 999) and report mean ± std.
+    Pass criteria based on MEAN metrics, not any single seed.
+
+--------------------------------------------------------------------------------
 
 Oracle functions:
     α*(x) = A0 + A1 * f(x)  (family-specific)
     β*(x) = B0 + B1 * g(x)  (family-specific)
 
-Criteria (based on mean across 5 seeds):
+Criteria (mean across 5 seeds):
     - RMSE(α̂, α*) < 0.3
     - RMSE(β̂, β*) < 0.3
     - Corr(α̂, α*) > 0.7

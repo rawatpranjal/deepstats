@@ -1,29 +1,65 @@
 """
 Eval 03: Lambda Estimation (RUTHLESS)
 
-Tests Lambda estimation across ALL THREE REGIMES with tight tolerances.
-We WANT to see FAIL when implementation is wrong.
+================================================================================
+WHAT IS LAMBDA?
+================================================================================
 
-Structure:
-    Part A: Regime A (RCT) - ComputeLambda
-        A1: Quadrature oracle vs MC (error < 1%)
-        A2: MC convergence rate is sqrt(M)
-        A3: Independence from Y realization
+Lambda (Λ) is the expected Hessian of the loss function:
 
-    Part B: Regime B (Linear) - AnalyticLambda
-        B1: Lambda = E[TT'|X] matches analytical (error < 1%)
-        B2: Lambda independent of theta
-        B3: Handles confounded T correctly
+    Λ(x) = E[ℓ_θθ(Y, T, θ(x)) | X = x]
 
-    Part C: Regime C (Observational) - EstimateLambda
-        C1: Corr(lambda_1_hat, lambda_1_star) > 0.7
-        C2: Mean Frobenius error < 0.15
-        C3: x-dependence captured (NOT constant)
+It appears in the influence function variance formula (Theorem 2):
 
-Pass Criteria:
-    - Regime A/B: Relative error < 1% (computation = exact)
-    - Regime C: Correlation > 0.7, Frobenius < 0.15, std > 0.01
-    - All: Min eigenvalue > 1e-6 (PSD required)
+    Var(ψ) = E[Λ⁻¹ · H_θ' · (ℓ_θ · ℓ_θ') · H_θ · Λ⁻¹]
+
+If Λ is wrong → SE is wrong → CI coverage is wrong → inference is invalid.
+
+================================================================================
+WHY THIS EVAL MATTERS
+================================================================================
+
+Lambda estimation is the HARDEST component of the influence function pipeline:
+- θ̂(x) errors are orthogonalized away (Neyman orthogonality)
+- H_θ is computed via autodiff (exact)
+- But Λ̂(x) errors directly bias the variance estimate
+
+Three regimes require different Lambda strategies:
+- Regime A (RCT): Λ = E[ℓ_θθ | T⊥X], can compute via MC over known T dist
+- Regime B (Linear): Λ = E[TT' | X], analytical formula exists
+- Regime C (Observational): Λ(x) varies with x, must estimate via regression
+
+================================================================================
+STRUCTURE
+================================================================================
+
+Part A: Regime A (RCT) - ComputeLambda
+    A1: Quadrature oracle vs MC (error < 1%)
+    A2: MC convergence rate is sqrt(M)
+    A3: Independence from Y realization
+
+Part B: Regime B (Linear) - AnalyticLambda
+    B1: Lambda = E[TT'|X] matches analytical (error < 1%)
+    B2: Lambda independent of theta
+    B3: Handles confounded T correctly
+
+Part C: Regime C (Observational) - EstimateLambda
+    C1: Corr(lambda_1_hat, lambda_1_star) > 0.7
+    C2: Mean Frobenius error < 0.15
+    C3: x-dependence captured (NOT constant)
+
+Part D: Regularization Ablation (--reg-study flag)
+    Tests MLP, Ridge, RF, LightGBM with different regularization levels
+
+================================================================================
+PASS CRITERIA
+================================================================================
+
+- Regime A/B: Relative error < 1% (computation should be exact)
+- Regime C: Correlation > 0.7, Frobenius < 0.15, std > 0.01
+- All: Min eigenvalue > 1e-6 (PSD required for valid variance)
+
+We WANT to see FAIL when implementation is wrong - this is a firewall.
 """
 
 import sys

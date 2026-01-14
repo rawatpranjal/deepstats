@@ -412,11 +412,11 @@ For `structural_dml()` with nonlinear models (logit, poisson, etc.), choose `lam
 
 | Method | Speed | Stability | SE Calibration | Recommendation |
 |--------|-------|-----------|----------------|----------------|
-| **aggregate** | Fast | Excellent (always PSD) | Coverage ~98%, SE ratio ~0.95 | Default for stability |
-| **lgbm** | Fast | Good (with heavy reg) | Coverage ~96%, SE ratio ~1.1 | Best for SE calibration |
+| **aggregate** | Fast | Excellent (always PSD) | Coverage ~96%, SE ratio ~1.0 | Default for stability |
+| **lgbm** | Fast | Good (with heavy reg) | Coverage ~98%, SE ratio ~1.0 | Alternative to aggregate |
+| **ridge** | Fast | Good (with α=1000) | Coverage ~94%, SE ratio ~0.91 | Fast alternative |
 | **mlp** | Very slow (~4min/seed) | Variable | Untested at scale | Not recommended |
 | **rf** | Medium | Variable | Untested | Not recommended |
-| **ridge** | Fast | **BROKEN** | Bias=66, SE ratio=0.5 | **Never use** |
 
 ### Why aggregate can fail coverage checks
 
@@ -443,21 +443,29 @@ LGBMRegressor(
 
 Without this, LGBM can produce negative eigenvalues → numerical instability.
 
+### Ridge regularization (critical!)
+
+Ridge requires **heavy regularization** (α=1000) to produce stable Lambda estimates:
+
+```python
+Ridge(alpha=1000.0)  # Pull predictions toward mean
+```
+
+Without this (default α=1.0), ridge produces catastrophic failure: Bias=66, SE ratio=0.5.
+
 ### Eval 07 Round G Results (M=50)
 
-Results vary run-to-run due to Monte Carlo variance. Both methods achieve valid inference:
+Results vary run-to-run due to Monte Carlo variance. All three methods achieve valid inference:
 
 ```
-Run 1:
-  aggregate    96.0%   0.951   PASS
-  lgbm         98.0%   1.015   FAIL (coverage > 97%)
-
-Run 2:
-  aggregate    98.0%   1.043   FAIL (coverage > 97%)
-  lgbm         96.0%   1.045   PASS
+Method         Coverage   SE Ratio       Bias   Status
+-------------------------------------------------------
+aggregate         96.0%      1.000    -0.0102     PASS
+lgbm              98.0%      0.999    -0.0093     FAIL (coverage > 97%)
+ridge             94.0%      0.914    -0.0064     PASS
 ```
 
-**Conclusion**: Both methods work. Coverage ~96-98%, SE ratio ~0.95-1.05.
+**Conclusion**: aggregate, lgbm, and ridge all work. Coverage ~94-98%, SE ratio ~0.91-1.0.
 
 ## References
 

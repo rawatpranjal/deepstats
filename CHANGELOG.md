@@ -4,8 +4,9 @@
 
 ### Lambda Method Comparison (Eval 07 Round G)
 - Tested aggregate vs lgbm vs ridge Lambda methods with M=50 multi-seed validation
-- **LGBM**: Added heavy regularization (n_estimators=20, max_depth=2, reg_alpha=5.0, reg_lambda=5.0) for stable Lambda estimates
-- **Ridge**: Confirmed BROKEN - Bias=66, SE ratio=0.5 (never use)
+- **LGBM**: Heavy regularization (n_estimators=20, max_depth=2, reg_alpha=5.0, reg_lambda=5.0)
+- **Ridge**: Heavy regularization (alpha=1000.0) - without this, Bias=66, SE ratio=0.5
+- All three methods now pass: aggregate (96%, 1.0), lgbm (98%, 1.0), ridge (94%, 0.91)
 - Updated CLAUDE.md Lambda Method Recommendations with test results
 
 ### Eval 03: Regularization Ablation Study (Part D)

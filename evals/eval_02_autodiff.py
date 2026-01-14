@@ -1,17 +1,49 @@
 """
 Eval 02: Autodiff vs Calculus (All Families)
+============================================
 
-Goal: Verify torch.func autodiff matches closed-form formulas.
+WHAT THIS TESTS
+---------------
+This eval validates that PyTorch autodiff (torch.func.grad, torch.func.hessian)
+correctly computes the score function ∇_θ ℓ(y,t;θ) and Hessian ∇²_θθ ℓ(y,t;θ)
+for all GLM families in the package.
 
-Criteria:
-    - Score: max|autodiff - oracle| < 1e-6
-    - Hessian: max|autodiff - oracle| < 1e-6
+WHY THIS MATTERS
+----------------
+Theorem 2 (FLM 2021) requires:
+    1. Score: ∇_θ ℓ(y,t;θ) for the influence function numerator
+    2. Hessian: ∇²_θθ ℓ(y,t;θ) for the Lambda matrix Λ = E[∇²ℓ|X]
 
-Families with closed-form oracles:
-    - Linear, Logit, Poisson, NegBin, Gamma, Weibull, Gumbel (theta_dim=2)
+If autodiff produces wrong gradients/Hessians, the entire IF correction is invalid.
+This is the most fundamental correctness check - everything downstream depends on it.
 
-Families using autodiff only (no oracle comparison):
-    - Probit, Beta, Gaussian, Tobit, ZIP (complex derivatives)
+TEST STRUCTURE
+--------------
+Part 1: Oracle Comparison (7 families)
+    - Compare autodiff to hand-derived closed-form formulas
+    - Families: Linear, Logit, Poisson, NegBin, Gamma, Weibull, Gumbel
+    - Tests at random θ values
+
+Part 2: Autodiff-Only Validation (5 families)
+    - For families with complex derivatives (Mills ratio, digamma, etc.)
+    - Check gradients/Hessians are finite (no NaN/Inf)
+    - Families: Probit, Beta, Gaussian, Tobit, ZIP
+
+Part 3: Fitted Parameter Validation (7 families)
+    - Fit model via gradient descent, check Hessian at θ̂
+    - Verify Hessian is PSD at optimum (required for valid covariance)
+
+Part 4: Package Integration (12 families)
+    - Test actual family class implementations
+    - Verify autodiff matches family.gradient()/family.hessian() methods
+    - Check Hessian symmetry
+
+PASS CRITERIA
+-------------
+    - Score error: max|autodiff - oracle| < 1e-6
+    - Hessian error: max|autodiff - oracle| < 1e-6
+    - Hessian symmetry: max|H - H'| < 1e-10
+    - Hessian PSD at optimum: min eigenvalue >= -1e-6
 """
 
 import numpy as np

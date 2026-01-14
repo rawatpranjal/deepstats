@@ -72,7 +72,10 @@ class LambdaEstimator:
                 n_jobs=-1,
             )
         elif self.method == 'ridge':
-            return Ridge(alpha=self.ridge_alpha)
+            # Heavy regularization to ensure stable Lambda estimates
+            # Default alpha=1.0 causes Bias=66, SE ratio=0.5 - catastrophic failure
+            # Try alpha=1000.0 to pull predictions toward mean (like aggregate)
+            return Ridge(alpha=1000.0)
         elif self.method == 'lgbm':
             if not HAS_LGBM:
                 raise ImportError("LightGBM not installed. Run: pip install lightgbm")

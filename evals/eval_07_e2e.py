@@ -782,7 +782,7 @@ if __name__ == "__main__":
         # Note: structural_dml supports: aggregate, mlp, rf, ridge, lgbm
         result = run_round_g_se_validation(
             n=1000, M=50, n_folds=20, epochs=30,
-            lambda_methods=["aggregate", "lgbm"]
+            lambda_methods=["aggregate", "lgbm", "ridge"]
         )
     elif "--round-g" in args:
         # Full Round G: M=100 seeds

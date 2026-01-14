@@ -140,43 +140,19 @@ Where $\Lambda(x) = \mathbb{E}[\nabla^2 \ell \mid X=x]$ is the conditional Hessi
 *   **Automatic Differentiation:** `deep-inference` uses PyTorch Autograd to compute exact Jacobians and Hessians for any model family.
 *   **Stability:** Includes Tikhonov regularization for inverting Hessians in non-linear models (e.g., Logit/Tobit).
 
-## Validation (Monte Carlo Results)
+## Validation
 
-M=30 simulations, N=10,000 observations. Target: 95% coverage, SE ratio ≈ 1.0.
+Comprehensive eval suite validates every mathematical component. [Full results →](https://deep-inference.readthedocs.io/validation/)
 
-### Linear Model
-
-![Linear Results](logs/kde_money_slide.png)
-
-| Config | K | Network | Coverage | SE Ratio | RMSE | Bias²/MSE |
-|--------|---|---------|----------|----------|------|-----------|
-| **Best** | 50 | [64,32] | **93.3%** | 1.03 | **0.032** | 22% |
-| Deep | 20 | [128,64,32] | 93.3% | 1.02 | 0.033 | 21% |
-| E=100 | 20 | [64,32] | 90.0% | 0.90 | 0.036 | 18% |
-| Separate | 20 | [128,64,32]×2 | 80.0% | 0.82 | 0.036 | 14% |
-| Naive | — | — | 10% | 0.09 | 0.083 | 1% |
-
-**Finding:** K=50 folds achieves best coverage and lowest RMSE. Separate networks don't help.
-
-### Logit Model
-
-![Logit Results](logs/logit_stress_test/logit_results.png)
-
-Target: E[β(X)] = average log-odds ratio
-
-| Method | Coverage | SE Ratio | RMSE | Hessian min λ |
-|--------|----------|----------|------|---------------|
-| **Influence** | **90.0%** | 0.93 | **0.054** | 0.051 |
-| Naive | 3.3% | 0.03 | 0.108 | — |
-
-### Summary
-
-| Model | Target | Naive Cov | IF Cov | RMSE Improvement |
-|-------|--------|-----------|--------|------------------|
-| Linear | E[β(X)] | 10% | **93%** | 2.6× |
-| Logit | E[β(X)] | 3% | **90%** | 2.0× |
-| Poisson | E[β(X)] | TBD | TBD | — |
-| Gamma | E[β(X)] | TBD | TBD | — |
+| Eval | Component | Result |
+|------|-----------|--------|
+| 01 | Parameter Recovery | 12/12 families PASS |
+| 02 | Autodiff Accuracy | 31/31 PASS |
+| 03 | Lambda Estimation | 9/9 PASS |
+| 04 | Target Jacobian | 92/92 PASS |
+| 05 | Influence Functions | Coverage 88% |
+| 06 | Frequentist Coverage | PASS |
+| 07 | End-to-End | 7/7 PASS |
 
 ## Citation
 
