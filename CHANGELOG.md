@@ -2,6 +2,18 @@
 
 ## 2026-01-13
 
+### Eval 07: End-to-End User Experience
+- Created `evals/eval_07_e2e.py` demonstrating full analyst workflow
+- Scenario: Loan application with heterogeneous rate sensitivity
+- Components: Bootstrap Oracle inference, structural_dml() NN inference, comparison tables
+- Tests: μ* coverage (Oracle, Bootstrap, NN IF), heterogeneity recovery (β̂(x) correlation), θ(x) bootstrap coverage
+- **Results: 7/7 PASS** - All methods achieve valid coverage, Oracle-NN correlation 0.73/0.40
+
+### Tutorial: New `inference()` API Section Added
+- Added Section 5 to `tutorials/01_showcase.ipynb` demonstrating new API
+- Covers: Basic comparison vs `structural_dml()`, AME target, custom target with autodiff, randomization mode (Regime A)
+- All 4 test cases pass: beta, AME, custom target, ComputeLambda
+
 ### New `inference()` API Validated
 - Discovered and validated new modular architecture: `models/`, `targets/`, `lambda_/`, `engine/`
 - **Flexible targets**: `CustomTarget(h_fn)` with autodiff Jacobian, `AME` with closed-form
