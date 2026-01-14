@@ -2,6 +2,14 @@
 
 ## 2026-01-13
 
+### New `inference()` API Validated
+- Discovered and validated new modular architecture: `models/`, `targets/`, `lambda_/`, `engine/`
+- **Flexible targets**: `CustomTarget(h_fn)` with autodiff Jacobian, `AME` with closed-form
+- **Randomization mode**: `ComputeLambda` computes Λ via Monte Carlo (Regime A, 2-way split)
+- **Regime detection**: Auto-detects A/B/C and selects appropriate Lambda strategy
+- **Validation**: 20/20 coverage (100%) on canonical DGP AME target
+- Usage: `inference(Y, T, X, model='logit', target='ame', is_randomized=True, treatment_dist=Normal())`
+
 ### Eval 05: Influence Function Assembly (Ruthless Rewrite)
 - Complete rewrite with 4 rounds of validation: Mechanical Assembly, Neyman Orthogonality, Variance Formula, Multi-Seed Coverage
 - **Round A**: Ruthless tolerances (Corr > 0.999, |Bias| < 0.001, Max|diff| < 0.01) for AME + AverageParameter targets
@@ -21,13 +29,23 @@
 - Added 12 oracle Jacobian functions to `dgp.py` with full derivations
 - **Results: 92/92 PASS** - max|err| = 1.78e-15 (machine precision)
 
+### Eval 03: Timing & Enhanced Statistics
+- Added execution timing for all parts and methods (Part A: 0.16s, Part B: 0.02s, Part C: 22.01s)
+- Added LightGBM method to EstimateLambda (lgbm: Corr=0.977, 3/3 PASS)
+- **Part A**: Added eigenvalues, condition number (1.62), determinant
+- **Part B**: Added condition number range [1.00, 2.69] across x values
+- **Part C Extended Table**: Corr, Frob, Max, P95, MinEig, PSD%, Time per method
+- **Additional Stats Table**: Bias, MAE, VarRatio, R² per method
+- **Statistics Summary**: Best method (mlp) with full metrics: R²=0.967, VarRatio=1.12
+- Per-method timing: aggregate 0.02s, ridge 0.08s, rf 0.29s, lgbm 1.24s, mlp 12.55s
+
 ### Eval 03: Ruthless Redesign (3-Regime Testing) → 9/9 PASS
 - Complete rewrite to test Lambda across ALL THREE REGIMES with tight tolerances
 - **Part A (RCT)**: Gauss-Hermite quadrature oracle, MC convergence rate (√M), Y-independence
 - **Part B (Linear)**: Analytical E[TT'|X] oracle, θ-independence, confounded T handling
-- **Part C (Observational)**: Tests 4 methods: aggregate, mlp, ridge, rf
+- **Part C (Observational)**: Tests 5 methods: aggregate, mlp, ridge, rf, lgbm
 - **Results: 9/9 PASS** with `method="mlp"` (Corr=0.997, Frob=0.017)
-- Method comparison: aggregate 1/3, ridge 2/3, rf 3/3, **mlp 3/3** (best)
+- Method comparison: aggregate 1/3, ridge 2/3, rf 3/3, lgbm 3/3, **mlp 3/3** (best)
 - Added RUTHLESS EVALS rule to CLAUDE.md: "Evals are firewalls. They MUST be brutal."
 
 ### Eval 01: Multi-Seed Validation + Scale Ratio Diagnostic
