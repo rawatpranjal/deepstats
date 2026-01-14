@@ -1,10 +1,35 @@
 """
-Eval 04: Target Jacobian (H_θ) - EXPANDED
+================================================================================
+EVAL 04: TARGET JACOBIAN H_θ = ∂H/∂θ
+================================================================================
 
-Goal: Ruthless firewall testing autodiff H_θ across the full
-      Targets × Families × Edge Cases matrix.
+WHAT THIS TESTS:
+    The Jacobian of the target functional H(θ) with respect to parameters θ.
+    This is the gradient that propagates through the influence function formula.
 
-Test Matrix:
+WHY IT MATTERS:
+    The influence function ψ(z) = H_θ · Λ⁻¹ · ℓ_θ requires accurate H_θ.
+    If H_θ is wrong, the entire IF correction is wrong → invalid standard errors.
+
+    H_θ appears in Theorem 2 (FLM 2021):
+        √n(μ̂ - μ*) →d N(0, E[ψ²])
+        where ψ = H_θ(X,θ) · Λ(X)⁻¹ · ℓ_θ(Z,θ)
+
+    We compute H_θ via torch.func.grad (autodiff). This eval verifies autodiff
+    matches closed-form oracle formulas derived by hand.
+
+MATHEMATICAL OBJECTS TESTED:
+    Target functionals H(θ):
+        - AverageParameter: H(θ) = β  →  H_θ = [0, 1]
+        - AME (Logit):      H(θ) = σ(α+βt̃)(1-σ)β  →  complex formula
+        - Prediction:       H(θ) = g⁻¹(α+βt̃)  →  depends on link
+
+    Families tested: Linear, Logit, Poisson, Probit
+    Each has different link function g⁻¹ and thus different H_θ formula.
+
+--------------------------------------------------------------------------------
+TEST MATRIX:
+--------------------------------------------------------------------------------
     Part 1: Target Coverage (Family = Logit)
         - AverageParameter: H(θ) = β
         - AME: H(θ) = σ(α+βt̃)(1-σ)β
@@ -17,17 +42,18 @@ Test Matrix:
         - Probit: H(θ) = φ(α+βt̃)·β
 
     Part 3: Edge Cases (AME × Logit)
-        - Near-boundary: θ = [±5, 1]
+        - Near-boundary: θ = [±5, 1]  (σ ≈ 0 or 1)
         - Tiny effect: θ = [0, 0.001]
         - Large effect: θ = [0, 10]
 
     Part 4: Batched vmap Tests
         - 100 random θ per (target, family) pair
 
-Criteria:
-    - Standard θ: max|err| < 1e-10
+PASS CRITERIA:
+    - Standard θ: max|err| < 1e-10 (machine precision)
     - Edge θ: max|err| < 1e-6 OR relative error < 1e-4
     - Batched: max|err| < 1e-8
+================================================================================
 """
 
 import sys
