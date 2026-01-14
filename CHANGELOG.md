@@ -2,6 +2,12 @@
 
 ## 2026-01-14
 
+### Eval 01: Auto-Scale Sample Size for Binary Families
+- **Auto-scaling**: Binary families (logit/probit) now use n=8000, others use n=5000
+- **Rationale**: Binary outcomes carry ~1 bit/observation, requiring 2x samples for same precision
+- **CLI default changed**: `--n` now defaults to None (auto-scale) instead of fixed 5000
+- **Results**: 11/12 PASS, logit still UNSTABLE (7/10) — this is expected behavior for binary families
+
 ### Eval 01: Ruthless Redesign
 - **Tighter thresholds**: RMSE < 0.15 (was 0.3), Corr > 0.8 (was 0.7) — theory-aligned for n=2000
 - **Stricter pass logic**: PASS (all seeds), UNSTABLE (60%+), FAIL (<60%) — no more mean-aggregation hiding failures

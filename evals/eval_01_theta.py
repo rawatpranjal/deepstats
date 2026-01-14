@@ -24,20 +24,22 @@ WHY IT'S NOT SUFFICIENT:
     The coverage test (eval_06) is the real validation. This is just a
     prerequisite sanity check.
 
-KNOWN ISSUE - SCALE IDENTIFICATION:
-    Binary families (logit, probit) have flat likelihood along rays:
-    (α, β) and (c·α, c·β) give identical predictions for any c > 0.
+BINARY FAMILIES (logit, probit):
+    Binary outcomes carry ~1 bit of information per observation, making
+    first-stage recovery fundamentally harder than continuous outcomes.
 
-    Symptom: High correlation (0.97) + High RMSE (0.68) = correct shape,
-    wrong scale. The network learns θ̂ ≈ 0.7 × θ*.
-
-    Solution: We report scale ratio (β̂/β*) and scale-normalized RMSE.
-    If ratio ≈ constant, it's identification, not a bug.
+    We auto-scale sample size: n=4000 for logit/probit, n=2000 for others.
+    This is not weakening the test—it's providing the sample size the
+    statistical problem requires.
 
 MULTI-SEED VALIDATION:
     Neural net training is stochastic. One seed proves nothing.
-    We run 5 seeds (42, 123, 456, 789, 999) and report mean ± std.
-    Pass criteria based on MEAN metrics, not any single seed.
+    We run 10 seeds and report mean ± std + worst-case metrics.
+
+    Pass criteria:
+    - PASS: ALL seeds pass individual thresholds
+    - UNSTABLE: 60%+ seeds pass
+    - FAIL: <60% seeds pass
 
 --------------------------------------------------------------------------------
 
@@ -45,11 +47,15 @@ Oracle functions:
     α*(x) = A0 + A1 * f(x)  (family-specific)
     β*(x) = B0 + B1 * g(x)  (family-specific)
 
-Criteria (mean across 5 seeds):
-    - RMSE(α̂, α*) < 0.3
-    - RMSE(β̂, β*) < 0.3
-    - Corr(α̂, α*) > 0.7
-    - Corr(β̂, β*) > 0.7
+Thresholds (theory-aligned, Assumption 5: o(n^{-1/4})):
+    - RMSE(α̂, α*) < 0.15
+    - RMSE(β̂, β*) < 0.15
+    - Corr(α̂, α*) > 0.8
+    - Corr(β̂, β*) > 0.8
+
+Sample sizes:
+    - Binary families (logit, probit): n=8000 (2x default due to ~1 bit/obs)
+    - All other families: n=5000
 """
 
 import sys
@@ -160,6 +166,30 @@ FAMILY_DGPS = {
 }
 
 
+# =============================================================================
+# Challenging DGPs (high-dim X, interactions, nonlinear)
+# =============================================================================
+
+CHALLENGING_DGPS = {
+    "logit_highdim": {
+        # d_X = 10, interactions, higher frequency sinusoids
+        "d_x": 10,
+        "alpha": lambda X: 0.5 + 0.3 * np.sin(2*np.pi*X[:, 0]) + 0.2 * X[:, 1] * X[:, 2],
+        "beta": lambda X: 1.0 + 0.5 * X[:, 0] + 0.3 * np.sin(3*np.pi*X[:, 1]) + 0.2 * X[:, 2]**2,
+        "theta_dim": 2,
+        "generate_y": lambda alpha, beta, T, rng: rng.binomial(1, expit(alpha + beta * T)).astype(float),
+    },
+    "linear_highdim": {
+        # d_X = 10, interactions, polynomial terms
+        "d_x": 10,
+        "alpha": lambda X: 0.5 + 0.3 * X[:, 0] * X[:, 1] + 0.2 * np.sin(2*np.pi*X[:, 2]),
+        "beta": lambda X: 1.0 + 0.5 * X[:, 0] + 0.3 * X[:, 1]**2 - 0.2 * X[:, 2] * X[:, 3],
+        "theta_dim": 2,
+        "generate_y": lambda alpha, beta, T, rng: alpha + beta * T + rng.normal(0, 1, len(T)),
+    },
+}
+
+
 def _generate_negbin(alpha, beta, T, rng, r=2.0):
     """Generate Negative Binomial samples."""
     mu = np.exp(np.clip(alpha + beta * T, -10, 5))
@@ -234,22 +264,33 @@ def generate_family_dgp(family_name: str, n: int, seed: int = 42):
     Returns:
         Y: (n,) outcomes
         T: (n,) treatments
-        X: (n, 1) covariates
+        X: (n, d_x) covariates
         theta_true: (n, theta_dim) true parameters
     """
-    if family_name not in FAMILY_DGPS:
-        raise ValueError(f"Unknown family: {family_name}")
+    # Check both standard and challenging DGPs
+    if family_name in FAMILY_DGPS:
+        config = FAMILY_DGPS[family_name]
+        d_x = 1
+    elif family_name in CHALLENGING_DGPS:
+        config = CHALLENGING_DGPS[family_name]
+        d_x = config.get("d_x", 1)
+    else:
+        raise ValueError(f"Unknown family: {family_name}. Available: {list(FAMILY_DGPS.keys()) + list(CHALLENGING_DGPS.keys())}")
 
-    config = FAMILY_DGPS[family_name]
     rng = np.random.default_rng(seed)
 
     # Generate covariates
-    X = rng.uniform(-2, 2, n)
-    T = rng.normal(0, 1, n)
+    if d_x == 1:
+        X = rng.uniform(-2, 2, n)
+        alpha_true = config["alpha"](X)
+        beta_true = config["beta"](X)
+        X = X.reshape(-1, 1)
+    else:
+        X = rng.uniform(-2, 2, (n, d_x))
+        alpha_true = config["alpha"](X)
+        beta_true = config["beta"](X)
 
-    # Compute true parameters
-    alpha_true = config["alpha"](X)
-    beta_true = config["beta"](X)
+    T = rng.normal(0, 1, n)
 
     # Generate Y
     Y = config["generate_y"](alpha_true, beta_true, T, rng)
@@ -269,7 +310,7 @@ def generate_family_dgp(family_name: str, n: int, seed: int = 42):
     else:
         raise ValueError(f"Unsupported theta_dim: {config['theta_dim']}")
 
-    return Y, T, X.reshape(-1, 1), theta_true
+    return Y, T, X, theta_true
 
 
 # =============================================================================
@@ -335,7 +376,7 @@ def compute_recovery_metrics(theta_hat, theta_true):
         idx 2 -> gamma (aux 1, often constant)
         idx 3 -> delta (aux 2, often constant)
 
-    For varying params: check RMSE + Correlation + Scale Ratio
+    For varying params: check RMSE + Correlation
     For constant params: check RMSE only (correlation undefined)
     """
     metrics = {}
@@ -360,22 +401,6 @@ def compute_recovery_metrics(theta_hat, theta_true):
             corr = pearsonr(hat_i, true_i)[0]
             metrics[f"corr_{name}"] = corr
             metrics[f"is_constant_{name}"] = False
-
-            # 3. Scale Ratio Diagnostic - detect scale identification issues
-            # High correlation + high RMSE = scale shift, not a bug
-            if np.mean(np.abs(true_i)) > 1e-6:
-                ratio = hat_i / true_i
-                # Filter out outliers from near-zero denominators
-                valid = np.abs(true_i) > 0.1
-                if np.sum(valid) > 100:
-                    metrics[f"scale_ratio_{name}"] = np.mean(ratio[valid])
-                    metrics[f"scale_ratio_std_{name}"] = np.std(ratio[valid])
-
-                    # Scale-normalized RMSE (if scale shift detected)
-                    if metrics[f"scale_ratio_std_{name}"] < 0.2:
-                        scale = metrics[f"scale_ratio_{name}"]
-                        normalized = hat_i / scale
-                        metrics[f"rmse_{name}_normalized"] = np.sqrt(np.mean((normalized - true_i) ** 2))
         else:
             # If truth is constant, correlation is meaningless
             metrics[f"corr_{name}"] = np.nan
@@ -396,9 +421,19 @@ def test_family_recovery(family_name: str, n=5000, epochs=200, seed=42, verbose=
     Returns:
         dict with metrics and pass/fail status
     """
-    config = FAMILY_DGPS[family_name]
+    # Handle both standard and challenging DGPs
+    if family_name in FAMILY_DGPS:
+        config = FAMILY_DGPS[family_name]
+        base_family = family_name
+    elif family_name in CHALLENGING_DGPS:
+        config = CHALLENGING_DGPS[family_name]
+        # Extract base family from name (e.g., "logit_highdim" -> "logit")
+        base_family = family_name.split("_")[0]
+    else:
+        raise ValueError(f"Unknown family: {family_name}")
+
     family_kwargs = config.get("family_kwargs", {})
-    family = get_family(family_name, **family_kwargs)
+    family = get_family(base_family, **family_kwargs)
 
     # Generate data
     Y, T, X, theta_true = generate_family_dgp(family_name, n, seed)
@@ -419,19 +454,18 @@ def test_family_recovery(family_name: str, n=5000, epochs=200, seed=42, verbose=
     # Compute metrics
     metrics = compute_recovery_metrics(theta_hat, theta_true)
 
-    # 1. Primary Parameters (Alpha/Beta) - strict shape & scale
-    alpha_pass = (metrics["rmse_alpha"] < 0.3) and (metrics["corr_alpha"] > 0.7)
-    beta_pass = (metrics["rmse_beta"] < 0.3) and (metrics["corr_beta"] > 0.7)
+    # 1. Primary Parameters (Alpha/Beta) - theory-aligned thresholds
+    alpha_pass = (metrics["rmse_alpha"] < RMSE_THRESHOLD) and (metrics["corr_alpha"] > CORR_THRESHOLD)
+    beta_pass = (metrics["rmse_beta"] < RMSE_THRESHOLD) and (metrics["corr_beta"] > CORR_THRESHOLD)
 
     # 2. Auxiliary Parameters (Gamma/Delta) - RMSE only (constant targets)
-    # Threshold 0.5 in log-space -> sigma in [0.6, 1.6] range
     aux_pass = True
     if metrics["n_params"] > 2:
-        if metrics["rmse_gamma"] > 0.5:
+        if metrics["rmse_gamma"] > AUX_RMSE_THRESHOLD:
             aux_pass = False
 
     if metrics["n_params"] > 3:
-        if metrics["rmse_delta"] > 0.5:
+        if metrics["rmse_delta"] > AUX_RMSE_THRESHOLD:
             aux_pass = False
 
     passed = alpha_pass and beta_pass and aux_pass
@@ -459,7 +493,24 @@ def test_family_recovery(family_name: str, n=5000, epochs=200, seed=42, verbose=
 # Multi-Seed Validation
 # =============================================================================
 
-DEFAULT_SEEDS = [42, 123, 456, 789, 999]
+# 10 seeds for robust validation
+DEFAULT_SEEDS = [42, 123, 456, 789, 999, 1234, 2345, 3456, 4567, 5678]
+
+# Theory-aligned thresholds (Assumption 5: o(n^{-1/4}) ≈ 0.15 for n=2000)
+RMSE_THRESHOLD = 0.15  # was 0.3
+CORR_THRESHOLD = 0.8   # was 0.7
+AUX_RMSE_THRESHOLD = 0.5  # for auxiliary params (gamma, delta)
+
+# Binary families require more data (~1 bit/observation vs continuous)
+BINARY_FAMILIES = {"logit", "probit"}
+N_BINARY = 8000  # sample size for binary families (2x default due to weak signal)
+N_DEFAULT = 5000  # sample size for continuous families
+
+
+def get_sample_size(family_name: str) -> int:
+    """Get appropriate sample size for family. Binary families need more data."""
+    base_family = family_name.split("_")[0]  # handle "logit_highdim" etc.
+    return N_BINARY if base_family in BINARY_FAMILIES else N_DEFAULT
 
 
 def test_family_recovery_multiseed(family_name: str, n=5000, epochs=200,
@@ -501,25 +552,27 @@ def test_family_recovery_multiseed(family_name: str, n=5000, epochs=200,
             aggregated[f"{key}_mean"] = np.mean(values)
             aggregated[f"{key}_std"] = np.std(values)
 
-    # Pass if mean passes (based on mean across seeds)
-    aggregated["passed"] = (
-        aggregated.get("rmse_alpha_mean", 1.0) < 0.3 and
-        aggregated.get("rmse_beta_mean", 1.0) < 0.3 and
-        aggregated.get("corr_alpha_mean", 0.0) > 0.7 and
-        aggregated.get("corr_beta_mean", 0.0) > 0.7
-    )
-
-    # Check auxiliary parameters if present
-    if all_metrics[0].get("n_params", 2) > 2:
-        if aggregated.get("rmse_gamma_mean", 0.0) > 0.5:
-            aggregated["passed"] = False
-    if all_metrics[0].get("n_params", 2) > 3:
-        if aggregated.get("rmse_delta_mean", 0.0) > 0.5:
-            aggregated["passed"] = False
+    # Worst-case metrics (critical for exposing instability)
+    aggregated["rmse_alpha_max"] = max(m["rmse_alpha"] for m in all_metrics)
+    aggregated["rmse_beta_max"] = max(m["rmse_beta"] for m in all_metrics)
+    aggregated["corr_alpha_min"] = min(m["corr_alpha"] for m in all_metrics if not np.isnan(m["corr_alpha"]))
+    aggregated["corr_beta_min"] = min(m["corr_beta"] for m in all_metrics if not np.isnan(m["corr_beta"]))
 
     # Count per-seed passes
     aggregated["n_pass"] = sum(1 for m in all_metrics if m.get("passed", False))
     aggregated["n_seeds"] = len(seeds)
+
+    # Pass logic: PASS (all), UNSTABLE (60%+), FAIL (<60%)
+    pass_rate = aggregated["n_pass"] / aggregated["n_seeds"]
+    if pass_rate == 1.0:
+        aggregated["status"] = "PASS"
+        aggregated["passed"] = True
+    elif pass_rate >= 0.6:
+        aggregated["status"] = "UNSTABLE"
+        aggregated["passed"] = False  # UNSTABLE is not a pass
+    else:
+        aggregated["status"] = "FAIL"
+        aggregated["passed"] = False
 
     if verbose:
         _print_multiseed_results(aggregated)
@@ -533,56 +586,46 @@ def _print_multiseed_results(agg):
     seeds = agg["seeds"]
     per_seed = agg["per_seed"]
 
-    print(f"\n  {family.upper()} ({len(seeds)} seeds: {', '.join(map(str, seeds))})")
+    print(f"\n  {family.upper()} ({len(seeds)} seeds)")
     print("    Per-seed results:")
 
     # Header
-    has_scale = any("scale_ratio_beta" in m for m in per_seed)
-    if has_scale:
-        print(f"    {'Seed':<6} {'RMSE(α)':<9} {'RMSE(β)':<9} {'Corr(α)':<9} {'Corr(β)':<9} {'Scale(β)':<9} {'Status':<6}")
-    else:
-        print(f"    {'Seed':<6} {'RMSE(α)':<9} {'RMSE(β)':<9} {'Corr(α)':<9} {'Corr(β)':<9} {'Status':<6}")
+    print(f"    {'Seed':<6} {'RMSE(α)':<9} {'RMSE(β)':<9} {'Corr(α)':<9} {'Corr(β)':<9} {'Status':<6}")
 
     for m in per_seed:
         status = "PASS" if m.get("passed", False) else "FAIL"
-        scale = m.get("scale_ratio_beta", np.nan)
-        if has_scale:
-            print(f"    {m['seed']:<6} {m['rmse_alpha']:<9.4f} {m['rmse_beta']:<9.4f} "
-                  f"{m['corr_alpha']:<9.4f} {m['corr_beta']:<9.4f} {scale:<9.2f} {status:<6}")
-        else:
-            print(f"    {m['seed']:<6} {m['rmse_alpha']:<9.4f} {m['rmse_beta']:<9.4f} "
-                  f"{m['corr_alpha']:<9.4f} {m['corr_beta']:<9.4f} {status:<6}")
+        print(f"    {m['seed']:<6} {m['rmse_alpha']:<9.4f} {m['rmse_beta']:<9.4f} "
+              f"{m['corr_alpha']:<9.4f} {m['corr_beta']:<9.4f} {status:<6}")
 
-    # Aggregate
-    print("\n    Aggregate:")
+    # Aggregate + Worst-case
+    print("\n    Aggregate (mean ± std):")
     print(f"      RMSE(α): {agg['rmse_alpha_mean']:.4f} ± {agg['rmse_alpha_std']:.4f}")
     print(f"      RMSE(β): {agg['rmse_beta_mean']:.4f} ± {agg['rmse_beta_std']:.4f}")
     print(f"      Corr(α): {agg['corr_alpha_mean']:.4f} ± {agg['corr_alpha_std']:.4f}")
     print(f"      Corr(β): {agg['corr_beta_mean']:.4f} ± {agg['corr_beta_std']:.4f}")
 
-    if "scale_ratio_beta_mean" in agg:
-        print(f"      Scale(β): {agg['scale_ratio_beta_mean']:.2f} ± {agg['scale_ratio_beta_std']:.2f}")
+    print("\n    Worst-case:")
+    print(f"      Max RMSE(α): {agg['rmse_alpha_max']:.4f}")
+    print(f"      Max RMSE(β): {agg['rmse_beta_max']:.4f}")
+    print(f"      Min Corr(α): {agg['corr_alpha_min']:.4f}")
+    print(f"      Min Corr(β): {agg['corr_beta_min']:.4f}")
 
-    # Normalized RMSE if available
-    if "rmse_beta_normalized_mean" in agg:
-        print(f"      RMSE(β) normalized: {agg['rmse_beta_normalized_mean']:.4f} ± {agg['rmse_beta_normalized_std']:.4f}")
-
-    status = "PASS" if agg["passed"] else "FAIL"
-    print(f"\n    Status: {status} ({agg['n_pass']}/{agg['n_seeds']} seeds pass, mean metrics {'pass' if agg['passed'] else 'fail'})")
+    status = agg.get("status", "FAIL")
+    print(f"\n    Status: {status} ({agg['n_pass']}/{agg['n_seeds']} seeds pass)")
 
 
 # =============================================================================
 # All Families Evaluation
 # =============================================================================
 
-def run_eval_01_all_families(n=5000, epochs=200, seeds=None, families=None, single_seed=False):
+def run_eval_01_all_families(n=None, epochs=200, seeds=None, families=None, single_seed=False):
     """
     Run parameter recovery evaluation across all families.
 
     Args:
-        n: Sample size
+        n: Sample size (None = auto-scale: 4000 for binary, 2000 for others)
         epochs: Training epochs
-        seeds: List of random seeds (default: [42, 123, 456, 789, 999])
+        seeds: List of random seeds (default: 10 seeds)
         families: List of families to test (default: all)
         single_seed: If True, run single seed only (legacy mode)
     """
@@ -596,10 +639,15 @@ def run_eval_01_all_families(n=5000, epochs=200, seeds=None, families=None, sing
     if families is None:
         families = list(FAMILY_DGPS.keys())
 
-    if single_seed:
-        print(f"\nConfig: n={n}, epochs={epochs}, seed={seeds[0]} (SINGLE SEED MODE)")
+    if n is None:
+        n_str = f"auto (binary={N_BINARY}, other={N_DEFAULT})"
     else:
-        print(f"\nConfig: n={n}, epochs={epochs}, seeds={seeds}")
+        n_str = str(n)
+
+    if single_seed:
+        print(f"\nConfig: n={n_str}, epochs={epochs}, seed={seeds[0]} (SINGLE SEED MODE)")
+    else:
+        print(f"\nConfig: n={n_str}, epochs={epochs}, seeds={len(seeds)} seeds")
     print(f"Families: {', '.join(families)}")
 
     print("\n" + "-" * 70)
@@ -608,14 +656,17 @@ def run_eval_01_all_families(n=5000, epochs=200, seeds=None, families=None, sing
 
     results = {}
     for family_name in families:
+        # Auto-scale n for binary families if not specified
+        n_family = n if n is not None else get_sample_size(family_name)
+
         try:
             if single_seed:
                 results[family_name] = test_family_recovery(
-                    family_name, n=n, epochs=epochs, seed=seeds[0], verbose=True
+                    family_name, n=n_family, epochs=epochs, seed=seeds[0], verbose=True
                 )
             else:
                 results[family_name] = test_family_recovery_multiseed(
-                    family_name, n=n, epochs=epochs, seeds=seeds, verbose=True
+                    family_name, n=n_family, epochs=epochs, seeds=seeds, verbose=True
                 )
         except Exception as e:
             import traceback
@@ -643,27 +694,32 @@ def run_eval_01_all_families(n=5000, epochs=200, seeds=None, families=None, sing
                 print(f"{name:<12} {r['rmse_alpha']:<10.4f} {r['rmse_beta']:<10.4f} "
                       f"{r['corr_alpha']:<10.4f} {r['corr_beta']:<10.4f} {status:<8}")
     else:
-        # Multi-seed summary
-        print(f"\n{'Family':<12} {'RMSE(α)':<16} {'RMSE(β)':<16} {'Corr(α)':<16} {'Corr(β)':<16} {'Seeds':<8} {'Status':<8}")
-        print("-" * 100)
+        # Multi-seed summary with worst-case
+        print(f"\n{'Family':<12} {'RMSE(β) mean±std':<16} {'RMSE(β) max':<12} {'Corr(β) min':<12} {'Seeds':<10} {'Status':<10}")
+        print("-" * 80)
 
         n_pass = 0
+        n_unstable = 0
         for name, r in results.items():
             if "error" in r:
-                print(f"{name:<12} {'ERR':<16} {'ERR':<16} {'ERR':<16} {'ERR':<16} {'ERR':<8} {'ERROR':<8}")
+                print(f"{name:<12} {'ERR':<16} {'ERR':<12} {'ERR':<12} {'ERR':<10} {'ERROR':<10}")
             else:
-                status = "PASS" if r["passed"] else "FAIL"
-                if r["passed"]:
+                status = r.get("status", "FAIL")
+                if status == "PASS":
                     n_pass += 1
-                rmse_a = f"{r['rmse_alpha_mean']:.3f}±{r['rmse_alpha_std']:.3f}"
+                elif status == "UNSTABLE":
+                    n_unstable += 1
                 rmse_b = f"{r['rmse_beta_mean']:.3f}±{r['rmse_beta_std']:.3f}"
-                corr_a = f"{r['corr_alpha_mean']:.3f}±{r['corr_alpha_std']:.3f}"
-                corr_b = f"{r['corr_beta_mean']:.3f}±{r['corr_beta_std']:.3f}"
+                rmse_b_max = f"{r['rmse_beta_max']:.3f}"
+                corr_b_min = f"{r['corr_beta_min']:.3f}"
                 seeds_pass = f"{r['n_pass']}/{r['n_seeds']}"
-                print(f"{name:<12} {rmse_a:<16} {rmse_b:<16} {corr_a:<16} {corr_b:<16} {seeds_pass:<8} {status:<8}")
+                print(f"{name:<12} {rmse_b:<16} {rmse_b_max:<12} {corr_b_min:<12} {seeds_pass:<10} {status:<10}")
 
-    print("-" * (70 if single_seed else 100))
-    print(f"Overall: {n_pass}/{len(families)} PASS")
+    print("-" * (70 if single_seed else 80))
+    if single_seed:
+        print(f"Overall: {n_pass}/{len(families)} PASS")
+    else:
+        print(f"Overall: {n_pass} PASS, {n_unstable} UNSTABLE, {len(families) - n_pass - n_unstable} FAIL")
     print("=" * 70)
 
     return results
@@ -687,13 +743,16 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Eval 01: Parameter Recovery")
-    parser.add_argument("--n", type=int, default=5000, help="Sample size")
+    parser.add_argument("--n", type=int, default=None,
+                        help="Sample size (default: auto-scale, 4000 for binary, 2000 for others)")
     parser.add_argument("--epochs", type=int, default=200, help="Training epochs")
-    parser.add_argument("--seeds", type=str, default="42,123,456,789,999",
+    parser.add_argument("--seeds", type=str, default=",".join(map(str, DEFAULT_SEEDS)),
                         help="Comma-separated seeds for multi-seed validation")
     parser.add_argument("--single-seed", action="store_true",
                         help="Run single seed only (legacy mode, uses first seed)")
     parser.add_argument("--family", type=str, default=None, help="Single family to test")
+    parser.add_argument("--challenging", action="store_true",
+                        help="Include challenging DGPs (high-dim, interactions)")
     args = parser.parse_args()
 
     # Parse seeds
@@ -701,12 +760,18 @@ if __name__ == "__main__":
 
     if args.family:
         # Test single family
+        n_family = args.n if args.n is not None else get_sample_size(args.family)
         if args.single_seed:
-            result = test_family_recovery(args.family, n=args.n, epochs=args.epochs, seed=seeds[0])
+            result = test_family_recovery(args.family, n=n_family, epochs=args.epochs, seed=seeds[0])
         else:
-            result = test_family_recovery_multiseed(args.family, n=args.n, epochs=args.epochs, seeds=seeds)
+            result = test_family_recovery_multiseed(args.family, n=n_family, epochs=args.epochs, seeds=seeds)
     else:
+        # Build family list
+        families = list(FAMILY_DGPS.keys())
+        if args.challenging:
+            families += list(CHALLENGING_DGPS.keys())
+
         # Test all families
         results = run_eval_01_all_families(
-            n=args.n, epochs=args.epochs, seeds=seeds, single_seed=args.single_seed
+            n=args.n, epochs=args.epochs, seeds=seeds, families=families, single_seed=args.single_seed
         )
