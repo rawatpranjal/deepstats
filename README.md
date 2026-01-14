@@ -140,64 +140,17 @@ Where $\Lambda(x) = \mathbb{E}[\nabla^2 \ell \mid X=x]$ is the conditional Hessi
 *   **Automatic Differentiation:** `deep-inference` uses PyTorch Autograd to compute exact Jacobians and Hessians for any model family.
 *   **Stability:** Includes Tikhonov regularization for inverting Hessians in non-linear models (e.g., Logit/Tobit).
 
-## Validation (Eval Suite Results)
+## Validation
 
-The package includes a comprehensive eval suite (`evals/`) validating every mathematical component.
+Comprehensive eval suite validates every mathematical component. [Full results →](https://deep-inference.readthedocs.io/validation/)
 
-### Parameter Recovery (Eval 01)
-
-Neural networks recover heterogeneous parameters θ(x) = [α(x), β(x)] across 12 families:
-
-| Family | Corr(α) | Corr(β) | Status |
-|--------|---------|---------|--------|
-| linear | 0.991 | 0.995 | PASS |
-| logit | 0.978 | 0.996 | PASS |
-| poisson | 0.980 | 0.967 | PASS |
-| negbin | 0.990 | 0.983 | PASS |
-| gamma | 0.993 | 0.990 | PASS |
-| weibull | 0.993 | 0.986 | PASS |
-| gumbel | 0.967 | 0.991 | PASS |
-| tobit | 0.987 | 0.988 | PASS |
-| gaussian | 0.984 | 0.995 | PASS |
-| probit | 0.983 | 0.985 | PASS |
-| beta | 0.989 | 0.975 | PASS |
-| zip | 0.969 | 0.944 | PASS |
-
-**Result: 12/12 families PASS** (n=2000, epochs=100, 3 seeds)
-
-### Lambda Estimation (Eval 03)
-
-Conditional Hessian Λ(x) = E[ℓ_θθ|X=x] estimation methods:
-
-| Method | Correlation | Frob Error | Time |
-|--------|-------------|------------|------|
-| aggregate | 0.000 | 0.121 | 0.02s |
-| **mlp** | **0.997** | **0.018** | 12.5s |
-| lgbm | 0.978 | 0.033 | 1.2s |
-| rf | 0.904 | 0.060 | 0.3s |
-| ridge | 0.508 | 0.087 | 0.08s |
-
-**Result: MLP best accuracy, LGBM best speed/accuracy tradeoff**
-
-### Coverage (Eval 05)
-
-Monte Carlo validation (M=50 simulations, n=1000):
-
-| Metric | Value | Target |
-|--------|-------|--------|
-| Coverage | 88% (44/50) | 85-97% |
-| SE Ratio | 0.873 | 0.8-1.2 |
-| Mean Bias | 0.002 | < 0.1 |
-
-### Summary
-
-| Eval | Tests | Result |
-|------|-------|--------|
-| 01: Parameter Recovery | 12 families × 3 seeds | 12/12 PASS |
-| 02: Autodiff Accuracy | 31 checks | 31/31 PASS |
-| 03: Lambda Estimation | 9 tests | 9/9 PASS |
-| 04: Target Jacobian | 92 checks | 92/92 PASS |
-| 05: Influence Functions | 4 rounds | 4/4 PASS |
+| Eval | Component | Result |
+|------|-----------|--------|
+| 01 | Parameter Recovery | 12/12 families PASS |
+| 02 | Autodiff Accuracy | 31/31 PASS |
+| 03 | Lambda Estimation | 9/9 PASS |
+| 04 | Target Jacobian | 92/92 PASS |
+| 05 | Influence Functions | Coverage 88% |
 
 ## Citation
 
