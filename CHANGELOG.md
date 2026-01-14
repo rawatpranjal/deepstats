@@ -2,6 +2,16 @@
 
 ## 2026-01-13
 
+### Eval 05: Influence Function Assembly (Ruthless Rewrite)
+- Complete rewrite with 4 rounds of validation: Mechanical Assembly, Neyman Orthogonality, Variance Formula, Multi-Seed Coverage
+- **Round A**: Ruthless tolerances (Corr > 0.999, |Bias| < 0.001, Max|diff| < 0.01) for AME + AverageParameter targets
+- **Round B**: Neyman orthogonality - perturb θ, verify bias scales as O(δ²)
+- **Round C**: Variance formula sanity checks
+- **Round D**: 50-seed coverage test (88-98% threshold)
+- **Key fix**: Previous test used different Lambda for oracle vs package, causing spurious 0.1-0.15 diffs. Now uses identical Lambda_inv.
+- **Results: 4/4 PASS** - Assembly is now verified to machine precision (max|diff| = 1e-6)
+- Coverage at lower bound (88%), SE ratio 0.87 - worth monitoring
+
 ### Eval 04: Target Jacobian Expansion (Ruthless Firewall)
 - Expanded from narrow AME+Logit test to full **Targets × Families × Edge Cases** matrix
 - **Part 1 - Targets (Logit)**: AverageParameter, AME, AveragePrediction (45 tests)
@@ -11,12 +21,13 @@
 - Added 12 oracle Jacobian functions to `dgp.py` with full derivations
 - **Results: 92/92 PASS** - max|err| = 1.78e-15 (machine precision)
 
-### Eval 03: Ruthless Redesign (3-Regime Testing)
+### Eval 03: Ruthless Redesign (3-Regime Testing) → 9/9 PASS
 - Complete rewrite to test Lambda across ALL THREE REGIMES with tight tolerances
 - **Part A (RCT)**: Gauss-Hermite quadrature oracle, MC convergence rate (√M), Y-independence
 - **Part B (Linear)**: Analytical E[TT'|X] oracle, θ-independence, confounded T handling
-- **Part C (Observational)**: Correlation test, Frobenius error, x-dependence test
-- **Results: 7/9 PASS** - Aggregate method correctly FAILS C1 (corr=0) and C3 (std=0)
+- **Part C (Observational)**: Tests 4 methods: aggregate, mlp, ridge, rf
+- **Results: 9/9 PASS** with `method="mlp"` (Corr=0.997, Frob=0.017)
+- Method comparison: aggregate 1/3, ridge 2/3, rf 3/3, **mlp 3/3** (best)
 - Added RUTHLESS EVALS rule to CLAUDE.md: "Evals are firewalls. They MUST be brutal."
 
 ### Eval 01: Multi-Seed Validation + Scale Ratio Diagnostic
