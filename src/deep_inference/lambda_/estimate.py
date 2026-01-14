@@ -15,6 +15,11 @@ This requires 3-way cross-fitting:
 """
 
 from typing import Optional, TYPE_CHECKING, Literal
+import warnings
+
+# Suppress sklearn warnings about feature names (LightGBM fitted with names, predict without)
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
+
 import torch
 from torch import Tensor
 

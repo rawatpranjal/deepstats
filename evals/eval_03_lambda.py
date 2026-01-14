@@ -65,6 +65,7 @@ We WANT to see FAIL when implementation is wrong - this is a firewall.
 import sys
 import time
 import numpy as np
+import torch
 from scipy.special import expit, roots_hermite
 
 sys.path.insert(0, "/Users/pranjal/deepest/src")
@@ -240,6 +241,60 @@ def run_part_a(verbose: bool = True) -> dict:
         status = "PASS" if pass_a3 else "FAIL"
         print(f"    Test A3: {status} (should be 0)")
 
+    # --- Test A4: ComputeLambda Package ---
+    # Actually test the package implementation!
+    try:
+        from deep_inference.lambda_.compute import ComputeLambda, Normal
+        from deep_inference.models import Logit
+
+        model = Logit()
+
+        # Create strategy with known treatment distribution
+        strategy = ComputeLambda(
+            treatment_dist=Normal(mean=0, std=1),
+            n_mc_samples=5000,
+            seed=42
+        )
+
+        # Use dummy data for fit (ComputeLambda only needs t_samples)
+        import torch
+        X_dummy = torch.zeros(10, 1)
+        T_dummy = torch.zeros(10)
+        Y_dummy = torch.zeros(10)
+        theta_test = torch.tensor([[theta[0], theta[1]]])
+
+        strategy.fit(X=X_dummy, T=T_dummy, Y=Y_dummy, theta_hat=theta_test, model=model)
+        lambda_pkg = strategy.predict(X_dummy[:1], theta_test)
+
+        lambda_pkg_np = lambda_pkg[0].numpy()
+
+        # Compare to quadrature oracle
+        frob_pkg_diff = np.linalg.norm(lambda_pkg_np - Lambda_quad)
+        rel_error_a4 = frob_pkg_diff / frob_quad * 100
+
+        pass_a4 = rel_error_a4 < 5.0  # Allow 5% for MC variance
+        results["A4"] = {"rel_error": rel_error_a4, "passed": pass_a4}
+
+        if verbose:
+            print(f"\n  Test A4: ComputeLambda package")
+            print(f"    Lambda_pkg =")
+            print(f"      [[{lambda_pkg_np[0,0]:.6f}, {lambda_pkg_np[0,1]:.6f}],")
+            print(f"       [{lambda_pkg_np[1,0]:.6f}, {lambda_pkg_np[1,1]:.6f}]]")
+            print(f"    Relative error vs quadrature: {rel_error_a4:.2f}%")
+            status = "PASS" if pass_a4 else "FAIL"
+            print(f"    Test A4: {status} (threshold < 5%)")
+
+    except ImportError as e:
+        if verbose:
+            print(f"\n  Test A4: ComputeLambda package")
+            print(f"    SKIP - Not available: {e}")
+        results["A4"] = {"passed": False, "error": str(e)}
+    except Exception as e:
+        if verbose:
+            print(f"\n  Test A4: ComputeLambda package")
+            print(f"    ERROR: {e}")
+        results["A4"] = {"passed": False, "error": str(e)}
+
     elapsed = time.time() - start_time
     results["elapsed_time"] = elapsed
 
@@ -384,6 +439,61 @@ def run_part_b(verbose: bool = True) -> dict:
     if verbose:
         status = "PASS" if pass_b3 else "FAIL"
         print(f"    Test B3: {status} (max error < 10%)")
+
+    # --- Test B4: AnalyticLambda Package ---
+    # Actually test the package implementation!
+    try:
+        from deep_inference.lambda_.analytic import AnalyticLambda
+        from deep_inference.models import Linear
+
+        model = Linear()
+
+        # Test at x = 0.5
+        x_test = 0.5
+        Lambda_oracle = oracle_lambda_linear(x_test, dgp)
+
+        # Use data from Test B3
+        strategy = AnalyticLambda(method="aggregate")
+        strategy.fit(X=X, T=T, Y=Y, theta_hat=None, model=model)
+
+        # Predict at single x point
+        X_test = torch.tensor([[x_test]])
+        lambda_pkg = strategy.predict(X_test)
+        lambda_pkg_np = lambda_pkg[0].numpy()
+
+        # Compare to oracle
+        frob_oracle = np.linalg.norm(Lambda_oracle)
+        frob_diff = np.linalg.norm(lambda_pkg_np - Lambda_oracle)
+        rel_error_b4 = frob_diff / frob_oracle * 100
+
+        # Note: aggregate method returns mean(TT'), so it won't match E[TT'|X]
+        # for specific x values. We check if it's in reasonable range.
+        pass_b4 = rel_error_b4 < 20.0  # Allow 20% for aggregate approximation
+
+        results["B4"] = {"rel_error": rel_error_b4, "passed": pass_b4}
+
+        if verbose:
+            print(f"\n  Test B4: AnalyticLambda package (aggregate)")
+            print(f"    Lambda_pkg (mean TT') =")
+            print(f"      [[{lambda_pkg_np[0,0]:.4f}, {lambda_pkg_np[0,1]:.4f}],")
+            print(f"       [{lambda_pkg_np[1,0]:.4f}, {lambda_pkg_np[1,1]:.4f}]]")
+            print(f"    Lambda_oracle at x={x_test} =")
+            print(f"      [[{Lambda_oracle[0,0]:.4f}, {Lambda_oracle[0,1]:.4f}],")
+            print(f"       [{Lambda_oracle[1,0]:.4f}, {Lambda_oracle[1,1]:.4f}]]")
+            print(f"    Relative error: {rel_error_b4:.1f}%")
+            status = "PASS" if pass_b4 else "FAIL"
+            print(f"    Test B4: {status} (threshold < 20%)")
+
+    except ImportError as e:
+        if verbose:
+            print(f"\n  Test B4: AnalyticLambda package")
+            print(f"    SKIP - Not available: {e}")
+        results["B4"] = {"passed": False, "error": str(e)}
+    except Exception as e:
+        if verbose:
+            print(f"\n  Test B4: AnalyticLambda package")
+            print(f"    ERROR: {e}")
+        results["B4"] = {"passed": False, "error": str(e)}
 
     elapsed = time.time() - start_time
     results["elapsed_time"] = elapsed
@@ -680,6 +790,13 @@ def run_part_c(verbose: bool = True) -> dict:
     results["oracle_time"] = oracle_time
     results["method_times"] = method_times
 
+    # Store data for Parts E and F
+    results["_lambda_oracle"] = lambda_oracle
+    results["_X"] = X
+    results["_T"] = T
+    results["_Y"] = Y
+    results["_theta_true"] = theta_true
+
     elapsed = time.time() - start_time
     results["elapsed_time"] = elapsed
 
@@ -868,6 +985,205 @@ def run_regularization_study(verbose: bool = True, lambda_oracle=None, X=None, T
 
 
 # =============================================================================
+# PART E: METHOD FAILURE ANALYSIS (BRUTAL)
+# =============================================================================
+
+def run_method_failure_analysis(method_results: dict, verbose: bool = True) -> dict:
+    """
+    Part E: Explicit method failure analysis.
+
+    Shows exactly where each method fails and whether it's fatal.
+    """
+    if verbose:
+        print("\n" + "=" * 60)
+        print("PART E: METHOD FAILURE ANALYSIS (BRUTAL)")
+        print("=" * 60)
+
+    failure_modes = {}
+
+    for method, m in method_results.items():
+        if "error" in m:
+            failure_modes[method] = {
+                "works": "N/A",
+                "breaks": "Import/Runtime Error",
+                "fatal": "YES",
+                "detail": str(m.get("error", ""))[:50]
+            }
+            continue
+
+        # Analyze failure modes
+        corr = m.get("corr", 0)
+        std = m.get("std", 0)
+        frob = m.get("frob", 1)
+
+        works = []
+        breaks = []
+        fatal = "No"
+
+        # Check C1: Correlation
+        if corr > 0.7:
+            works.append("eigenvalue correlation")
+        else:
+            breaks.append("eigenvalue correlation")
+            if corr < 0.3:
+                fatal = "Moderate"
+
+        # Check C3: x-dependence (most critical for Regime C)
+        if std < 0.001:
+            breaks.append("ZERO x-dependence")
+            fatal = "YES"  # This is fatal for Regime C
+        elif std > 0.01:
+            works.append("x-dependence")
+
+        # Check C2: Frobenius error
+        if frob < 0.15:
+            works.append("Frobenius error")
+        else:
+            breaks.append("Frobenius error")
+
+        failure_modes[method] = {
+            "works": ", ".join(works) if works else "Nothing",
+            "breaks": ", ".join(breaks) if breaks else "Nothing",
+            "fatal": fatal,
+            "corr": corr,
+            "std": std,
+            "frob": frob
+        }
+
+    if verbose:
+        print("\n  METHOD FAILURE MODES:")
+        print("  " + "-" * 78)
+        print(f"  {'Method':<12} {'Works':<25} {'Breaks':<25} {'Fatal?':<10}")
+        print("  " + "-" * 78)
+
+        for method, modes in failure_modes.items():
+            works = modes["works"][:23] if len(modes["works"]) > 23 else modes["works"]
+            breaks = modes["breaks"][:23] if len(modes["breaks"]) > 23 else modes["breaks"]
+            print(f"  {method:<12} {works:<25} {breaks:<25} {modes['fatal']:<10}")
+
+        # Explicit warnings
+        print("\n  CRITICAL WARNINGS:")
+        for method, modes in failure_modes.items():
+            if modes["fatal"] == "YES":
+                print(f"    - {method}: {modes['breaks']} - DO NOT USE FOR REGIME C")
+
+    return failure_modes
+
+
+# =============================================================================
+# PART F: SE PROPAGATION TEST (THE CRITICAL QUESTION)
+# =============================================================================
+
+def run_se_propagation_test(
+    method_results: dict,
+    lambda_oracle: np.ndarray,
+    X: "torch.Tensor",
+    T: "torch.Tensor",
+    Y: "torch.Tensor",
+    theta_true: "torch.Tensor",
+    verbose: bool = True
+) -> dict:
+    """
+    Part F: Does Lambda error actually matter for SE estimation?
+
+    This is THE critical question: if Lambda is 10% wrong, does SE change
+    by 10% or 50%? If errors amplify, we care about Lambda accuracy.
+    If they wash out, maybe we don't.
+
+    Simplified SE computation: SE ≈ sqrt(mean(diag(Lambda^{-1})))
+    """
+    if verbose:
+        print("\n" + "=" * 60)
+        print("PART F: SE PROPAGATION TEST (THE CRITICAL QUESTION)")
+        print("=" * 60)
+        print("\n  Does Lambda error actually affect SE estimates?")
+
+    n = lambda_oracle.shape[0]
+    results = {}
+
+    # Compute SE with oracle Lambda
+    se_oracle = np.zeros(n)
+    for i in range(n):
+        try:
+            Lambda_inv = np.linalg.inv(lambda_oracle[i])
+            se_oracle[i] = np.sqrt(np.mean(np.diag(Lambda_inv)))
+        except np.linalg.LinAlgError:
+            se_oracle[i] = np.nan
+
+    # Compute SE with each method's Lambda
+    try:
+        from deep_inference.lambda_.estimate import EstimateLambda
+        from deep_inference.models import Logit
+
+        model = Logit()
+
+        for method in ["aggregate", "mlp", "ridge", "rf", "lgbm"]:
+            if method not in method_results or "error" in method_results[method]:
+                continue
+
+            # Get Lambda from this method
+            strategy = EstimateLambda(method=method)
+            strategy.fit(X=X, T=T, Y=Y, theta_hat=theta_true, model=model)
+            lambda_hat = strategy.predict(X, theta_true).numpy()
+
+            # Compute SE with estimated Lambda
+            se_hat = np.zeros(n)
+            for i in range(n):
+                try:
+                    Lambda_inv = np.linalg.inv(lambda_hat[i])
+                    se_hat[i] = np.sqrt(np.mean(np.diag(Lambda_inv)))
+                except np.linalg.LinAlgError:
+                    se_hat[i] = np.nan
+
+            # Compute metrics
+            valid = ~np.isnan(se_oracle) & ~np.isnan(se_hat) & (se_oracle > 0)
+            if valid.sum() > 0:
+                se_ratio = np.mean(se_hat[valid] / se_oracle[valid])
+                se_corr = np.corrcoef(se_hat[valid], se_oracle[valid])[0, 1]
+
+                # Worst case
+                se_errors = np.abs(se_hat[valid] - se_oracle[valid]) / se_oracle[valid]
+                worst_se_error = se_errors.max() * 100  # as percentage
+
+                results[method] = {
+                    "se_ratio": se_ratio,
+                    "se_corr": se_corr,
+                    "worst_se_error": worst_se_error,
+                    "mean_se_error": se_errors.mean() * 100
+                }
+
+    except ImportError as e:
+        if verbose:
+            print(f"  [SKIP] EstimateLambda not available: {e}")
+        return results
+
+    if verbose and results:
+        print("\n  " + "-" * 70)
+        print(f"  {'Method':<12} {'SE Ratio':<12} {'SE Corr':<12} {'Mean Error':<12} {'Worst Error':<12}")
+        print("  " + "-" * 70)
+
+        for method, r in results.items():
+            danger = " <- DANGER" if r["worst_se_error"] > 30 else ""
+            print(f"  {method:<12} {r['se_ratio']:<12.3f} {r['se_corr']:<12.3f} "
+                  f"{r['mean_se_error']:<12.1f}% {r['worst_se_error']:<12.1f}%{danger}")
+
+        print("\n  INTERPRETATION:")
+        print("    SE Ratio ~1.0: Lambda errors don't bias SE")
+        print("    SE Corr ~1.0: Lambda errors don't distort SE distribution")
+        print("    Worst Error >30%: Some observations have dangerous SE errors")
+
+        # Key finding
+        if "aggregate" in results and "mlp" in results:
+            agg_worst = results["aggregate"]["worst_se_error"]
+            mlp_worst = results["mlp"]["worst_se_error"]
+            if agg_worst > 2 * mlp_worst:
+                print(f"\n  CRITICAL: Aggregate has {agg_worst:.0f}% worst-case SE error")
+                print(f"            vs MLP's {mlp_worst:.0f}% - Lambda accuracy MATTERS!")
+
+    return results
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -922,6 +1238,11 @@ def run_eval_03(verbose: bool = True, reg_study: bool = False) -> dict:
             print(f"    {test}: MC convergence rate.........{status} (rate={result['rate']:.2f})")
         elif test == "A3":
             print(f"    {test}: Y-independence..............{status} (diff={result['diff']:.2e})")
+        elif test == "A4":
+            if "error" in result:
+                print(f"    {test}: ComputeLambda package.......SKIP ({result.get('error', 'N/A')[:30]})")
+            else:
+                print(f"    {test}: ComputeLambda package.......{status} ({result['rel_error']:.2f}%)")
 
     print("\n  Part B (Linear):")
     for test, result in results_b.items():
@@ -937,6 +1258,11 @@ def run_eval_03(verbose: bool = True, reg_study: bool = False) -> dict:
             print(f"    {test}: theta-independence..........{status} (diff={result['max_diff']:.2e})")
         elif test == "B3":
             print(f"    {test}: Confounded T................{status} (error={result['max_error']:.1f}%)")
+        elif test == "B4":
+            if "error" in result:
+                print(f"    {test}: AnalyticLambda package......SKIP ({result.get('error', 'N/A')[:30]})")
+            else:
+                print(f"    {test}: AnalyticLambda package......{status} ({result['rel_error']:.1f}%)")
 
     print("\n  Part C (Observational):")
     skip_keys = {"package_available", "method_results", "best_method", "elapsed_time", "oracle_time", "method_times"}
@@ -1002,11 +1328,76 @@ def run_eval_03(verbose: bool = True, reg_study: bool = False) -> dict:
     return result
 
 
+def run_eval_03_brutal(verbose: bool = True, reg_study: bool = False) -> dict:
+    """
+    Run BRUTAL Lambda evaluation with method failure analysis and SE propagation.
+
+    This is the full eval that exposes exactly where methods break and whether
+    Lambda errors actually matter for SE estimation.
+    """
+    # Run standard eval
+    result = run_eval_03(verbose=verbose, reg_study=reg_study)
+
+    # Part E: Method Failure Analysis
+    if result["part_c"].get("method_results"):
+        failure_modes = run_method_failure_analysis(
+            result["part_c"]["method_results"],
+            verbose=verbose
+        )
+        result["part_e"] = failure_modes
+
+    # Part F: SE Propagation Test
+    if (result["part_c"].get("_lambda_oracle") is not None and
+        result["part_c"].get("method_results")):
+        se_results = run_se_propagation_test(
+            method_results=result["part_c"]["method_results"],
+            lambda_oracle=result["part_c"]["_lambda_oracle"],
+            X=result["part_c"]["_X"],
+            T=result["part_c"]["_T"],
+            Y=result["part_c"]["_Y"],
+            theta_true=result["part_c"]["_theta_true"],
+            verbose=verbose
+        )
+        result["part_f"] = se_results
+
+    # Final brutal summary
+    if verbose:
+        print("\n" + "=" * 60)
+        print("BRUTAL EVAL SUMMARY")
+        print("=" * 60)
+
+        # Method-by-method pass/fail
+        if result["part_c"].get("method_results"):
+            print("\n  Per-method results:")
+            for method, m in result["part_c"]["method_results"].items():
+                if "error" in m:
+                    print(f"    {method}: ERROR")
+                else:
+                    n_pass = sum([m['pass_c1'], m['pass_c2'], m['pass_c3']])
+                    status = "PASS" if n_pass == 3 else f"{n_pass}/3"
+                    broken = " <- BROKEN" if m.get('std', 1) < 0.001 else ""
+                    print(f"    {method}: {status}{broken}")
+
+        # SE impact summary
+        if "part_f" in result and result["part_f"]:
+            print("\n  SE impact (worst-case error):")
+            for method, r in result["part_f"].items():
+                danger = " <- DANGER" if r["worst_se_error"] > 30 else ""
+                print(f"    {method}: {r['worst_se_error']:.0f}%{danger}")
+
+    return result
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Eval 03: Lambda Estimation")
     parser.add_argument("--reg-study", action="store_true",
                         help="Run regularization ablation study (adds ~2 min)")
+    parser.add_argument("--brutal", action="store_true",
+                        help="Run brutal eval with failure analysis and SE propagation")
     args = parser.parse_args()
 
-    result = run_eval_03(verbose=True, reg_study=args.reg_study)
+    if args.brutal:
+        result = run_eval_03_brutal(verbose=True, reg_study=args.reg_study)
+    else:
+        result = run_eval_03(verbose=True, reg_study=args.reg_study)

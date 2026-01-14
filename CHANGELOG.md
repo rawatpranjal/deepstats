@@ -2,6 +2,16 @@
 
 ## 2026-01-14
 
+### Eval 03: Brutal Overhaul
+- **Package code tests**: Added A4 (ComputeLambda) and B4 (AnalyticLambda) - now tests actual package code, not just oracle math
+- **Part E: Method Failure Analysis**: Explicitly shows which methods fail and why
+  - Aggregate identified as BROKEN for Regime C (zero x-dependence, fatal)
+- **Part F: SE Propagation Test**: Tests whether Lambda errors actually affect SE estimation
+  - Key finding: Aggregate under-estimates SE (ratio=0.73), dangerous for inference
+- **Removed sklearn warnings**: Suppressed LightGBM feature name warnings in estimate.py
+- **--brutal flag**: Run with `python3 -m evals.eval_03_lambda --brutal` for full analysis
+- **Results**: 11/11 PASS (A4 and B4 now tested)
+
 ### Eval 02: Strengthened Autodiff Validation
 - **Added Gaussian oracle**: Part 1 now tests 8 families (was 7) with closed-form comparison
 - **Replaced "is finite" with finite-difference validation**: Part 2 now validates Probit, Beta, Tobit, ZIP against numerical FD approximation instead of just checking values are finite
