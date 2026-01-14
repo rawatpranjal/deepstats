@@ -2,6 +2,18 @@
 
 ## 2026-01-14
 
+### Lambda Regularization Improvements
+- **Scale-aware regularization**: Added three regularization strategies for Lambda inversion:
+  - `TIKHONOV`: (Λ + εI)⁻¹ where ε = scale * trace(Λ)/d (new default)
+  - `RELATIVE`: Bound condition number by clamping min eigenvalue to max_eig/max_condition
+  - `ABSOLUTE`: Legacy behavior with fixed eigenvalue threshold
+- **RegularizationConfig dataclass**: New config class in `lambda_/base.py` for consistent regularization settings
+- **Ledoit-Wolf shrinkage**: Added `_shrink_lambda()` method to `EstimateLambda` for bias-variance tradeoff
+- **Updated `_project_to_psd()`**: Now supports relative eigenvalue floor (bounds condition number ≤ 100)
+- **Updated `batch_inverse()`**: Accepts `strategy` parameter (default: TIKHONOV) for configurable regularization
+- **Part G added to eval_03**: `--reg-strategies` flag compares regularization strategies on SE estimation
+- **Backward compatible**: Legacy code continues to work via `batch_inverse_legacy()` and default parameters
+
 ### Eval 05: Round E - Per-Observation Lambda
 - **Round E added**: Compares aggregate vs per-observation Λ(xᵢ) across sample sizes
 - **Key finding**: Aggregate Lambda shows U-shaped SE ratio; per-obs is stable (~1.0 for all n)

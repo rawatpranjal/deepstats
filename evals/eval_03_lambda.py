@@ -1388,6 +1388,218 @@ def run_eval_03_brutal(verbose: bool = True, reg_study: bool = False) -> dict:
     return result
 
 
+# =============================================================================
+# PART G: REGULARIZATION STRATEGY COMPARISON
+# =============================================================================
+
+def run_part_g_regularization_strategies(
+    lambda_oracle: np.ndarray = None,
+    X: "torch.Tensor" = None,
+    T: "torch.Tensor" = None,
+    Y: "torch.Tensor" = None,
+    theta_true: "torch.Tensor" = None,
+    verbose: bool = True
+) -> dict:
+    """
+    Part G: Compare regularization strategies on SE estimation.
+
+    Tests Tikhonov, relative eigenvalue floor, and shrinkage approaches
+    to see which produces the most accurate standard error estimates.
+    """
+    start_time = time.time()
+
+    if verbose:
+        print("\n" + "=" * 60)
+        print("PART G: REGULARIZATION STRATEGY COMPARISON")
+        print("=" * 60)
+        print("\nComparing: Absolute floor vs Relative floor vs Tikhonov")
+
+    # If data not provided, generate fresh
+    if lambda_oracle is None:
+        dgp = CanonicalDGP()
+        n = 500
+        n_mc_oracle = 5000
+
+        Y, T, X, theta_true, mu_true = generate_canonical_dgp(n=n, seed=42, dgp=dgp)
+        X_np = X.numpy().flatten()
+
+        if verbose:
+            print(f"\n  Generating fresh data (n={n})...")
+            print(f"  Computing Oracle Lambda (MC={n_mc_oracle})...")
+
+        np.random.seed(123)
+        lambda_oracle = np.zeros((n, 2, 2))
+        for i in range(n):
+            lambda_oracle[i] = oracle_lambda_conditional(X_np[i], dgp, n_samples=n_mc_oracle)
+
+    n = len(lambda_oracle)
+    results = {}
+
+    # Import regularization utilities
+    try:
+        from deep_inference.utils.linalg import batch_inverse, RegularizationStrategy
+        from deep_inference.lambda_.estimate import EstimateLambda
+        from deep_inference.models import Logit
+
+        model = Logit()
+
+        # Define strategies to compare
+        strategies = [
+            {
+                "name": "absolute_1e-4",
+                "reg_strategy": RegularizationStrategy.ABSOLUTE,
+                "min_eigenvalue": 1e-4,
+            },
+            {
+                "name": "absolute_1e-6",
+                "reg_strategy": RegularizationStrategy.ABSOLUTE,
+                "min_eigenvalue": 1e-6,
+            },
+            {
+                "name": "relative_cond100",
+                "reg_strategy": RegularizationStrategy.RELATIVE,
+                "max_condition": 100,
+            },
+            {
+                "name": "relative_cond50",
+                "reg_strategy": RegularizationStrategy.RELATIVE,
+                "max_condition": 50,
+            },
+            {
+                "name": "tikhonov_0.01",
+                "reg_strategy": RegularizationStrategy.TIKHONOV,
+                "tikhonov_scale": 0.01,
+            },
+            {
+                "name": "tikhonov_0.001",
+                "reg_strategy": RegularizationStrategy.TIKHONOV,
+                "tikhonov_scale": 0.001,
+            },
+        ]
+
+        # Get Lambda estimates using aggregate method (simplest)
+        strategy = EstimateLambda(method="aggregate")
+        strategy.fit(X=X, T=T, Y=Y, theta_hat=theta_true, model=model)
+        lambda_hat = strategy.predict(X, theta_true)
+
+        # Compute oracle SE for comparison
+        se_oracle = np.zeros(n)
+        for i in range(n):
+            try:
+                Lambda_inv = np.linalg.inv(lambda_oracle[i])
+                se_oracle[i] = np.sqrt(np.mean(np.diag(Lambda_inv)))
+            except np.linalg.LinAlgError:
+                se_oracle[i] = np.nan
+
+        if verbose:
+            print(f"\n  Testing {len(strategies)} regularization strategies...")
+            print("-" * 80)
+
+        for strat in strategies:
+            name = strat["name"]
+            reg_strategy = strat["reg_strategy"]
+
+            try:
+                # Compute inverse with this strategy
+                kwargs = {"strategy": reg_strategy}
+                if "min_eigenvalue" in strat:
+                    kwargs["min_eigenvalue"] = strat["min_eigenvalue"]
+                if "max_condition" in strat:
+                    kwargs["max_condition"] = strat["max_condition"]
+                if "tikhonov_scale" in strat:
+                    kwargs["tikhonov_scale"] = strat["tikhonov_scale"]
+
+                lambda_inv = batch_inverse(lambda_hat, **kwargs)
+
+                # Compute SE for each observation
+                se_hat = np.zeros(n)
+                for i in range(n):
+                    se_hat[i] = np.sqrt(np.mean(np.diag(lambda_inv[i].numpy())))
+
+                # Compute metrics
+                valid = ~np.isnan(se_oracle) & ~np.isnan(se_hat) & (se_oracle > 0)
+                if valid.sum() > 0:
+                    se_ratio = np.mean(se_hat[valid] / se_oracle[valid])
+                    se_corr = np.corrcoef(se_hat[valid], se_oracle[valid])[0, 1]
+                    se_errors = np.abs(se_hat[valid] - se_oracle[valid]) / se_oracle[valid]
+                    mean_se_error = se_errors.mean() * 100
+                    worst_se_error = se_errors.max() * 100
+                    p95_se_error = np.percentile(se_errors, 95) * 100
+
+                    # Condition number stats
+                    cond_numbers = []
+                    for i in range(n):
+                        eigvals = np.linalg.eigvalsh(lambda_hat[i].numpy())
+                        cond = eigvals[-1] / max(eigvals[0], 1e-10)
+                        cond_numbers.append(cond)
+                    mean_cond = np.mean(cond_numbers)
+                    max_cond = np.max(cond_numbers)
+
+                    results[name] = {
+                        "se_ratio": se_ratio,
+                        "se_corr": se_corr,
+                        "mean_se_error": mean_se_error,
+                        "p95_se_error": p95_se_error,
+                        "worst_se_error": worst_se_error,
+                        "mean_cond": mean_cond,
+                        "max_cond": max_cond,
+                    }
+
+                    if verbose:
+                        print(f"  {name:<20} ratio={se_ratio:.3f} corr={se_corr:.3f} "
+                              f"mean_err={mean_se_error:.1f}% p95={p95_se_error:.1f}% "
+                              f"cond={mean_cond:.1f}")
+
+            except Exception as e:
+                if verbose:
+                    print(f"  {name:<20} ERROR: {e}")
+                results[name] = {"error": str(e)}
+
+        # Summary table
+        if verbose and results:
+            print("\n" + "-" * 80)
+            print("  STRATEGY COMPARISON SUMMARY")
+            print("-" * 80)
+            header = f"  {'Strategy':<20} {'SE Ratio':<10} {'SE Corr':<10} {'Mean Err':<10} {'P95 Err':<10} {'Max Cond':<10}"
+            print(header)
+            print("  " + "-" * 78)
+
+            for name, r in results.items():
+                if "error" in r:
+                    print(f"  {name:<20} {'ERROR':<10}")
+                else:
+                    best = " *" if r["se_ratio"] > 0.95 and r["se_ratio"] < 1.05 else ""
+                    print(f"  {name:<20} {r['se_ratio']:<10.3f} {r['se_corr']:<10.3f} "
+                          f"{r['mean_se_error']:<10.1f} {r['p95_se_error']:<10.1f} "
+                          f"{r['max_cond']:<10.1f}{best}")
+
+            # Find best strategy
+            best_name = None
+            best_score = float('inf')
+            for name, r in results.items():
+                if "error" not in r:
+                    # Score = |ratio - 1| + mean_error/100
+                    score = abs(r["se_ratio"] - 1) + r["mean_se_error"] / 100
+                    if score < best_score:
+                        best_score = score
+                        best_name = name
+
+            if best_name:
+                print(f"\n  BEST STRATEGY: {best_name}")
+
+    except ImportError as e:
+        if verbose:
+            print(f"  [SKIP] Required modules not available: {e}")
+
+    elapsed = time.time() - start_time
+    results["elapsed_time"] = elapsed
+
+    if verbose:
+        print(f"\n  Part G completed in {elapsed:.2f}s")
+
+    return results
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Eval 03: Lambda Estimation")
@@ -1395,9 +1607,27 @@ if __name__ == "__main__":
                         help="Run regularization ablation study (adds ~2 min)")
     parser.add_argument("--brutal", action="store_true",
                         help="Run brutal eval with failure analysis and SE propagation")
+    parser.add_argument("--reg-strategies", action="store_true",
+                        help="Run regularization strategy comparison (Part G)")
     args = parser.parse_args()
 
     if args.brutal:
         result = run_eval_03_brutal(verbose=True, reg_study=args.reg_study)
     else:
         result = run_eval_03(verbose=True, reg_study=args.reg_study)
+
+    # Run Part G if requested
+    if args.reg_strategies:
+        if result.get("part_c", {}).get("_lambda_oracle") is not None:
+            part_g = run_part_g_regularization_strategies(
+                lambda_oracle=result["part_c"]["_lambda_oracle"],
+                X=result["part_c"]["_X"],
+                T=result["part_c"]["_T"],
+                Y=result["part_c"]["_Y"],
+                theta_true=result["part_c"]["_theta_true"],
+                verbose=True
+            )
+            result["part_g"] = part_g
+        else:
+            part_g = run_part_g_regularization_strategies(verbose=True)
+            result["part_g"] = part_g

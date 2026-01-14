@@ -2,7 +2,21 @@
 
 import torch
 from torch import Tensor
-from typing import Optional
+from typing import Optional, Literal
+from enum import Enum
+
+
+class RegularizationStrategy(Enum):
+    """Strategy for regularizing matrix inversion."""
+
+    ABSOLUTE = "absolute"
+    """Current behavior: add ridge when min_eig < threshold."""
+
+    RELATIVE = "relative"
+    """Bound condition number: min_eig >= max_eig / max_condition."""
+
+    TIKHONOV = "tikhonov"
+    """Scale-aware Tikhonov: (Λ + εI)⁻¹ where ε = scale * trace(Λ)/d."""
 
 
 def safe_inverse(
@@ -57,19 +71,27 @@ def safe_inverse(
 
 def batch_inverse(
     matrices: Tensor,
+    strategy: RegularizationStrategy = RegularizationStrategy.TIKHONOV,
     ridge: float = 1e-4,
     min_eigenvalue: float = 1e-6,
+    max_condition: float = 100.0,
+    tikhonov_scale: float = 0.01,
 ) -> Tensor:
     """
-    Compute inverse of a batch of matrices with adaptive regularization.
+    Compute inverse of a batch of matrices with configurable regularization.
 
-    Uses per-matrix eigenvalue monitoring to adaptively increase regularization
-    for near-singular matrices, preventing extreme corrections in Logit models.
+    Supports three regularization strategies:
+    - ABSOLUTE: Legacy behavior with fixed eigenvalue threshold
+    - RELATIVE: Bound condition number for scale-invariant regularization
+    - TIKHONOV: (Λ + εI)⁻¹ with scale-aware ε = scale * trace(Λ)/d
 
     Args:
         matrices: (n, d, d) batch of symmetric matrices
-        ridge: Base ridge regularization coefficient
-        min_eigenvalue: Minimum acceptable eigenvalue threshold
+        strategy: Regularization strategy (default: TIKHONOV)
+        ridge: Base ridge for ABSOLUTE strategy
+        min_eigenvalue: Minimum eigenvalue threshold for ABSOLUTE strategy
+        max_condition: Maximum condition number for RELATIVE strategy
+        tikhonov_scale: ε scale factor for TIKHONOV strategy
 
     Returns:
         (n, d, d) batch of inverse matrices
@@ -78,25 +100,41 @@ def batch_inverse(
     eye = torch.eye(d, dtype=matrices.dtype, device=matrices.device)
     inv = torch.zeros_like(matrices)
 
-    # Process each matrix with adaptive regularization
     for i in range(n):
         mat = matrices[i]
 
-        # Check minimum eigenvalue for this matrix
-        try:
-            eigvals = torch.linalg.eigvalsh(mat)
-            min_eig = eigvals.min().item()
+        if strategy == RegularizationStrategy.TIKHONOV:
+            # Scale-aware Tikhonov: ε = scale * trace(Λ)/d
+            trace = torch.trace(mat).item()
+            epsilon = tikhonov_scale * trace / d
+            # Enforce minimum epsilon for numerical stability
+            epsilon = max(epsilon, 1e-10)
+            regularized = mat + epsilon * eye
 
-            # Adaptive regularization
-            if min_eig < min_eigenvalue:
-                effective_ridge = max(ridge, min_eigenvalue - min_eig + 1e-6)
-            else:
+        elif strategy == RegularizationStrategy.RELATIVE:
+            # Bound condition number by clamping min eigenvalue
+            try:
+                eigvals, eigvecs = torch.linalg.eigh(mat)
+                max_eig = eigvals[-1].item()
+                min_allowed = max_eig / max_condition
+                min_allowed = max(min_allowed, 1e-10)
+                eigvals_clamped = torch.clamp(eigvals, min=min_allowed)
+                regularized = eigvecs @ torch.diag(eigvals_clamped) @ eigvecs.T
+            except RuntimeError:
+                # Fallback to ridge if eigendecomposition fails
+                regularized = mat + ridge * eye
+
+        else:  # ABSOLUTE (legacy)
+            try:
+                eigvals = torch.linalg.eigvalsh(mat)
+                min_eig = eigvals.min().item()
+                if min_eig < min_eigenvalue:
+                    effective_ridge = max(ridge, min_eigenvalue - min_eig + 1e-6)
+                else:
+                    effective_ridge = ridge
+            except RuntimeError:
                 effective_ridge = ridge
-        except RuntimeError:
-            effective_ridge = ridge
-
-        # Add regularization
-        regularized = mat + effective_ridge * eye
+            regularized = mat + effective_ridge * eye
 
         # Compute inverse
         try:
@@ -105,6 +143,24 @@ def batch_inverse(
             inv[i] = torch.linalg.pinv(regularized)
 
     return inv
+
+
+def batch_inverse_legacy(
+    matrices: Tensor,
+    ridge: float = 1e-4,
+    min_eigenvalue: float = 1e-6,
+) -> Tensor:
+    """
+    Legacy batch_inverse for backward compatibility.
+
+    Uses ABSOLUTE strategy with original parameters.
+    """
+    return batch_inverse(
+        matrices,
+        strategy=RegularizationStrategy.ABSOLUTE,
+        ridge=ridge,
+        min_eigenvalue=min_eigenvalue,
+    )
 
 
 def condition_number(matrix: Tensor) -> float:

@@ -269,20 +269,68 @@ class EstimateLambda(BaseLambdaStrategy):
 
         return Lambda
 
+    def _shrink_lambda(
+        self,
+        Lambda: Tensor,
+        shrinkage: float = 0.1,
+        shrinkage_target: str = "scaled_identity",
+    ) -> Tensor:
+        """
+        Apply Ledoit-Wolf style shrinkage toward a well-conditioned target.
+
+        Shrinkage reduces extreme eigenvalues while preserving trace,
+        providing a bias-variance tradeoff.
+
+        Args:
+            Lambda: (n, d, d) batch of matrices
+            shrinkage: Shrinkage intensity α ∈ [0, 1]
+                       Λ_shrunk = (1 - α) * Λ + α * target
+            shrinkage_target: Target type
+                - "scaled_identity": target = (trace/d) * I
+                - "diagonal": target = diag(Λ)
+
+        Returns:
+            (n, d, d) shrunk matrices
+        """
+        n, d, _ = Lambda.shape
+        device = Lambda.device
+        dtype = Lambda.dtype
+
+        if shrinkage_target == "scaled_identity":
+            # Target = (trace/d) * I for each matrix
+            traces = torch.einsum('nii->n', Lambda)  # (n,)
+            eye = torch.eye(d, dtype=dtype, device=device)
+            targets = (traces / d).unsqueeze(-1).unsqueeze(-1) * eye.unsqueeze(0)
+        elif shrinkage_target == "diagonal":
+            # Target = diag(Λ)
+            diag_vals = torch.diagonal(Lambda, dim1=1, dim2=2)  # (n, d)
+            targets = torch.diag_embed(diag_vals)  # (n, d, d)
+        else:
+            raise ValueError(f"Unknown shrinkage_target: {shrinkage_target}")
+
+        return (1 - shrinkage) * Lambda + shrinkage * targets
+
     def _project_to_psd(
-        self, Lambda: Tensor, min_eigenvalue: float = 1e-4
+        self,
+        Lambda: Tensor,
+        min_eigenvalue: float = 1e-4,
+        max_condition: float = 100.0,
+        use_relative: bool = True,
     ) -> Tensor:
         """
         Project matrices to the nearest positive semi-definite matrices.
 
-        Uses eigendecomposition and clamps negative eigenvalues.
+        Uses eigendecomposition and clamps eigenvalues.
 
         Args:
             Lambda: (n, d, d) batch of matrices
-            min_eigenvalue: Minimum eigenvalue to enforce
+            min_eigenvalue: Minimum eigenvalue for absolute floor (used if use_relative=False)
+            max_condition: Maximum condition number for relative floor (used if use_relative=True)
+            use_relative: If True, use relative floor (min_eig = max_eig / max_condition)
+                          If False, use absolute floor (min_eig = min_eigenvalue)
 
         Returns:
-            (n, d, d) PSD matrices
+            (n, d, d) PSD matrices with bounded condition number
         """
         n = Lambda.shape[0]
         Lambda_psd = Lambda.clone()
@@ -291,8 +339,16 @@ class EstimateLambda(BaseLambdaStrategy):
             # Eigendecomposition
             eigvals, eigvecs = torch.linalg.eigh(Lambda[i])
 
-            # Clamp negative eigenvalues to minimum
-            eigvals_clamped = torch.clamp(eigvals, min=min_eigenvalue)
+            if use_relative:
+                # Relative floor: bound condition number
+                max_eig = eigvals[-1]  # Largest eigenvalue (eigh returns sorted)
+                min_allowed = max_eig / max_condition
+                # Still enforce a small absolute floor to avoid numerical issues
+                min_allowed = max(min_allowed, 1e-10)
+                eigvals_clamped = torch.clamp(eigvals, min=min_allowed)
+            else:
+                # Absolute floor (legacy behavior)
+                eigvals_clamped = torch.clamp(eigvals, min=min_eigenvalue)
 
             # Reconstruct: V @ diag(D) @ V'
             Lambda_psd[i] = eigvecs @ torch.diag(eigvals_clamped) @ eigvecs.T
