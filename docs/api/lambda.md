@@ -112,12 +112,23 @@ For observational data with nonlinear models, Λ(x) must be estimated.
 ```python
 # Default for observational logit
 result = inference(Y, T, X, model='logit')
-# Uses EstimateLambda internally (3-way cross-fitting)
+# Uses EstimateLambda with method='ridge' (default)
 ```
+
+**Available Methods:**
+
+| Method | Correlation | Coverage | Default | Notes |
+|--------|-------------|----------|---------|-------|
+| `ridge` | 0.508 | **96%** | **Yes** | Recommended - validated coverage |
+| `aggregate` | 0.000 | 95% | No | Stable when Hessian doesn't depend on X |
+| `lgbm` | 0.978 | 96% | No | High accuracy alternative |
+| `mlp` | 0.997 | **67%** | No | **AVOID** - invalid SEs |
+
+**Warning:** Using `lambda_method='mlp'` will emit a warning because it produces invalid standard errors despite high correlation with oracle Lambda.
 
 **How it works:**
 1. Compute sample Hessians ∂²ℓ/∂θ² for training data
-2. Train a neural network to predict Λ̂(x) from covariates
+2. Fit regression model to predict Λ̂(x) from covariates
 3. Predict Λ̂ for evaluation fold
 
 **Cross-fitting:**

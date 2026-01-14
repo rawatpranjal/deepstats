@@ -1,5 +1,6 @@
 """Nonparametric estimation of Lambda(x) = E[l_theta_theta | X=x]."""
 
+import warnings
 import torch
 from torch import Tensor
 import numpy as np
@@ -32,18 +33,29 @@ class LambdaEstimator:
 
     def __init__(
         self,
-        method: Literal['mlp', 'rf', 'ridge', 'lgbm'] = 'mlp',
+        method: Literal['mlp', 'rf', 'ridge', 'lgbm'] = 'ridge',
         theta_dim: int = 2,
-        ridge_alpha: float = 1.0,
+        ridge_alpha: float = 1000.0,
     ):
         """
         Initialize Lambda estimator.
 
         Args:
-            method: Regression method ('mlp', 'rf', or 'ridge')
+            method: Regression method ('ridge', 'lgbm', 'mlp', or 'rf').
+                Default 'ridge' is recommended for validated coverage.
             theta_dim: Dimension of parameter vector
-            ridge_alpha: Regularization strength for Ridge (default 1.0)
+            ridge_alpha: Regularization strength for Ridge (default 1000.0)
         """
+        # Warn about potentially dangerous methods
+        if method in ('mlp', 'neural'):
+            warnings.warn(
+                f"Lambda method '{method}' can produce invalid standard errors "
+                "despite high correlation with oracle. Consider method='ridge' "
+                "(default) or 'lgbm' for validated coverage. "
+                "See docs/algorithm/index.md for details.",
+                UserWarning
+            )
+
         self.method = method
         self.theta_dim = theta_dim
         self.ridge_alpha = ridge_alpha
@@ -73,9 +85,8 @@ class LambdaEstimator:
             )
         elif self.method == 'ridge':
             # Heavy regularization to ensure stable Lambda estimates
-            # Default alpha=1.0 causes Bias=66, SE ratio=0.5 - catastrophic failure
-            # Try alpha=1000.0 to pull predictions toward mean (like aggregate)
-            return Ridge(alpha=1000.0)
+            # Default alpha=1000.0 pulls predictions toward mean for stability
+            return Ridge(alpha=self.ridge_alpha)
         elif self.method == 'lgbm':
             if not HAS_LGBM:
                 raise ImportError("LightGBM not installed. Run: pip install lightgbm")

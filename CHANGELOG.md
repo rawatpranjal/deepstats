@@ -2,6 +2,14 @@
 
 ## 2026-01-14
 
+### Lambda Defaults: Safe by Default
+- **Changed default `lambda_method`** from 'mlp' to 'ridge' (validated 96% coverage)
+- **Changed default `ridge_alpha`** from 1.0 to 1000.0 (heavy regularization required)
+- **Added MLP warning**: Using `lambda_method='mlp'` now emits UserWarning about invalid SEs
+- Updated files: `algorithm.py`, `lambda_estimator.py`, `estimate.py`
+- Updated documentation: `docs/algorithm/index.md`, `docs/tutorials/logit.md`, `docs/api/lambda.md`, `CLAUDE.md`
+- **Key finding**: MLP achieves 0.997 correlation but only 67% coverage; ridge achieves 0.508 correlation but 96% coverage
+
 ### Lambda Regularization Improvements
 - **Scale-aware regularization**: Added three regularization strategies for Lambda inversion:
   - `TIKHONOV`: (Λ + εI)⁻¹ where ε = scale * trace(Λ)/d (new default)

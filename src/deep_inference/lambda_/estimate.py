@@ -45,8 +45,8 @@ class EstimateLambda(BaseLambdaStrategy):
 
     def __init__(
         self,
-        method: Literal["mlp", "rf", "ridge", "aggregate", "lgbm"] = "aggregate",
-        ridge_alpha: float = 1.0,
+        method: Literal["mlp", "rf", "ridge", "aggregate", "lgbm"] = "ridge",
+        ridge_alpha: float = 1000.0,
         mlp_alpha: float = 0.0001,
         rf_max_depth: Optional[int] = 10,
         lgbm_reg_lambda: float = 0.0,
@@ -55,14 +55,25 @@ class EstimateLambda(BaseLambdaStrategy):
         Initialize EstimateLambda strategy.
 
         Args:
-            method: Regression method ("aggregate" [default], "mlp", "rf", "ridge", "lgbm")
-                    "aggregate" is the most stable and recommended for most cases.
-                    Other methods may produce non-PSD matrices requiring projection.
-            ridge_alpha: L2 regularization for ridge regression (default 1.0)
+            method: Regression method ("ridge" [default], "aggregate", "lgbm", "mlp", "rf")
+                    "ridge" is recommended for validated coverage.
+                    "aggregate" is stable when Hessian doesn't depend on X.
+                    "mlp" can produce invalid standard errors - use with caution.
+            ridge_alpha: L2 regularization for ridge regression (default 1000.0)
             mlp_alpha: L2 regularization for MLP (default 0.0001)
             rf_max_depth: Max tree depth for RF (default 10, None=unlimited)
             lgbm_reg_lambda: L2 regularization for LightGBM (default 0.0)
         """
+        # Warn about potentially dangerous methods
+        if method in ("mlp", "neural"):
+            warnings.warn(
+                f"Lambda method '{method}' can produce invalid standard errors "
+                "despite high correlation with oracle. Consider method='ridge' "
+                "(default) or 'lgbm' for validated coverage. "
+                "See docs/algorithm/index.md for details.",
+                UserWarning
+            )
+
         self.method = method
         self.ridge_alpha = ridge_alpha
         self.mlp_alpha = mlp_alpha

@@ -2,15 +2,15 @@
 
 The logit model handles binary outcomes with heterogeneous treatment effects.
 
-## Critical: Use `lambda_method='aggregate'`
+## Safe by Default
 
-**IMPORTANT:** For logit models, you MUST use `lambda_method='aggregate'` for stable estimates:
+The package now defaults to `lambda_method='ridge'` which provides validated 96% coverage. No special configuration is needed for logit models:
 
 ```python
-result = structural_dml(Y, T, X, family='logit', lambda_method='aggregate')
+result = structural_dml(Y, T, X, family='logit')  # ridge is default
 ```
 
-The default `lambda_method='mlp'` can produce negative Hessian eigenvalues, leading to wildly unstable estimates. This is because the logit Hessian depends on θ through p(1-p), making MLP estimation challenging.
+**Warning:** Avoid `lambda_method='mlp'` - it produces invalid standard errors (67% coverage) despite high correlation with oracle Lambda. See [Algorithm: Lambda Estimation](../algorithm/index.md#regime-c-observational-nonlinear-estimatelambda) for details.
 
 ## When to Use
 
@@ -72,11 +72,11 @@ mu_true = beta_true.mean()
 print(f"True mu* = {mu_true:.6f}")
 print(f"Outcome mean = {Y.mean():.3f}")
 
-# Run inference (MUST use lambda_method='aggregate' for logit!)
+# Run inference (ridge is default - validated 96% coverage)
 result = structural_dml(
     Y=Y, T=T, X=X,
     family='logit',
-    lambda_method='aggregate',  # CRITICAL for stability!
+    # lambda_method='ridge' is default
     hidden_dims=[64, 32],
     epochs=100,
     n_folds=50,
@@ -136,7 +136,7 @@ The AME tells you the average effect on the probability of the outcome, accounti
 # X = (income, credit score, employment, ...)
 # Target: E[beta(X)] = average effect of loan size on default risk
 
-result = structural_dml(Y, T, X, family='logit', lambda_method='aggregate')
+result = structural_dml(Y, T, X, family='logit')
 ```
 
 ### Market Entry
@@ -147,7 +147,7 @@ result = structural_dml(Y, T, X, family='logit', lambda_method='aggregate')
 # X = (market size, firm characteristics, ...)
 # Target: E[beta(X)] = average effect of competition on entry
 
-result = structural_dml(Y, T, X, family='logit', lambda_method='aggregate')
+result = structural_dml(Y, T, X, family='logit')
 ```
 
 ### Treatment Uptake
@@ -158,7 +158,7 @@ result = structural_dml(Y, T, X, family='logit', lambda_method='aggregate')
 # X = (age, insurance status, condition severity, ...)
 # Target: E[beta(X)] = average price sensitivity
 
-result = structural_dml(Y, T, X, family='logit', lambda_method='aggregate')
+result = structural_dml(Y, T, X, family='logit')
 ```
 
 ## Numerical Considerations

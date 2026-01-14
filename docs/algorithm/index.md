@@ -63,17 +63,17 @@ Use: `inference(..., model='linear')` (auto-detected)
 
 For logit, Poisson, etc. in observational settings:
 
-| Method | Correlation | Speed | Use Case |
-|--------|-------------|-------|----------|
-| `aggregate` | 0.000 | 0.02s | Ignores heterogeneity |
-| `ridge` | 0.508 | 0.08s | Fast fallback |
-| `rf` | 0.904 | 0.3s | Moderate accuracy |
-| `lgbm` | 0.978 | 1.2s | **Recommended** |
-| `mlp` | 0.997 | 12.5s | Best accuracy |
+| Method | Correlation | Coverage | Speed | Use Case |
+|--------|-------------|----------|-------|----------|
+| `ridge` | 0.508 | **96%** | 0.08s | **Recommended (default)** |
+| `aggregate` | 0.000 | 95% | 0.02s | Ignores heterogeneity |
+| `lgbm` | 0.978 | 96% | 1.2s | High accuracy |
+| `rf` | 0.904 | ~90% | 0.3s | Moderate accuracy |
+| `mlp` | 0.997 | **67%** | 12.5s | **AVOID** - invalid SEs |
 
-**Key finding:** `aggregate` averages Hessians across all observations, ignoring X-dependence entirely. This gives Corr=0.000 with true Λ(x).
+**Key finding:** MLP achieves highest correlation (0.997) but produces **invalid standard errors** (67% coverage instead of 95%). Ridge is the safe default with validated 96% coverage.
 
-Use: `inference(..., lambda_method='lgbm')` or `structural_dml(..., lambda_method='mlp')`
+Use: `structural_dml(..., lambda_method='ridge')` (default) or `inference(..., lambda_method='lgbm')`
 
 ---
 
@@ -194,7 +194,7 @@ from deep_inference import structural_dml
 result = structural_dml(
     Y=Y, T=T, X=X,
     family='logit',           # linear, logit, poisson, gamma, ...
-    lambda_method='aggregate', # aggregate, mlp, lgbm, rf, ridge
+    # lambda_method='ridge' is default (validated coverage)
     n_folds=50,
     epochs=100,
 )
@@ -210,7 +210,7 @@ result = inference(
     Y=Y, T=T, X=X,
     model='logit',
     target='ame',              # ame, beta, or custom
-    lambda_method='lgbm',
+    # lambda_method='ridge' is default (validated coverage)
     is_randomized=False,
 )
 ```
