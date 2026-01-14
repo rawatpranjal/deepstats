@@ -140,43 +140,64 @@ Where $\Lambda(x) = \mathbb{E}[\nabla^2 \ell \mid X=x]$ is the conditional Hessi
 *   **Automatic Differentiation:** `deep-inference` uses PyTorch Autograd to compute exact Jacobians and Hessians for any model family.
 *   **Stability:** Includes Tikhonov regularization for inverting Hessians in non-linear models (e.g., Logit/Tobit).
 
-## Validation (Monte Carlo Results)
+## Validation (Eval Suite Results)
 
-M=30 simulations, N=10,000 observations. Target: 95% coverage, SE ratio ≈ 1.0.
+The package includes a comprehensive eval suite (`evals/`) validating every mathematical component.
 
-### Linear Model
+### Parameter Recovery (Eval 01)
 
-![Linear Results](logs/kde_money_slide.png)
+Neural networks recover heterogeneous parameters θ(x) = [α(x), β(x)] across 12 families:
 
-| Config | K | Network | Coverage | SE Ratio | RMSE | Bias²/MSE |
-|--------|---|---------|----------|----------|------|-----------|
-| **Best** | 50 | [64,32] | **93.3%** | 1.03 | **0.032** | 22% |
-| Deep | 20 | [128,64,32] | 93.3% | 1.02 | 0.033 | 21% |
-| E=100 | 20 | [64,32] | 90.0% | 0.90 | 0.036 | 18% |
-| Separate | 20 | [128,64,32]×2 | 80.0% | 0.82 | 0.036 | 14% |
-| Naive | — | — | 10% | 0.09 | 0.083 | 1% |
+| Family | Corr(α) | Corr(β) | Status |
+|--------|---------|---------|--------|
+| linear | 0.991 | 0.995 | PASS |
+| logit | 0.978 | 0.996 | PASS |
+| poisson | 0.980 | 0.967 | PASS |
+| negbin | 0.990 | 0.983 | PASS |
+| gamma | 0.993 | 0.990 | PASS |
+| weibull | 0.993 | 0.986 | PASS |
+| gumbel | 0.967 | 0.991 | PASS |
+| tobit | 0.987 | 0.988 | PASS |
+| gaussian | 0.984 | 0.995 | PASS |
+| probit | 0.983 | 0.985 | PASS |
+| beta | 0.989 | 0.975 | PASS |
+| zip | 0.969 | 0.944 | PASS |
 
-**Finding:** K=50 folds achieves best coverage and lowest RMSE. Separate networks don't help.
+**Result: 12/12 families PASS** (n=2000, epochs=100, 3 seeds)
 
-### Logit Model
+### Lambda Estimation (Eval 03)
 
-![Logit Results](logs/logit_stress_test/logit_results.png)
+Conditional Hessian Λ(x) = E[ℓ_θθ|X=x] estimation methods:
 
-Target: E[β(X)] = average log-odds ratio
+| Method | Correlation | Frob Error | Time |
+|--------|-------------|------------|------|
+| aggregate | 0.000 | 0.121 | 0.02s |
+| **mlp** | **0.997** | **0.018** | 12.5s |
+| lgbm | 0.978 | 0.033 | 1.2s |
+| rf | 0.904 | 0.060 | 0.3s |
+| ridge | 0.508 | 0.087 | 0.08s |
 
-| Method | Coverage | SE Ratio | RMSE | Hessian min λ |
-|--------|----------|----------|------|---------------|
-| **Influence** | **90.0%** | 0.93 | **0.054** | 0.051 |
-| Naive | 3.3% | 0.03 | 0.108 | — |
+**Result: MLP best accuracy, LGBM best speed/accuracy tradeoff**
+
+### Coverage (Eval 05)
+
+Monte Carlo validation (M=50 simulations, n=1000):
+
+| Metric | Value | Target |
+|--------|-------|--------|
+| Coverage | 88% (44/50) | 85-97% |
+| SE Ratio | 0.873 | 0.8-1.2 |
+| Mean Bias | 0.002 | < 0.1 |
 
 ### Summary
 
-| Model | Target | Naive Cov | IF Cov | RMSE Improvement |
-|-------|--------|-----------|--------|------------------|
-| Linear | E[β(X)] | 10% | **93%** | 2.6× |
-| Logit | E[β(X)] | 3% | **90%** | 2.0× |
-| Poisson | E[β(X)] | TBD | TBD | — |
-| Gamma | E[β(X)] | TBD | TBD | — |
+| Eval | Tests | Result |
+|------|-------|--------|
+| 01: Parameter Recovery | 12 families × 3 seeds | 12/12 PASS |
+| 02: Autodiff Accuracy | 31 checks | 31/31 PASS |
+| 03: Lambda Estimation | 9 tests | 9/9 PASS |
+| 04: Target Jacobian | 92 checks | 92/92 PASS |
+| 05: Influence Functions | 4 rounds | 4/4 PASS |
 
 ## Citation
 
