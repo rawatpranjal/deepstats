@@ -2,6 +2,12 @@
 
 ## 2026-01-14
 
+### Eval 02: Strengthened Autodiff Validation
+- **Added Gaussian oracle**: Part 1 now tests 8 families (was 7) with closed-form comparison
+- **Replaced "is finite" with finite-difference validation**: Part 2 now validates Probit, Beta, Tobit, ZIP against numerical FD approximation instead of just checking values are finite
+- **Real error metrics**: FD families now show actual error magnitudes (1e-11 to 1e-7) instead of Yes/No
+- **Results**: 31/31 PASS — all 12 families now have real correctness validation
+
 ### Eval 01: Auto-Scale Sample Size for Binary Families
 - **Auto-scaling**: Binary families (logit/probit) now use n=8000, others use n=5000
 - **Rationale**: Binary outcomes carry ~1 bit/observation, requiring 2x samples for same precision

@@ -19,29 +19,32 @@ This is the most fundamental correctness check - everything downstream depends o
 
 TEST STRUCTURE
 --------------
-Part 1: Oracle Comparison (7 families)
+Part 1: Oracle Comparison (8 families)
     - Compare autodiff to hand-derived closed-form formulas
-    - Families: Linear, Logit, Poisson, NegBin, Gamma, Weibull, Gumbel
+    - Families: Linear, Logit, Poisson, NegBin, Gamma, Weibull, Gumbel, Gaussian
     - Tests at random θ values
+    - Tolerance: 1e-6 (machine precision)
 
-Part 2: Autodiff-Only Validation (5 families)
-    - For families with complex derivatives (Mills ratio, digamma, etc.)
-    - Check gradients/Hessians are finite (no NaN/Inf)
-    - Families: Probit, Beta, Gaussian, Tobit, ZIP
+Part 2: Finite-Difference Validation (4 families)
+    - For families without closed-form oracles
+    - Compare autodiff to numerical finite-difference approximation
+    - Families: Probit, Beta, Tobit, ZIP
+    - Tolerance: 1e-4 gradient, 1e-3 Hessian (FD precision)
 
 Part 3: Fitted Parameter Validation (7 families)
     - Fit model via gradient descent, check Hessian at θ̂
     - Verify Hessian is PSD at optimum (required for valid covariance)
+    - Families with closed-form oracles only
 
 Part 4: Package Integration (12 families)
     - Test actual family class implementations
     - Verify autodiff matches family.gradient()/family.hessian() methods
-    - Check Hessian symmetry
+    - Check Hessian symmetry for all families
 
 PASS CRITERIA
 -------------
-    - Score error: max|autodiff - oracle| < 1e-6
-    - Hessian error: max|autodiff - oracle| < 1e-6
+    - Oracle families: max|autodiff - oracle| < 1e-6
+    - FD families: max|autodiff - FD| < 1e-4 (grad), < 1e-3 (Hess)
     - Hessian symmetry: max|H - H'| < 1e-10
     - Hessian PSD at optimum: min eigenvalue >= -1e-6
 """
@@ -166,6 +169,53 @@ def oracle_gumbel(y: float, t: float, theta: np.ndarray, sigma: float = 1.0) -> 
     return score, hessian
 
 
+def oracle_gaussian(y: float, t: float, theta: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Gaussian with MLE sigma: L = (y - mu)^2 / (2*sigma^2) + log(sigma)
+    where mu = alpha + beta*t, sigma = exp(gamma)
+
+    theta = [alpha, beta, gamma] (3-dim)
+
+    Score:
+        dl/d(alpha) = (mu - y) / sigma^2
+        dl/d(beta) = t * (mu - y) / sigma^2
+        dl/d(gamma) = 1 - (y - mu)^2 / sigma^2
+
+    Hessian (3x3):
+        H[0,0] = 1/sigma^2
+        H[0,1] = t/sigma^2
+        H[1,1] = t^2/sigma^2
+        H[0,2] = -2*(mu-y)/sigma^2
+        H[1,2] = -2*t*(mu-y)/sigma^2
+        H[2,2] = 2*(y-mu)^2/sigma^2
+    """
+    alpha, beta, gamma = theta
+    gamma = np.clip(gamma, -10, 10)
+
+    mu = alpha + beta * t
+    sigma_sq = np.exp(2 * gamma)
+
+    # Score
+    residual = (mu - y) / sigma_sq
+    sq_residual = (y - mu) ** 2 / sigma_sq
+    score = np.array([residual, residual * t, 1 - sq_residual])
+
+    # Hessian (3x3)
+    scale = 1.0 / sigma_sq
+    hessian = np.zeros((3, 3))
+    hessian[0, 0] = scale
+    hessian[0, 1] = scale * t
+    hessian[1, 0] = scale * t
+    hessian[1, 1] = scale * t ** 2
+    hessian[0, 2] = -2 * residual
+    hessian[2, 0] = -2 * residual
+    hessian[1, 2] = -2 * residual * t
+    hessian[2, 1] = -2 * residual * t
+    hessian[2, 2] = 2 * sq_residual
+
+    return score, hessian
+
+
 # =============================================================================
 # PyTorch Loss Functions (for autodiff)
 # =============================================================================
@@ -217,6 +267,104 @@ def gumbel_loss(y: torch.Tensor, t: torch.Tensor, theta: torch.Tensor, sigma: fl
     return z + torch.exp(-z)
 
 
+def gaussian_loss(y: torch.Tensor, t: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
+    """Gaussian NLL with learned sigma. theta = [alpha, beta, gamma]."""
+    alpha, beta, gamma = theta[0], theta[1], theta[2]
+    gamma = torch.clamp(gamma, -10, 10)
+    mu = alpha + beta * t
+    sigma_sq = torch.exp(2 * gamma)
+    return 0.5 * (y - mu) ** 2 / sigma_sq + gamma
+
+
+# =============================================================================
+# Finite-Difference Validation (for families without closed-form oracles)
+# =============================================================================
+
+
+def finite_diff_gradient(
+    loss_fn: Callable,
+    y: float,
+    t: float,
+    theta: np.ndarray,
+    eps: float = 1e-5,
+) -> np.ndarray:
+    """
+    Compute gradient via central finite differences.
+
+    grad_i ≈ (L(θ + ε·e_i) - L(θ - ε·e_i)) / (2ε)
+
+    This is O(ε²) accurate.
+    """
+    grad = np.zeros_like(theta)
+    for i in range(len(theta)):
+        theta_plus = theta.copy()
+        theta_minus = theta.copy()
+        theta_plus[i] += eps
+        theta_minus[i] -= eps
+
+        # Convert to torch for loss computation
+        y_t = torch.tensor(y, dtype=torch.float64)
+        t_t = torch.tensor(t, dtype=torch.float64)
+
+        loss_plus = loss_fn(y_t, t_t, torch.tensor(theta_plus, dtype=torch.float64)).item()
+        loss_minus = loss_fn(y_t, t_t, torch.tensor(theta_minus, dtype=torch.float64)).item()
+
+        grad[i] = (loss_plus - loss_minus) / (2 * eps)
+
+    return grad
+
+
+def finite_diff_hessian(
+    loss_fn: Callable,
+    y: float,
+    t: float,
+    theta: np.ndarray,
+    eps: float = 1e-4,
+) -> np.ndarray:
+    """
+    Compute Hessian via central finite differences.
+
+    H_ij ≈ (L(θ+ε_i+ε_j) - L(θ+ε_i-ε_j) - L(θ-ε_i+ε_j) + L(θ-ε_i-ε_j)) / (4ε²)
+
+    This is O(ε²) accurate. Uses larger eps than gradient for stability.
+    """
+    d = len(theta)
+    hessian = np.zeros((d, d))
+
+    y_t = torch.tensor(y, dtype=torch.float64)
+    t_t = torch.tensor(t, dtype=torch.float64)
+
+    def eval_loss(th):
+        return loss_fn(y_t, t_t, torch.tensor(th, dtype=torch.float64)).item()
+
+    for i in range(d):
+        for j in range(i, d):  # Only upper triangle, then symmetrize
+            theta_pp = theta.copy()
+            theta_pm = theta.copy()
+            theta_mp = theta.copy()
+            theta_mm = theta.copy()
+
+            theta_pp[i] += eps
+            theta_pp[j] += eps
+            theta_pm[i] += eps
+            theta_pm[j] -= eps
+            theta_mp[i] -= eps
+            theta_mp[j] += eps
+            theta_mm[i] -= eps
+            theta_mm[j] -= eps
+
+            hessian[i, j] = (
+                eval_loss(theta_pp)
+                - eval_loss(theta_pm)
+                - eval_loss(theta_mp)
+                + eval_loss(theta_mm)
+            ) / (4 * eps * eps)
+
+            hessian[j, i] = hessian[i, j]  # Symmetry
+
+    return hessian
+
+
 # =============================================================================
 # Test Runner
 # =============================================================================
@@ -228,6 +376,7 @@ def run_autodiff_test(
     loss_fn: Callable,
     n_trials: int = 20,
     seed: int = 42,
+    theta_dim: int = 2,
     **kwargs
 ) -> Dict[str, Any]:
     """
@@ -239,6 +388,7 @@ def run_autodiff_test(
         loss_fn: PyTorch loss function
         n_trials: Number of random test points
         seed: Random seed
+        theta_dim: Dimension of theta (2 for most families, 3 for Gaussian/Tobit)
         **kwargs: Extra args passed to oracle/loss (r, k, sigma)
 
     Returns:
@@ -253,7 +403,11 @@ def run_autodiff_test(
     for _ in range(n_trials):
         # Generate test point
         t = np.random.randn()
-        theta = np.random.randn(2) * 0.5
+        theta = np.random.randn(theta_dim) * 0.5
+
+        # For Gaussian, ensure gamma (log-sigma) is reasonable
+        if name == "gaussian" and theta_dim >= 3:
+            theta[2] = np.clip(theta[2], -2, 2)
 
         # Generate appropriate y based on family
         if name == "logit":
@@ -264,6 +418,8 @@ def run_autodiff_test(
             y = float(np.abs(np.random.randn()) + 0.1)
         elif name == "negbin":
             y = float(np.random.poisson(2.0))
+        elif name == "gaussian":
+            y = np.random.randn()
         else:
             y = np.random.randn()
 
@@ -386,6 +542,115 @@ def run_autodiff_only_test(
         "family": name,
         "grad_finite": all_finite,
         "hess_finite": hess_finite,
+        "passed": passed,
+    }
+
+
+def run_finite_diff_test(
+    name: str,
+    family_class,
+    n_trials: int = 20,
+    seed: int = 42,
+    grad_tol: float = 1e-4,
+    hess_tol: float = 1e-3,
+) -> Dict[str, Any]:
+    """
+    Test autodiff against finite-difference approximation.
+
+    For families without closed-form oracles (Probit, Beta, Tobit, ZIP),
+    this provides actual correctness validation instead of just "is finite".
+
+    FD has O(eps²) error, so tolerances are larger than oracle tests:
+    - Gradient: 1e-4 (vs 1e-6 for oracle)
+    - Hessian: 1e-3 (vs 1e-6 for oracle)
+
+    Args:
+        name: Family name
+        family_class: Family class from deep_inference.families
+        n_trials: Number of random test points
+        seed: Random seed
+        grad_tol: Tolerance for gradient error
+        hess_tol: Tolerance for Hessian error
+
+    Returns:
+        Dict with score_err, hess_err, passed
+    """
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+    family = family_class()
+    theta_dim = family.theta_dim
+
+    max_score_err = 0.0
+    max_hess_err = 0.0
+
+    for trial in range(n_trials):
+        # Generate test point
+        t = np.random.randn()
+        theta = np.random.randn(theta_dim) * 0.3
+
+        # For families with log-scale params, keep them reasonable
+        if name in ("tobit",) and theta_dim >= 3:
+            theta[2] = np.clip(theta[2], -2, 2)
+
+        # Generate appropriate y
+        if name == "probit":
+            y = float(np.random.binomial(1, 0.5))
+        elif name == "beta":
+            y = float(np.random.uniform(0.1, 0.9))
+        elif name == "tobit":
+            y = float(max(0, np.random.randn()))
+        elif name == "zip":
+            y = float(np.random.poisson(2.0))
+        else:
+            y = np.random.randn()
+
+        # Define loss function for this family (single observation)
+        def family_loss_fn(y_t, t_t, th_t):
+            return family.loss(
+                y_t.unsqueeze(0),
+                t_t.unsqueeze(0),
+                th_t.unsqueeze(0)
+            ).squeeze()
+
+        # Compute finite-difference gradient and Hessian
+        grad_fd = finite_diff_gradient(family_loss_fn, y, t, theta, eps=1e-5)
+        hess_fd = finite_diff_hessian(family_loss_fn, y, t, theta, eps=1e-4)
+
+        # Compute autodiff gradient and Hessian
+        y_t = torch.tensor(y, dtype=torch.float64)
+        t_t = torch.tensor(t, dtype=torch.float64)
+        th_t = torch.tensor(theta, dtype=torch.float64, requires_grad=True)
+
+        def loss_wrapper(th):
+            return family_loss_fn(y_t, t_t, th)
+
+        try:
+            grad_auto = torch.func.grad(loss_wrapper)(th_t).detach().numpy()
+            hess_auto = torch.func.hessian(loss_wrapper)(th_t).detach().numpy()
+
+            # Compare
+            score_err = np.max(np.abs(grad_auto - grad_fd))
+            hess_err = np.max(np.abs(hess_auto - hess_fd))
+
+            max_score_err = max(max_score_err, score_err)
+            max_hess_err = max(max_hess_err, hess_err)
+
+        except Exception as e:
+            return {
+                "family": name,
+                "score_err": float('inf'),
+                "hess_err": float('inf'),
+                "passed": False,
+                "error": str(e),
+            }
+
+    passed = max_score_err < grad_tol and max_hess_err < hess_tol
+
+    return {
+        "family": name,
+        "score_err": max_score_err,
+        "hess_err": max_hess_err,
         "passed": passed,
     }
 
@@ -672,15 +937,16 @@ def main(seed: int = 42):
     print(f"Config: seed={seed}, n_trials=20")
     print()
 
-    # Families with closed-form oracles
+    # Families with closed-form oracles (theta_dim, extra_kwargs)
     oracle_tests = [
-        ("linear", oracle_linear, linear_loss, {}),
-        ("logit", oracle_logit, logit_loss, {}),
-        ("poisson", oracle_poisson, poisson_loss, {}),
-        ("negbin", oracle_negbin, negbin_loss, {"r": 2.0}),
-        ("gamma", oracle_gamma, gamma_loss, {}),
-        ("weibull", oracle_weibull, weibull_loss, {"k": 2.0}),
-        ("gumbel", oracle_gumbel, gumbel_loss, {"sigma": 1.0}),
+        ("linear", oracle_linear, linear_loss, 2, {}),
+        ("logit", oracle_logit, logit_loss, 2, {}),
+        ("poisson", oracle_poisson, poisson_loss, 2, {}),
+        ("negbin", oracle_negbin, negbin_loss, 2, {"r": 2.0}),
+        ("gamma", oracle_gamma, gamma_loss, 2, {}),
+        ("weibull", oracle_weibull, weibull_loss, 2, {"k": 2.0}),
+        ("gumbel", oracle_gumbel, gumbel_loss, 2, {"sigma": 1.0}),
+        ("gaussian", oracle_gaussian, gaussian_loss, 3, {}),  # theta_dim=3
     ]
 
     print("-" * 70)
@@ -691,44 +957,41 @@ def main(seed: int = 42):
     print("-" * 70)
 
     oracle_results = []
-    for name, oracle_fn, loss_fn, kwargs in oracle_tests:
-        result = run_autodiff_test(name, oracle_fn, loss_fn, n_trials=20, seed=seed, **kwargs)
+    for name, oracle_fn, loss_fn, theta_dim, kwargs in oracle_tests:
+        result = run_autodiff_test(name, oracle_fn, loss_fn, n_trials=20, seed=seed, theta_dim=theta_dim, **kwargs)
         oracle_results.append(result)
         status = "PASS" if result["passed"] else "FAIL"
         print(f"{name:<12} {result['score_err']:<15.2e} {result['hess_err']:<15.2e} {status:<8}")
 
     print()
 
-    # Families without closed-form (autodiff-only validation)
+    # Families without closed-form oracles - use finite-difference validation
     print("-" * 70)
-    print("PART 2: AUTODIFF-ONLY VALIDATION (Complex Families)")
+    print("PART 2: FINITE-DIFFERENCE VALIDATION (No Oracle)")
     print("-" * 70)
     print()
 
     # Import families
     from deep_inference.families import (
-        ProbitFamily, BetaFamily, ZIPFamily, GaussianFamily, TobitFamily
+        ProbitFamily, BetaFamily, ZIPFamily, TobitFamily
     )
 
-    autodiff_tests = [
+    fd_tests = [
         ("probit", ProbitFamily),
         ("beta", BetaFamily),
-        ("gaussian", GaussianFamily),
         ("tobit", TobitFamily),
         ("zip", ZIPFamily),
     ]
 
-    print(f"{'Family':<12} {'Grad Finite':<15} {'Hess Finite':<15} {'Status':<8}")
+    print(f"{'Family':<12} {'Score Err':<15} {'Hessian Err':<15} {'Status':<8}")
     print("-" * 70)
 
-    autodiff_results = []
-    for name, family_class in autodiff_tests:
-        result = run_autodiff_only_test(name, family_class, n_trials=20, seed=seed)
-        autodiff_results.append(result)
+    fd_results = []
+    for name, family_class in fd_tests:
+        result = run_finite_diff_test(name, family_class, n_trials=20, seed=seed)
+        fd_results.append(result)
         status = "PASS" if result["passed"] else "FAIL"
-        grad_ok = "Yes" if result["grad_finite"] else "No"
-        hess_ok = "Yes" if result["hess_finite"] else "No"
-        print(f"{name:<12} {grad_ok:<15} {hess_ok:<15} {status:<8}")
+        print(f"{name:<12} {result['score_err']:<15.2e} {result['hess_err']:<15.2e} {status:<8}")
 
     print()
 
@@ -813,14 +1076,14 @@ def main(seed: int = 42):
     print()
 
     oracle_passed = sum(1 for r in oracle_results if r["passed"])
-    autodiff_passed = sum(1 for r in autodiff_results if r["passed"])
+    fd_passed = sum(1 for r in fd_results if r["passed"])
     package_passed = sum(1 for r in package_results if r["passed"])
     fitted_passed = sum(1 for r in fitted_results if r["passed"])
-    total_passed = oracle_passed + autodiff_passed + package_passed + fitted_passed
-    total_tests = len(oracle_results) + len(autodiff_results) + len(package_results) + len(fitted_results)
+    total_passed = oracle_passed + fd_passed + package_passed + fitted_passed
+    total_tests = len(oracle_results) + len(fd_results) + len(package_results) + len(fitted_results)
 
     print(f"Part 1 (Oracle @ Random θ):  {oracle_passed}/{len(oracle_results)} PASS")
-    print(f"Part 2 (Autodiff-Only):      {autodiff_passed}/{len(autodiff_results)} PASS")
+    print(f"Part 2 (Finite-Diff):        {fd_passed}/{len(fd_results)} PASS")
     print(f"Part 4 (Package Integration):{package_passed}/{len(package_results)} PASS")
     print(f"Part 3 (Fitted θ̂):           {fitted_passed}/{len(fitted_results)} PASS")
     print(f"Overall:                     {total_passed}/{total_tests} PASS")
