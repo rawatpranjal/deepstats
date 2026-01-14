@@ -2,10 +2,12 @@
 
 ## 2026-01-13
 
-### Documentation: Real Eval Results
-- Replaced placeholder Monte Carlo results with actual eval suite numbers
-- README.md: 12/12 families, Lambda methods table, Coverage 88%
-- docs/validation/index.md: Complete rewrite with Eval 01-07 results
+### Documentation: Streamlined with Separate Eval Pages
+- README.md: Shortened validation to summary table only
+- docs/validation/index.md: Overview linking to individual eval pages
+- NEW: docs/validation/eval_01.md - Parameter Recovery details
+- NEW: docs/validation/eval_03.md - Lambda Estimation details
+- NEW: docs/validation/eval_05.md - Coverage details
 
 ### PyPI Release v0.1.2
 - Published `deep-inference` v0.1.2 to PyPI
