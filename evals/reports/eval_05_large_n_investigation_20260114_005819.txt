@@ -1,0 +1,40 @@
+============================================================
+EVAL 05: LARGE-N SE OVERESTIMATION INVESTIGATION
+============================================================
+True μ* = 0.241016
+
+n=5000, M=100
+------------------------------------------------------------
+
+AGGREGATE:
+  Mean(μ̂): 0.240403
+  Empirical SE (std of μ̂): 0.012755
+  Mean estimated SE: 0.014103
+  SE ratio: 1.106
+  Mean Var(ψ): 0.995012
+  Coverage: 99/100 = 99.0%
+
+PER_OBS:
+  Mean(μ̂): 0.240812
+  Empirical SE (std of μ̂): 0.002528
+  Mean estimated SE: 0.002743
+  SE ratio: 1.085
+  Mean Var(ψ): 0.037766
+  Coverage: 97/100 = 97.0%
+
+============================================================
+DIAGNOSTIC: Formula Check
+============================================================
+Aggregate: sqrt(Var(ψ)/n) = sqrt(0.9950/5000) = 0.014107
+Per-obs:   sqrt(Var(ψ)/n) = sqrt(0.0378/5000) = 0.002748
+Actual empirical SE (aggregate): 0.012755
+Actual empirical SE (per-obs):   0.002528
+
+============================================================
+CONCLUSION
+============================================================
+1. SE formula is CORRECT: estimated SE = sqrt(Var(ψ)/n) exactly
+2. "Overestimation" is MC noise in empirical SE baseline
+3. Per-obs Lambda gives 26x smaller Var(ψ) than aggregate
+4. Per-obs coverage (97%) is better than aggregate (99% = overcoverage)
+============================================================

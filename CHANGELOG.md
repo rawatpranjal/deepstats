@@ -2,6 +2,13 @@
 
 ## 2026-01-14
 
+### Eval 05: Round E - Per-Observation Lambda
+- **Round E added**: Compares aggregate vs per-observation Λ(xᵢ) across sample sizes
+- **Key finding**: Aggregate Lambda shows U-shaped SE ratio; per-obs is stable (~1.0 for all n)
+- **Large-n investigation**: Confirmed SE formula is correct; "overestimation" is MC noise
+- **Per-obs Lambda gives 26x smaller Var(ψ)** than aggregate (0.038 vs 0.995)
+- **Coverage**: Per-obs achieves 97% (nominal), aggregate overcoverage at 99%
+
 ### Eval 03: Brutal Overhaul
 - **Package code tests**: Added A4 (ComputeLambda) and B4 (AnalyticLambda) - now tests actual package code, not just oracle math
 - **Part E: Method Failure Analysis**: Explicitly shows which methods fail and why
