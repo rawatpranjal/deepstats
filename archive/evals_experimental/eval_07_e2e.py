@@ -581,13 +581,21 @@ def run_round_g_se_validation(
                 psi_max = float(psi.max()) if psi is not None else np.nan
                 psi_skew = float(skew(psi)) if psi is not None else np.nan
 
+                # Extract full condition number list for better analysis
+                cond_list = diag.get("lambda_cond_numbers", [])
+                cond_mean = np.mean(cond_list) if cond_list else np.nan
+                cond_std = np.std(cond_list) if cond_list else np.nan
+                cond_max = np.max(cond_list) if cond_list else np.nan
+
                 seed_results.append({
                     "seed": seed,
                     "mu_hat": mu_hat,
                     "se": se,
                     "covers": covers,
-                    # Diagnostics
-                    "cond_mean": diag.get("mean_cond_number", np.nan),
+                    # Diagnostics - full condition number stats
+                    "cond_mean": cond_mean,
+                    "cond_std": cond_std,  # NEW: std=0 indicates aggregate behavior
+                    "cond_max": cond_max,  # NEW: worst case per seed
                     "min_eigenvalue": diag.get("min_lambda_eigenvalue", np.nan),
                     "pct_regularized": diag.get("pct_regularized", 0),
                     # Psi stats
@@ -624,10 +632,14 @@ def run_round_g_se_validation(
         se_ratio_p5 = np.percentile(se_ratios_per_seed, 5)
         se_ratio_p95 = np.percentile(se_ratios_per_seed, 95)
 
-        # NEW: Condition number stats
+        # NEW: Condition number stats (improved)
         cond_means = [r["cond_mean"] for r in seed_results if not np.isnan(r.get("cond_mean", np.nan))]
+        cond_stds = [r["cond_std"] for r in seed_results if not np.isnan(r.get("cond_std", np.nan))]
+        cond_maxes = [r["cond_max"] for r in seed_results if not np.isnan(r.get("cond_max", np.nan))]
+
         cond_mean_avg = np.mean(cond_means) if cond_means else np.nan
-        cond_mean_max = np.max(cond_means) if cond_means else np.nan
+        cond_std_avg = np.mean(cond_stds) if cond_stds else np.nan  # std=0 indicates aggregate
+        cond_max_worst = np.max(cond_maxes) if cond_maxes else np.nan  # Worst case across all seeds
 
         # NEW: Psi stats
         psi_skews = [r["psi_skew"] for r in seed_results if not np.isnan(r.get("psi_skew", np.nan))]
@@ -650,7 +662,8 @@ def run_round_g_se_validation(
             "se_ratio_p5": se_ratio_p5,
             "se_ratio_p95": se_ratio_p95,
             "cond_mean": cond_mean_avg,
-            "cond_max": cond_mean_max,
+            "cond_std": cond_std_avg,
+            "cond_max": cond_max_worst,
             "psi_skew": psi_skew_avg,
             "failure_analysis": failure_analysis,
             "verdict": verdict,
@@ -663,9 +676,14 @@ def run_round_g_se_validation(
         print(f"  Coverage: {coverage*100:.1f}%")
         print(f"  SE Ratio: {se_ratio:.3f} [p5={se_ratio_p5:.2f}, p95={se_ratio_p95:.2f}]")
         if not np.isnan(cond_mean_avg):
-            print(f"  Condition(Λ): mean={cond_mean_avg:.1f}, max={cond_mean_max:.1f}")
+            # Show std to detect aggregate behavior (std≈0 means all Lambda(x) identical)
+            if cond_std_avg < 0.01:
+                print(f"  Condition(Λ): {cond_mean_avg:.1f} (constant - aggregate behavior)")
+            else:
+                print(f"  Condition(Λ): mean={cond_mean_avg:.1f}, std={cond_std_avg:.2f}, max={cond_max_worst:.1f}")
         if not np.isnan(psi_skew_avg):
-            print(f"  Psi skew: {psi_skew_avg:.3f}")
+            skew_warning = " ⚠️ HIGH" if abs(psi_skew_avg) > 2.0 else ""
+            print(f"  Psi skew: {psi_skew_avg:.3f}{skew_warning}")
         if failure_analysis:
             print(f"  Failure analysis: cond={failure_analysis['failed_cond_mean']:.1f} (failed) vs {failure_analysis['passed_cond_mean']:.1f} (passed)")
         print(f"  Verdict: {verdict}")
@@ -674,16 +692,23 @@ def run_round_g_se_validation(
     print("\n" + "=" * 80)
     print("COMPARISON TABLE (Enhanced)")
     print("=" * 80)
-    print(f"\n{'Method':<12} {'Coverage':>10} {'SE Ratio':>18} {'Cond(Λ)':>12} {'Verdict':>8}")
-    print("-" * 65)
+    print(f"\n{'Method':<12} {'Coverage':>10} {'SE Ratio':>18} {'Cond(mean±std)':>16} {'Verdict':>8}")
+    print("-" * 70)
 
     for method, res in all_results.items():
         if "error" in res:
-            print(f"{method:<12} {'FAILED':>10} {'-':>18} {'-':>12} {'FAIL':>8}")
+            print(f"{method:<12} {'FAILED':>10} {'-':>18} {'-':>16} {'FAIL':>8}")
         else:
             se_str = f"{res['se_ratio']:.2f} [{res['se_ratio_p5']:.2f},{res['se_ratio_p95']:.2f}]"
-            cond_str = f"{res.get('cond_mean', np.nan):.1f}" if not np.isnan(res.get('cond_mean', np.nan)) else "-"
-            print(f"{method:<12} {res['coverage']*100:>9.1f}% {se_str:>18} {cond_str:>12} {res['verdict']:>8}")
+            cond_mean = res.get('cond_mean', np.nan)
+            cond_std = res.get('cond_std', np.nan)
+            if np.isnan(cond_mean):
+                cond_str = "-"
+            elif cond_std < 0.01:
+                cond_str = f"{cond_mean:.1f} (const)"
+            else:
+                cond_str = f"{cond_mean:.1f}±{cond_std:.2f}"
+            print(f"{method:<12} {res['coverage']*100:>9.1f}% {se_str:>18} {cond_str:>16} {res['verdict']:>8}")
 
     print("=" * 80)
 
