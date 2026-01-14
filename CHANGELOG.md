@@ -2,6 +2,23 @@
 
 ## 2026-01-14
 
+### Eval 07: Enhanced Round G (3x More Signal, <5% More Compute)
+- **New metrics extracted from existing runs**:
+  - SE Ratio tail behavior: [p5, p95] percentiles expose worst-case behavior
+  - Condition(Λ) statistics: mean and max across seeds
+  - Psi skewness: detects heavy-tailed influence functions
+- **Failure correlation analysis**: Compares diagnostics between failed vs passed seeds
+- **Asymmetric verdicts**: FAIL (undercoverage), WARN (overcoverage), PASS (valid)
+  - Undercoverage is dangerous; overcoverage is just inefficient
+- **Enhanced output format**: Shows SE ratio range, condition numbers, psi stats
+- **File**: `/Users/pranjal/deepest/archive/evals_experimental/eval_07_e2e.py`
+
+### Eval 06: Binary Family Sample Size Fix
+- **Increased n from 5000 to 8000** for eval_06_coverage.py (matches eval_01's binary scaling)
+- **Rationale**: Binary outcomes (logit) carry ~1 bit/observation, requiring 2x data for convergence
+- Previous run at n=5000: Coverage 72%, z-mean=-1.29 (systematic bias)
+- Expected improvement: Coverage 85-99%, z-mean ≈ 0
+
 ### Lambda Defaults: Safe by Default
 - **Changed default `lambda_method`** from 'mlp' to 'ridge' (validated 96% coverage)
 - **Changed default `ridge_alpha`** from 1.0 to 1000.0 (heavy regularization required)

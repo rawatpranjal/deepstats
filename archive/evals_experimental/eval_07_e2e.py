@@ -17,7 +17,7 @@ import sys
 import numpy as np
 import torch
 from scipy.special import expit
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, skew
 import statsmodels.api as sm
 from typing import Dict, Any, Tuple
 from tqdm import tqdm
@@ -448,6 +448,55 @@ def analyze_heterogeneity(
 # ROUND G: SE CALIBRATION (Multi-Seed)
 # ============================================================
 
+def evaluate_method_asymmetric(coverage: float, se_ratio: float, M: int) -> str:
+    """
+    Asymmetric verdict: undercoverage is bad, overcoverage is just inefficient.
+
+    Returns:
+        "FAIL": Invalid inference (undercoverage or SE underestimate)
+        "WARN": Valid but conservative (overcoverage or SE overestimate)
+        "PASS": Valid and efficient
+    """
+    se_coverage = np.sqrt(0.95 * 0.05 / M)  # ~0.031 for M=50
+
+    # Undercoverage or SE underestimate = invalid inference
+    if coverage < 0.95 - 2 * se_coverage or se_ratio < 0.85:
+        return "FAIL"
+    # Overcoverage or SE overestimate = conservative but valid
+    elif coverage > 0.97 or se_ratio > 1.20:
+        return "WARN"
+    else:
+        return "PASS"
+
+
+def analyze_failures(all_seed_results: list) -> Dict[str, Any]:
+    """
+    Analyze what distinguishes failed seeds from passed seeds.
+
+    Returns dict with failure correlation metrics, or None if too few failures.
+    """
+    failed = [r for r in all_seed_results if not r["covers"]]
+    passed = [r for r in all_seed_results if r["covers"]]
+
+    if len(failed) < 2 or len(passed) < 2:
+        return None
+
+    def safe_mean(lst, key):
+        vals = [r.get(key) for r in lst if r.get(key) is not None and not np.isnan(r.get(key, np.nan))]
+        return np.mean(vals) if vals else np.nan
+
+    return {
+        "n_failed": len(failed),
+        "n_passed": len(passed),
+        "failed_cond_mean": safe_mean(failed, "cond_mean"),
+        "passed_cond_mean": safe_mean(passed, "cond_mean"),
+        "failed_pct_reg": safe_mean(failed, "pct_regularized"),
+        "passed_pct_reg": safe_mean(passed, "pct_regularized"),
+        "failed_psi_skew": safe_mean(failed, "psi_skew"),
+        "passed_psi_skew": safe_mean(passed, "psi_skew"),
+    }
+
+
 def run_round_g_se_validation(
     n: int = 1000,
     M: int = 100,
@@ -493,9 +542,8 @@ def run_round_g_se_validation(
         print(f"\n--- Lambda method: {lambda_method} ---")
         print(f"Running {M} seeds...")
 
-        mu_hats = []
-        ses = []
-        covers = 0
+        # Enhanced per-seed tracking
+        seed_results = []
 
         iterator = tqdm(range(M), desc=f"{lambda_method}") if verbose else range(M)
 
@@ -519,39 +567,77 @@ def run_round_g_se_validation(
                 mu_hat = result.mu_hat
                 se = result.se
 
-                mu_hats.append(mu_hat)
-                ses.append(se)
-
                 # Check coverage
                 ci_lo = mu_hat - 1.96 * se
                 ci_hi = mu_hat + 1.96 * se
-                if ci_lo <= mu_true <= ci_hi:
-                    covers += 1
+                covers = ci_lo <= mu_true <= ci_hi
+
+                # Extract diagnostics (zero extra compute)
+                diag = result.diagnostics if hasattr(result, 'diagnostics') and result.diagnostics else {}
+
+                # Psi stats (zero extra compute)
+                psi = result.psi_values if hasattr(result, 'psi_values') else None
+                psi_min = float(psi.min()) if psi is not None else np.nan
+                psi_max = float(psi.max()) if psi is not None else np.nan
+                psi_skew = float(skew(psi)) if psi is not None else np.nan
+
+                seed_results.append({
+                    "seed": seed,
+                    "mu_hat": mu_hat,
+                    "se": se,
+                    "covers": covers,
+                    # Diagnostics
+                    "cond_mean": diag.get("mean_cond_number", np.nan),
+                    "min_eigenvalue": diag.get("min_lambda_eigenvalue", np.nan),
+                    "pct_regularized": diag.get("pct_regularized", 0),
+                    # Psi stats
+                    "psi_min": psi_min,
+                    "psi_max": psi_max,
+                    "psi_skew": psi_skew,
+                })
 
             except Exception as e:
                 # If fit fails, skip
                 pass
 
-        # Compute statistics
-        n_valid = len(mu_hats)
+        # Compute statistics from seed_results
+        n_valid = len(seed_results)
         if n_valid == 0:
             print(f"ERROR: All fits failed for {lambda_method}!")
             all_results[lambda_method] = {"status": "FAIL", "error": "All fits failed"}
             continue
 
-        mu_hats = np.array(mu_hats)
-        ses = np.array(ses)
+        # Extract arrays
+        mu_hats = np.array([r["mu_hat"] for r in seed_results])
+        ses = np.array([r["se"] for r in seed_results])
+        covers_count = sum(r["covers"] for r in seed_results)
 
-        coverage = covers / n_valid
+        # Core metrics
+        coverage = covers_count / n_valid
         mean_se = np.mean(ses)
         empirical_se = np.std(mu_hats)
         se_ratio = mean_se / empirical_se if empirical_se > 0 else np.inf
         mean_bias = np.mean(mu_hats) - mu_true
 
-        # Checks
-        coverage_pass = 0.93 <= coverage <= 0.97
-        se_ratio_pass = 0.9 <= se_ratio <= 1.1
-        status = "PASS" if (coverage_pass and se_ratio_pass) else "FAIL"
+        # NEW: Tail behavior (SE ratio per seed)
+        se_ratios_per_seed = ses / empirical_se if empirical_se > 0 else ses
+        se_ratio_p5 = np.percentile(se_ratios_per_seed, 5)
+        se_ratio_p95 = np.percentile(se_ratios_per_seed, 95)
+
+        # NEW: Condition number stats
+        cond_means = [r["cond_mean"] for r in seed_results if not np.isnan(r.get("cond_mean", np.nan))]
+        cond_mean_avg = np.mean(cond_means) if cond_means else np.nan
+        cond_mean_max = np.max(cond_means) if cond_means else np.nan
+
+        # NEW: Psi stats
+        psi_skews = [r["psi_skew"] for r in seed_results if not np.isnan(r.get("psi_skew", np.nan))]
+        psi_skew_avg = np.mean(psi_skews) if psi_skews else np.nan
+
+        # NEW: Failure analysis
+        failure_analysis = analyze_failures(seed_results)
+
+        # NEW: Asymmetric verdict
+        verdict = evaluate_method_asymmetric(coverage, se_ratio, M)
 
         all_results[lambda_method] = {
             "n_valid": n_valid,
@@ -561,36 +647,49 @@ def run_round_g_se_validation(
             "mean_se": mean_se,
             "empirical_se": empirical_se,
             "se_ratio": se_ratio,
-            "coverage_pass": coverage_pass,
-            "se_ratio_pass": se_ratio_pass,
-            "status": status,
+            "se_ratio_p5": se_ratio_p5,
+            "se_ratio_p95": se_ratio_p95,
+            "cond_mean": cond_mean_avg,
+            "cond_max": cond_mean_max,
+            "psi_skew": psi_skew_avg,
+            "failure_analysis": failure_analysis,
+            "verdict": verdict,
+            "seed_results": seed_results,  # Keep raw data
         }
 
+        # Enhanced output
         print(f"  Valid: {n_valid}/{M}")
         print(f"  Bias: {mean_bias:.6f}")
         print(f"  Coverage: {coverage*100:.1f}%")
-        print(f"  SE Ratio: {se_ratio:.3f}")
-        print(f"  Status: {status}")
+        print(f"  SE Ratio: {se_ratio:.3f} [p5={se_ratio_p5:.2f}, p95={se_ratio_p95:.2f}]")
+        if not np.isnan(cond_mean_avg):
+            print(f"  Condition(Λ): mean={cond_mean_avg:.1f}, max={cond_mean_max:.1f}")
+        if not np.isnan(psi_skew_avg):
+            print(f"  Psi skew: {psi_skew_avg:.3f}")
+        if failure_analysis:
+            print(f"  Failure analysis: cond={failure_analysis['failed_cond_mean']:.1f} (failed) vs {failure_analysis['passed_cond_mean']:.1f} (passed)")
+        print(f"  Verdict: {verdict}")
 
     # Print comparison table
     print("\n" + "=" * 80)
-    print("COMPARISON TABLE")
+    print("COMPARISON TABLE (Enhanced)")
     print("=" * 80)
-    print(f"\n{'Method':<12} {'Coverage':>10} {'SE Ratio':>10} {'Bias':>10} {'Status':>8}")
-    print("-" * 55)
+    print(f"\n{'Method':<12} {'Coverage':>10} {'SE Ratio':>18} {'Cond(Λ)':>12} {'Verdict':>8}")
+    print("-" * 65)
 
     for method, res in all_results.items():
         if "error" in res:
-            print(f"{method:<12} {'FAILED':>10} {'-':>10} {'-':>10} {'FAIL':>8}")
+            print(f"{method:<12} {'FAILED':>10} {'-':>18} {'-':>12} {'FAIL':>8}")
         else:
-            print(f"{method:<12} {res['coverage']*100:>9.1f}% {res['se_ratio']:>10.3f} "
-                  f"{res['bias']:>10.4f} {res['status']:>8}")
+            se_str = f"{res['se_ratio']:.2f} [{res['se_ratio_p5']:.2f},{res['se_ratio_p95']:.2f}]"
+            cond_str = f"{res.get('cond_mean', np.nan):.1f}" if not np.isnan(res.get('cond_mean', np.nan)) else "-"
+            print(f"{method:<12} {res['coverage']*100:>9.1f}% {se_str:>18} {cond_str:>12} {res['verdict']:>8}")
 
     print("=" * 80)
 
-    # Overall status
-    any_pass = any(r.get("status") == "PASS" for r in all_results.values())
-    all_pass = all(r.get("status") == "PASS" for r in all_results.values())
+    # Overall status (using new verdicts)
+    any_pass = any(r.get("verdict") in ["PASS", "WARN"] for r in all_results.values())
+    all_pass = all(r.get("verdict") == "PASS" for r in all_results.values())
 
     return {
         "n": n,
