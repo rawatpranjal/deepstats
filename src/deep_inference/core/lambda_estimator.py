@@ -77,15 +77,16 @@ class LambdaEstimator:
             if not HAS_LGBM:
                 raise ImportError("LightGBM not installed. Run: pip install lightgbm")
             # Wrap in MultiOutputRegressor for multi-output support
-            # Heavy regularization to ensure stable (near-PSD) Lambda estimates
+            # Very heavy regularization to ensure stable PSD Lambda estimates
+            # See CLAUDE.md "Lambda Method Recommendations" for details
             return MultiOutputRegressor(
                 LGBMRegressor(
-                    n_estimators=30,        # Few trees
+                    n_estimators=20,        # Very few trees
                     max_depth=2,            # Very shallow
                     learning_rate=0.05,     # Slow learning
-                    min_child_samples=100,  # Many samples per leaf
-                    reg_alpha=2.0,          # Strong L1
-                    reg_lambda=2.0,         # Strong L2
+                    min_child_samples=150,  # Many samples per leaf
+                    reg_alpha=5.0,          # Very strong L1
+                    reg_lambda=5.0,         # Very strong L2
                     random_state=42,
                     verbose=-1,
                 )

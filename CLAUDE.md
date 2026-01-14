@@ -406,6 +406,59 @@ Full benchmark: `tutorials/02_logit_oracle.ipynb`
 
 Where: `η = α + β·t`, `μ = g⁻¹(η)`, `z = (y/λ)^k` (Weibull) or `(y-μ)/σ` (Gumbel), `r = 1/overdispersion`, `Φ` = normal CDF
 
+## Lambda Method Recommendations
+
+For `structural_dml()` with nonlinear models (logit, poisson, etc.), choose `lambda_method`:
+
+| Method | Speed | Stability | SE Calibration | Recommendation |
+|--------|-------|-----------|----------------|----------------|
+| **aggregate** | Fast | Excellent (always PSD) | Coverage ~98%, SE ratio ~1.04 | Default for stability |
+| **lgbm** | Fast | Good (with heavy reg) | Coverage ~96%, SE ratio ~1.05 | Best for SE calibration |
+| **mlp** | Very slow (~4min/seed) | Variable | Untested at scale | Not recommended |
+| **rf** | Medium | Variable | Untested | Not recommended |
+| **ridge** | Fast | Variable | Untested | Not recommended |
+
+### Why aggregate can fail coverage checks
+
+`aggregate` produces constant Λ̂ (ignores x-dependence), but achieves:
+- Always PSD matrices (no numerical instability)
+- Slightly conservative coverage (~98% vs 95% target)
+- Good SE ratio (~1.04)
+
+This "fails" the [93%, 97%] coverage threshold by being too conservative.
+
+### LGBM regularization (critical!)
+
+LGBM requires **heavy regularization** to produce stable Lambda estimates:
+
+```python
+LGBMRegressor(
+    n_estimators=20,        # Very few trees
+    max_depth=2,            # Very shallow
+    min_child_samples=150,  # Many samples per leaf
+    reg_alpha=5.0,          # Strong L1
+    reg_lambda=5.0,         # Strong L2
+)
+```
+
+Without this, LGBM can produce negative eigenvalues → numerical instability.
+
+### Eval 07 Round G Results (M=50)
+
+Results vary run-to-run due to Monte Carlo variance. Both methods achieve valid inference:
+
+```
+Run 1:
+  aggregate    96.0%   0.951   PASS
+  lgbm         98.0%   1.015   FAIL (coverage > 97%)
+
+Run 2:
+  aggregate    98.0%   1.043   FAIL (coverage > 97%)
+  lgbm         96.0%   1.045   PASS
+```
+
+**Conclusion**: Both methods work. Coverage ~96-98%, SE ratio ~0.95-1.05.
+
 ## References
 
 - Farrell, Liang, Misra (2021): Econometrica
