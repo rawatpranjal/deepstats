@@ -80,17 +80,13 @@ print(f"Bias correction: {result.mu_hat - result.mu_naive:.4f}")
 
 ## Expected Results
 
-From Monte Carlo validation (M=100, N=2000, K=50 folds):
+From [Eval 01: Parameter Recovery](../validation/eval_01.md):
 
-| Method | Coverage | SE Ratio | Target |
-|--------|----------|----------|--------|
-| Naive | ~10% | ~0.3 | — |
-| **Influence** | **~95%** | **~1.0** | 93-97% |
+| Family | Corr(α) | Corr(β) | Status |
+|--------|---------|---------|--------|
+| linear | 0.994 | 0.998 | PASS |
 
-### Interpretation
-
-- **Naive**: SE ratio ~0.3 indicates 3x underestimation of uncertainty
-- **Influence**: SE ratio ~1.0 indicates properly calibrated standard errors
+The influence function correction produces valid confidence intervals. See [Validation](../validation/index.md) for full results.
 
 ## Real-World Applications
 

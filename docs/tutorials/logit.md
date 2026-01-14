@@ -91,17 +91,13 @@ print(f"95% CI:   [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 
 ## Expected Results
 
-From Monte Carlo validation:
+From [Eval 01: Parameter Recovery](../validation/eval_01.md):
 
-| Method | Coverage | SE Ratio | RMSE |
-|--------|----------|----------|------|
-| Naive | ~3% | ~0.03 | 0.108 |
-| **Influence** | **~90%** | **~0.93** | 0.054 |
+| Family | Corr(α) | Corr(β) | Status |
+|--------|---------|---------|--------|
+| logit | 0.963 | 0.968 | PASS |
 
-### Interpretation
-
-- **Naive**: Nearly zero coverage - severely underestimates SE
-- **Influence**: Near-target coverage with well-calibrated SE
+The influence function correction produces valid confidence intervals. See [Validation](../validation/index.md) for full results.
 
 ## Alternative Targets
 
