@@ -453,6 +453,7 @@ def run_round_g_se_validation(
     M: int = 100,
     n_folds: int = 30,
     epochs: int = 50,
+    lambda_methods: list = None,
     verbose: bool = True,
 ) -> Dict[str, Any]:
     """
@@ -463,111 +464,141 @@ def run_round_g_se_validation(
     - Coverage: 93-97%
     - SE Ratio: 0.9-1.1
 
+    Args:
+        lambda_methods: List of methods to compare (default: ["aggregate"])
+                       Options: "aggregate", "lgbm", "mlp", "rf", "ridge"
+
     Returns dict with results.
     """
     import warnings
     warnings.filterwarnings("ignore")
 
+    if lambda_methods is None:
+        lambda_methods = ["aggregate"]
+
     print("\n" + "=" * 80)
     print("ROUND G: SE CALIBRATION (Multi-Seed)")
     print("=" * 80)
     print(f"\nSettings: n={n}, M={M}, n_folds={n_folds}, epochs={epochs}")
+    print(f"Lambda methods: {lambda_methods}")
 
     # Get true mu from seed 0
     _, _, _, dgp_info = generate_loan_application_data(n=n, seed=0)
     mu_true = dgp_info["mu_true"]
     print(f"True μ* = {mu_true:.6f}")
 
-    print(f"\nRunning {M} seeds...")
+    all_results = {}
 
-    mu_hats = []
-    ses = []
-    covers = 0
+    for lambda_method in lambda_methods:
+        print(f"\n--- Lambda method: {lambda_method} ---")
+        print(f"Running {M} seeds...")
 
-    iterator = tqdm(range(M), desc="Seeds") if verbose else range(M)
+        mu_hats = []
+        ses = []
+        covers = 0
 
-    for seed in iterator:
-        # Generate data with this seed
-        Y, T, X, _ = generate_loan_application_data(n=n, seed=seed)
+        iterator = tqdm(range(M), desc=f"{lambda_method}") if verbose else range(M)
 
-        # Run NN inference
-        try:
-            result = structural_dml(
-                Y=Y,
-                T=T,
-                X=X,
-                family="logit",
-                n_folds=n_folds,
-                epochs=epochs,
-                lambda_method="aggregate",
-                verbose=False,
-            )
+        for seed in iterator:
+            # Generate data with this seed
+            Y, T, X, _ = generate_loan_application_data(n=n, seed=seed)
 
-            mu_hat = result.mu_hat
-            se = result.se
+            # Run NN inference
+            try:
+                result = structural_dml(
+                    Y=Y,
+                    T=T,
+                    X=X,
+                    family="logit",
+                    n_folds=n_folds,
+                    epochs=epochs,
+                    lambda_method=lambda_method,
+                    verbose=False,
+                )
 
-            mu_hats.append(mu_hat)
-            ses.append(se)
+                mu_hat = result.mu_hat
+                se = result.se
 
-            # Check coverage
-            ci_lo = mu_hat - 1.96 * se
-            ci_hi = mu_hat + 1.96 * se
-            if ci_lo <= mu_true <= ci_hi:
-                covers += 1
+                mu_hats.append(mu_hat)
+                ses.append(se)
 
-        except Exception as e:
-            # If fit fails, skip
-            pass
+                # Check coverage
+                ci_lo = mu_hat - 1.96 * se
+                ci_hi = mu_hat + 1.96 * se
+                if ci_lo <= mu_true <= ci_hi:
+                    covers += 1
 
-    # Compute statistics
-    n_valid = len(mu_hats)
-    if n_valid == 0:
-        print("ERROR: All fits failed!")
-        return {"status": "FAIL", "error": "All fits failed"}
+            except Exception as e:
+                # If fit fails, skip
+                pass
 
-    mu_hats = np.array(mu_hats)
-    ses = np.array(ses)
+        # Compute statistics
+        n_valid = len(mu_hats)
+        if n_valid == 0:
+            print(f"ERROR: All fits failed for {lambda_method}!")
+            all_results[lambda_method] = {"status": "FAIL", "error": "All fits failed"}
+            continue
 
-    coverage = covers / n_valid
-    mean_se = np.mean(ses)
-    empirical_se = np.std(mu_hats)
-    se_ratio = mean_se / empirical_se if empirical_se > 0 else np.inf
-    mean_bias = np.mean(mu_hats) - mu_true
+        mu_hats = np.array(mu_hats)
+        ses = np.array(ses)
 
-    # Print results
-    print(f"\n--- Results ({n_valid}/{M} valid) ---")
-    print(f"  Mean μ̂:       {np.mean(mu_hats):.6f}")
-    print(f"  Bias:         {mean_bias:.6f}")
-    print(f"  Coverage:     {coverage*100:.1f}% (target: 93-97%)")
-    print(f"  Mean SE:      {mean_se:.6f}")
-    print(f"  Empirical SE: {empirical_se:.6f}")
-    print(f"  SE Ratio:     {se_ratio:.3f} (target: 0.9-1.1)")
+        coverage = covers / n_valid
+        mean_se = np.mean(ses)
+        empirical_se = np.std(mu_hats)
+        se_ratio = mean_se / empirical_se if empirical_se > 0 else np.inf
+        mean_bias = np.mean(mu_hats) - mu_true
 
-    # Checks
-    coverage_pass = 0.93 <= coverage <= 0.97
-    se_ratio_pass = 0.9 <= se_ratio <= 1.1
+        # Checks
+        coverage_pass = 0.93 <= coverage <= 0.97
+        se_ratio_pass = 0.9 <= se_ratio <= 1.1
+        status = "PASS" if (coverage_pass and se_ratio_pass) else "FAIL"
 
-    status = "PASS" if (coverage_pass and se_ratio_pass) else "FAIL"
+        all_results[lambda_method] = {
+            "n_valid": n_valid,
+            "mean_mu_hat": np.mean(mu_hats),
+            "bias": mean_bias,
+            "coverage": coverage,
+            "mean_se": mean_se,
+            "empirical_se": empirical_se,
+            "se_ratio": se_ratio,
+            "coverage_pass": coverage_pass,
+            "se_ratio_pass": se_ratio_pass,
+            "status": status,
+        }
 
-    print(f"\n  Coverage check: {'PASS' if coverage_pass else 'FAIL'}")
-    print(f"  SE ratio check: {'PASS' if se_ratio_pass else 'FAIL'}")
-    print(f"\n  Status: {status}")
+        print(f"  Valid: {n_valid}/{M}")
+        print(f"  Bias: {mean_bias:.6f}")
+        print(f"  Coverage: {coverage*100:.1f}%")
+        print(f"  SE Ratio: {se_ratio:.3f}")
+        print(f"  Status: {status}")
+
+    # Print comparison table
+    print("\n" + "=" * 80)
+    print("COMPARISON TABLE")
     print("=" * 80)
+    print(f"\n{'Method':<12} {'Coverage':>10} {'SE Ratio':>10} {'Bias':>10} {'Status':>8}")
+    print("-" * 55)
+
+    for method, res in all_results.items():
+        if "error" in res:
+            print(f"{method:<12} {'FAILED':>10} {'-':>10} {'-':>10} {'FAIL':>8}")
+        else:
+            print(f"{method:<12} {res['coverage']*100:>9.1f}% {res['se_ratio']:>10.3f} "
+                  f"{res['bias']:>10.4f} {res['status']:>8}")
+
+    print("=" * 80)
+
+    # Overall status
+    any_pass = any(r.get("status") == "PASS" for r in all_results.values())
+    all_pass = all(r.get("status") == "PASS" for r in all_results.values())
 
     return {
         "n": n,
         "M": M,
-        "n_valid": n_valid,
         "mu_true": mu_true,
-        "mean_mu_hat": np.mean(mu_hats),
-        "bias": mean_bias,
-        "coverage": coverage,
-        "mean_se": mean_se,
-        "empirical_se": empirical_se,
-        "se_ratio": se_ratio,
-        "coverage_pass": coverage_pass,
-        "se_ratio_pass": se_ratio_pass,
-        "status": status,
+        "results": all_results,
+        "any_pass": any_pass,
+        "all_pass": all_pass,
     }
 
 
@@ -746,7 +777,14 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     # Check for Round G modes
-    if "--round-g" in args:
+    if "--compare" in args:
+        # Compare Lambda methods (M=50 for speed)
+        # Note: structural_dml supports: aggregate, mlp, rf, ridge, lgbm
+        result = run_round_g_se_validation(
+            n=1000, M=50, n_folds=20, epochs=30,
+            lambda_methods=["aggregate", "lgbm"]
+        )
+    elif "--round-g" in args:
         # Full Round G: M=100 seeds
         result = run_round_g_se_validation(n=1000, M=100, n_folds=30, epochs=50)
     elif "--quick-g" in args:

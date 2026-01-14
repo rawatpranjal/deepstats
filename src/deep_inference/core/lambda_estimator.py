@@ -7,6 +7,12 @@ from typing import Optional, Literal
 from sklearn.neural_network import MLPRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import Ridge
+from sklearn.multioutput import MultiOutputRegressor
+try:
+    from lightgbm import LGBMRegressor
+    HAS_LGBM = True
+except ImportError:
+    HAS_LGBM = False
 
 
 class LambdaEstimator:
@@ -21,11 +27,12 @@ class LambdaEstimator:
         'mlp': Multi-layer perceptron (sklearn MLPRegressor)
         'rf': Random forest (sklearn RandomForestRegressor)
         'ridge': Ridge regression (sklearn Ridge)
+        'lgbm': LightGBM (fast gradient boosting)
     """
 
     def __init__(
         self,
-        method: Literal['mlp', 'rf', 'ridge'] = 'mlp',
+        method: Literal['mlp', 'rf', 'ridge', 'lgbm'] = 'mlp',
         theta_dim: int = 2,
         ridge_alpha: float = 1.0,
     ):
@@ -66,6 +73,20 @@ class LambdaEstimator:
             )
         elif self.method == 'ridge':
             return Ridge(alpha=self.ridge_alpha)
+        elif self.method == 'lgbm':
+            if not HAS_LGBM:
+                raise ImportError("LightGBM not installed. Run: pip install lightgbm")
+            # Wrap in MultiOutputRegressor for multi-output support
+            return MultiOutputRegressor(
+                LGBMRegressor(
+                    n_estimators=100,
+                    max_depth=6,
+                    learning_rate=0.1,
+                    min_child_samples=20,
+                    random_state=42,
+                    verbose=-1,
+                )
+            )
         else:
             raise ValueError(f"Unknown method: {self.method}")
 
