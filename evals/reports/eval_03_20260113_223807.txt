@@ -1,0 +1,303 @@
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+============================================================
+EVAL 03: LAMBDA ESTIMATION (RUTHLESS)
+============================================================
+
+This eval tests Lambda estimation across ALL THREE REGIMES.
+We WANT to see FAIL when implementation is wrong.
+
+============================================================
+PART A: Regime A (RCT) - ComputeLambda
+============================================================
+
+  Test A1: Quadrature vs MC (50k samples)
+    Lambda_quad =
+      [[0.198986, -0.029888],
+       [-0.029888, 0.144326]]
+    Eigenvalues: [0.131156, 0.212156]
+    Condition number: 1.62
+    Determinant: 0.027826
+    Lambda_mc =
+      [[0.198964, -0.029879],
+       [-0.029879, 0.144401]]
+    Relative error: 0.03%
+    Test A1: PASS (threshold < 1%)
+
+  Test A2: MC convergence rate
+    M=  100: error=0.034347
+    M=  500: error=0.009617
+    M= 1000: error=0.007973
+    M= 5000: error=0.006212
+    Fitted rate: 0.43 (should be ~0.5)
+    Test A2: PASS (0.3 < rate < 0.7)
+
+  Test A3: Y-independence
+    ||Lambda1 - Lambda2|| = 0.00e+00
+    Test A3: PASS (should be 0)
+
+  Part A completed in 0.26s
+
+============================================================
+PART B: Regime B (Linear) - AnalyticLambda
+============================================================
+
+  Test B1: Lambda = E[TT'|X] analytical
+    x=0.00: E[T|X]=0.0000, E[T^2|X]=1.0000, cond=1.00, error=0.00e+00
+    x=0.25: E[T|X]=0.1250, E[T^2|X]=1.0156, cond=1.28, error=0.00e+00
+    x=0.50: E[T|X]=0.2500, E[T^2|X]=1.0625, cond=1.65, error=0.00e+00
+    x=0.75: E[T|X]=0.3750, E[T^2|X]=1.1406, cond=2.11, error=0.00e+00
+    x=1.00: E[T|X]=0.5000, E[T^2|X]=1.2500, cond=2.69, error=0.00e+00
+    Condition number range: [1.00, 2.69]
+    Test B1: PASS (max error < 1%)
+
+  Test B2: theta-independence
+    Testing at x=0.5 with different theta values
+    Max ||Lambda(theta) - Lambda(theta')|| = 0.00e+00
+    Test B2: PASS (should be 0)
+
+  Test B3: Confounded T at x=0.25
+    n_samples near x: 996
+    Lambda_empirical =
+      [[1.0000, 0.1551],
+       [0.1551, 0.9677]]
+    Lambda_oracle =
+      [[1.0000, 0.1250],
+       [0.1250, 1.0156]]
+    Relative error: 4.5%
+
+  Test B3: Confounded T at x=0.50
+    n_samples near x: 966
+    Lambda_empirical =
+      [[1.0000, 0.2042],
+       [0.2042, 1.0863]]
+    Lambda_oracle =
+      [[1.0000, 0.2500],
+       [0.2500, 1.0625]]
+    Relative error: 4.6%
+
+  Test B3: Confounded T at x=0.75
+    n_samples near x: 1009
+    Lambda_empirical =
+      [[1.0000, 0.3327],
+       [0.3327, 1.1633]]
+    Lambda_oracle =
+      [[1.0000, 0.3750],
+       [0.3750, 1.1406]]
+    Relative error: 4.0%
+    Test B3: PASS (max error < 10%)
+
+  Part B completed in 0.02s
+
+============================================================
+PART C: Regime C (Obs) - EstimateLambda (ALL METHODS)
+============================================================
+
+  DGP: Regime C (Confounded Logit)
+    alpha*(x) = 0.0 + 0.5*sin(x)
+    beta*(x) = 1.0 + 0.5*x
+    T | X ~ N(beta*(x), 0.5^2)
+
+  Computing Oracle Lambda(x) for 500 points (MC=5000)...
+  Oracle computation time: 7.23s
+  Oracle stats:
+    eig_max: mean=0.2519, std=0.0985
+    eig_min: mean=0.0262, std=0.0207
+    element-wise std: 0.0609
+
+  Testing 5 methods: ['aggregate', 'mlp', 'ridge', 'rf', 'lgbm']
+------------------------------------------------------------
+
+  --- Method: aggregate ---
+    Corr(eig1): 0.0000 FAIL
+    Mean Frob:  0.1211 PASS
+    Max Frob:   0.1837
+    P95 Frob:   0.1735
+    Std (x-dep): 0.000000 FAIL
+    Min eig:    0.041399 (PSD: 100%)
+    Bias:       -0.001129
+    Var ratio:  0.0000
+    Time:       0.039s (fit=0.027s, pred=0.012s)
+
+  --- Method: mlp ---
+    Corr(eig1): 0.9972 PASS
+    Mean Frob:  0.0175 PASS
+    Max Frob:   0.0507
+    P95 Frob:   0.0381
+    Std (x-dep): 0.064873 PASS
+    Min eig:    0.000100 (PSD: 100%)
+    Bias:       0.000710
+    Var ratio:  1.1204
+    Time:       17.190s (fit=17.130s, pred=0.060s)
+
+  --- Method: ridge ---
+    Corr(eig1): 0.5079 FAIL
+    Mean Frob:  0.0868 PASS
+    Max Frob:   0.1548
+    P95 Frob:   0.1438
+    Std (x-dep): 0.021756 PASS
+    Min eig:    0.000100 (PSD: 100%)
+    Bias:       -0.001037
+    Var ratio:  0.3786
+    Time:       0.098s (fit=0.092s, pred=0.006s)
+
+  --- Method: rf ---
+    Corr(eig1): 0.9043 PASS
+    Mean Frob:  0.0602 PASS
+    Max Frob:   0.4046
+    P95 Frob:   0.1782
+    Std (x-dep): 0.078460 PASS
+    Min eig:    0.000160 (PSD: 100%)
+    Bias:       -0.000880
+    Var ratio:  1.5834
+    Time:       0.371s (fit=0.338s, pred=0.033s)
+
+  --- Method: lgbm ---
+    Corr(eig1): 0.9777 PASS
+    Mean Frob:  0.0326 PASS
+    Max Frob:   0.1489
+    P95 Frob:   0.0951
+    Std (x-dep): 0.068634 PASS
+    Min eig:    0.000100 (PSD: 100%)
+    Bias:       -0.001127
+    Var ratio:  1.2358
+    Time:       0.747s (fit=0.727s, pred=0.020s)
+
+--------------------------------------------------------------------------------
+  METHOD COMPARISON TABLE (Extended)
+--------------------------------------------------------------------------------
+  Method     Corr     Frob     Max      P95      MinEig   PSD%   Time    
+  ------------------------------------------------------------------------------
+  aggregate  0.0000   0.1211   0.1837   0.1735   0.0414   100    0.039   
+  mlp        0.9972   0.0175   0.0507   0.0381   0.0001   100    17.190  
+  ridge      0.5079   0.0868   0.1548   0.1438   0.0001   100    0.098   
+  rf         0.9043   0.0602   0.4046   0.1782   0.0002   100    0.371   
+  lgbm       0.9777   0.0326   0.1489   0.0951   0.0001   100    0.747   
+
+--------------------------------------------------------------------------------
+  ADDITIONAL STATISTICS
+--------------------------------------------------------------------------------
+  Method     Bias       MAE        VarRatio   R²         Result    
+  ------------------------------------------------------------------------------
+  aggregate  -0.001129  0.055160   0.0000     -0.0009    1/3       
+  mlp        0.000710   0.007642   1.1204     0.9672     3/3 PASS  
+  ridge      -0.001037  0.041590   0.3786     0.2373     2/3       
+  rf         -0.000880  0.025605   1.5834     0.3759     3/3 PASS  
+  lgbm       -0.001127  0.013249   1.2358     0.8315     3/3 PASS  
+
+  BEST METHOD: mlp (3/3 tests passed)
+
+  Part C completed in 27.85s
+    - Oracle computation: 7.23s
+    - aggregate: 0.04s
+    - mlp: 17.19s
+    - ridge: 0.10s
+    - rf: 0.37s
+    - lgbm: 0.75s
+
+============================================================
+TIMING SUMMARY
+============================================================
+  Part A (RCT):           0.26s
+  Part B (Linear):        0.02s
+  Part C (Observational): 27.85s
+  ------------------------------
+  TOTAL:                  28.13s
+
+============================================================
+SUMMARY
+============================================================
+
+  Part A (RCT):
+    A1: Quadrature vs MC............PASS (0.03%)
+    A2: MC convergence rate.........PASS (rate=0.43)
+    A3: Y-independence..............PASS (diff=0.00e+00)
+
+  Part B (Linear):
+    B1: Lambda = E[TT'|X]...........PASS (error=0.00e+00)
+    B2: theta-independence..........PASS (diff=0.00e+00)
+    B3: Confounded T................PASS (error=4.6%)
+
+  Part C (Observational):
+    C1: Corr(lambda_1_hat, lambda_1*)..PASS (1.00)
+    C2: Mean Frobenius..............PASS (0.0175)
+    C3: x-dependence................PASS (std=0.0649)
+
+============================================================
+STATISTICS SUMMARY (Best Method: mlp)
+============================================================
+  Correlation:     0.9972 (threshold: 0.70)
+  Mean Frobenius:  0.0175 (threshold: 0.15)
+  Max Frobenius:   0.0507
+  95th percentile: 0.0381
+  Min Eigenvalue:  0.000100 (>0 = PSD)
+  PSD Rate:        100%
+  Bias:            0.000710 (should be ~0)
+  Variance Ratio:  1.1204 (should be ~1)
+  Mean R²:         0.9672
+
+============================================================
+EVAL 03: 9/9 PASSED
+STATUS: ALL PASS
+============================================================
+
+============================================================
+PART D: Regularization Ablation Study
+============================================================
+
+  Generating fresh data (n=500)...
+  Computing Oracle Lambda (MC=5000)...
+
+  Testing 12 configurations...
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+  REGULARIZATION EFFECTS
+--------------------------------------------------------------------------------
+  Config           Corr     Frob     Bias         VarRatio   Time    
+  ------------------------------------------------------------------------------
+  mlp_noreg        0.9973   0.0174   0.000755     1.1179     18.09   
+  mlp_default      0.9972   0.0175   0.000710     1.1204     14.63   
+  mlp_strong       0.9975   0.0171   0.000718     1.1151     16.62   
+  ------------------------------------------------------------------------------
+  ridge_weak       0.5077   0.0868   -0.001036    0.3795     0.16    
+  ridge_default    0.5079   0.0868   -0.001037    0.3786     0.09    
+  ridge_strong     0.5204   0.0883   -0.001088    0.3027     0.08    
+  ------------------------------------------------------------------------------
+  rf_noreg         0.8707   0.0763   -0.000640    1.8202     0.36    
+  rf_default       0.9043   0.0602   -0.000880    1.5834     0.33    
+  rf_strong        0.9923   0.0206   -0.001224    1.1151     0.22    
+  ------------------------------------------------------------------------------
+  lgbm_noreg       0.9777   0.0326   -0.001127    1.2358     0.91    
+  lgbm_weak        0.9780   0.0325   -0.001127    1.2335     0.35    
+  lgbm_strong      0.9785   0.0322   -0.001127    1.2320     0.36    
+
+  KEY FINDINGS:
+    MLP: Best corr=0.9975 at mlp_strong
+    Ridge: Best corr=0.5204 at ridge_strong
+    RF: Best corr=0.9923 at rf_strong
+    LightGBM: Best corr=0.9785 at lgbm_strong
+
+  Part D completed in 62.50s

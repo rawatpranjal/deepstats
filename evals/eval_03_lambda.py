@@ -658,10 +658,184 @@ def run_part_c(verbose: bool = True) -> dict:
 
 
 # =============================================================================
+# PART D: REGULARIZATION ABLATION STUDY
+# =============================================================================
+
+def run_regularization_study(verbose: bool = True, lambda_oracle=None, X=None, T=None, Y=None, theta_true=None) -> dict:
+    """
+    Part D: Regularization ablation study.
+
+    Tests each method with different regularization settings to understand
+    the effect of regularization on Lambda estimation quality.
+    """
+    start_time = time.time()
+
+    if verbose:
+        print("\n" + "=" * 60)
+        print("PART D: Regularization Ablation Study")
+        print("=" * 60)
+
+    # If data not provided, generate fresh
+    if lambda_oracle is None:
+        dgp = CanonicalDGP()
+        n = 500
+        n_mc_oracle = 5000
+
+        Y, T, X, theta_true, mu_true = generate_canonical_dgp(n=n, seed=42, dgp=dgp)
+        X_np = X.numpy().flatten()
+
+        if verbose:
+            print(f"\n  Generating fresh data (n={n})...")
+            print(f"  Computing Oracle Lambda (MC={n_mc_oracle})...")
+
+        np.random.seed(123)
+        lambda_oracle = np.zeros((n, 2, 2))
+        for i in range(n):
+            lambda_oracle[i] = oracle_lambda_conditional(X_np[i], dgp, n_samples=n_mc_oracle)
+
+    n = len(lambda_oracle)
+
+    # Define regularization configurations
+    configs = [
+        # MLP: L2 penalty via alpha
+        {"method": "mlp", "mlp_alpha": 0, "label": "mlp_noreg"},
+        {"method": "mlp", "mlp_alpha": 0.0001, "label": "mlp_default"},
+        {"method": "mlp", "mlp_alpha": 0.01, "label": "mlp_strong"},
+        # Ridge: L2 penalty via alpha
+        {"method": "ridge", "ridge_alpha": 0.01, "label": "ridge_weak"},
+        {"method": "ridge", "ridge_alpha": 1.0, "label": "ridge_default"},
+        {"method": "ridge", "ridge_alpha": 100.0, "label": "ridge_strong"},
+        # RF: depth constraint
+        {"method": "rf", "rf_max_depth": None, "label": "rf_noreg"},
+        {"method": "rf", "rf_max_depth": 10, "label": "rf_default"},
+        {"method": "rf", "rf_max_depth": 3, "label": "rf_strong"},
+        # LightGBM: L2 penalty
+        {"method": "lgbm", "lgbm_reg_lambda": 0, "label": "lgbm_noreg"},
+        {"method": "lgbm", "lgbm_reg_lambda": 0.1, "label": "lgbm_weak"},
+        {"method": "lgbm", "lgbm_reg_lambda": 1.0, "label": "lgbm_strong"},
+    ]
+
+    results = {}
+
+    try:
+        from deep_inference.lambda_.estimate import EstimateLambda
+        from deep_inference.models import Logit
+
+        model = Logit()
+
+        if verbose:
+            print(f"\n  Testing {len(configs)} configurations...")
+            print("-" * 80)
+
+        for cfg in configs:
+            label = cfg["label"]
+            method = cfg["method"]
+
+            # Build kwargs for EstimateLambda
+            kwargs = {"method": method}
+            if "mlp_alpha" in cfg:
+                kwargs["mlp_alpha"] = cfg["mlp_alpha"]
+            if "ridge_alpha" in cfg:
+                kwargs["ridge_alpha"] = cfg["ridge_alpha"]
+            if "rf_max_depth" in cfg:
+                kwargs["rf_max_depth"] = cfg["rf_max_depth"]
+            if "lgbm_reg_lambda" in cfg:
+                kwargs["lgbm_reg_lambda"] = cfg["lgbm_reg_lambda"]
+
+            try:
+                t0 = time.time()
+                strategy = EstimateLambda(**kwargs)
+                strategy.fit(X=X, T=T, Y=Y, theta_hat=theta_true, model=model)
+                fit_time = time.time() - t0
+
+                t0 = time.time()
+                lambda_hat = strategy.predict(X, theta_true).numpy()
+                predict_time = time.time() - t0
+
+                # Compute metrics
+                metrics = evaluate_lambda_method(
+                    label, lambda_hat, lambda_oracle, n,
+                    fit_time=fit_time, predict_time=predict_time
+                )
+                results[label] = metrics
+
+            except Exception as e:
+                results[label] = {"error": str(e)}
+                if verbose:
+                    print(f"  {label}: ERROR - {e}")
+
+        # Summary table
+        if verbose:
+            print("\n" + "-" * 80)
+            print("  REGULARIZATION EFFECTS")
+            print("-" * 80)
+            header = f"  {'Config':<16} {'Corr':<8} {'Frob':<8} {'Bias':<12} {'VarRatio':<10} {'Time':<8}"
+            print(header)
+            print("  " + "-" * 78)
+
+            current_method = None
+            for cfg in configs:
+                label = cfg["label"]
+                method = cfg["method"]
+
+                # Print separator between methods
+                if method != current_method:
+                    if current_method is not None:
+                        print("  " + "-" * 78)
+                    current_method = method
+
+                m = results.get(label)
+                if m is None or "error" in m:
+                    print(f"  {label:<16} {'ERROR':<8}")
+                else:
+                    print(f"  {label:<16} {m['corr']:<8.4f} {m['frob']:<8.4f} "
+                          f"{m['bias']:<12.6f} {m['var_ratio']:<10.4f} {m['total_time']:<8.2f}")
+
+            # Key findings
+            print("\n  KEY FINDINGS:")
+
+            # Analyze MLP
+            mlp_results = [results.get(f"mlp_{r}") for r in ["noreg", "default", "strong"]]
+            if all(m and "error" not in m for m in mlp_results):
+                best_mlp = max(mlp_results, key=lambda x: x['corr'])
+                print(f"    MLP: Best corr={best_mlp['corr']:.4f} at {best_mlp['method']}")
+
+            # Analyze Ridge
+            ridge_results = [results.get(f"ridge_{r}") for r in ["weak", "default", "strong"]]
+            if all(m and "error" not in m for m in ridge_results):
+                best_ridge = max(ridge_results, key=lambda x: x['corr'])
+                print(f"    Ridge: Best corr={best_ridge['corr']:.4f} at {best_ridge['method']}")
+
+            # Analyze RF
+            rf_results = [results.get(f"rf_{r}") for r in ["noreg", "default", "strong"]]
+            if all(m and "error" not in m for m in rf_results):
+                best_rf = max(rf_results, key=lambda x: x['corr'])
+                print(f"    RF: Best corr={best_rf['corr']:.4f} at {best_rf['method']}")
+
+            # Analyze LightGBM
+            lgbm_results = [results.get(f"lgbm_{r}") for r in ["noreg", "weak", "strong"]]
+            if all(m and "error" not in m for m in lgbm_results):
+                best_lgbm = max(lgbm_results, key=lambda x: x['corr'])
+                print(f"    LightGBM: Best corr={best_lgbm['corr']:.4f} at {best_lgbm['method']}")
+
+    except ImportError as e:
+        if verbose:
+            print(f"  [SKIP] EstimateLambda not available: {e}")
+
+    elapsed = time.time() - start_time
+    results["elapsed_time"] = elapsed
+
+    if verbose:
+        print(f"\n  Part D completed in {elapsed:.2f}s")
+
+    return results
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
-def run_eval_03(verbose: bool = True) -> dict:
+def run_eval_03(verbose: bool = True, reg_study: bool = False) -> dict:
     """
     Run Lambda estimation evaluation across all regimes.
 
@@ -774,7 +948,7 @@ def run_eval_03(verbose: bool = True) -> dict:
         print("This is EXPECTED behavior - the eval is working correctly.")
     print("=" * 60)
 
-    return {
+    result = {
         "part_a": results_a,
         "part_b": results_b,
         "part_c": results_c,
@@ -784,6 +958,19 @@ def run_eval_03(verbose: bool = True) -> dict:
         "total_time": total_elapsed,
     }
 
+    # Optional: Run regularization study
+    if reg_study:
+        results_d = run_regularization_study(verbose=verbose)
+        result["part_d"] = results_d
+
+    return result
+
 
 if __name__ == "__main__":
-    result = run_eval_03(verbose=True)
+    import argparse
+    parser = argparse.ArgumentParser(description="Eval 03: Lambda Estimation")
+    parser.add_argument("--reg-study", action="store_true",
+                        help="Run regularization ablation study (adds ~2 min)")
+    args = parser.parse_args()
+
+    result = run_eval_03(verbose=True, reg_study=args.reg_study)

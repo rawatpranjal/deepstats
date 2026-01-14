@@ -42,18 +42,27 @@ class EstimateLambda(BaseLambdaStrategy):
         self,
         method: Literal["mlp", "rf", "ridge", "aggregate", "lgbm"] = "aggregate",
         ridge_alpha: float = 1.0,
+        mlp_alpha: float = 0.0001,
+        rf_max_depth: Optional[int] = 10,
+        lgbm_reg_lambda: float = 0.0,
     ):
         """
         Initialize EstimateLambda strategy.
 
         Args:
-            method: Regression method ("aggregate" [default], "mlp", "rf", "ridge")
+            method: Regression method ("aggregate" [default], "mlp", "rf", "ridge", "lgbm")
                     "aggregate" is the most stable and recommended for most cases.
                     Other methods may produce non-PSD matrices requiring projection.
-            ridge_alpha: Regularization for ridge regression
+            ridge_alpha: L2 regularization for ridge regression (default 1.0)
+            mlp_alpha: L2 regularization for MLP (default 0.0001)
+            rf_max_depth: Max tree depth for RF (default 10, None=unlimited)
+            lgbm_reg_lambda: L2 regularization for LightGBM (default 0.0)
         """
         self.method = method
         self.ridge_alpha = ridge_alpha
+        self.mlp_alpha = mlp_alpha
+        self.rf_max_depth = rf_max_depth
+        self.lgbm_reg_lambda = lgbm_reg_lambda
         self._model = None
         self._mean_hessian = None
         self._d_theta = None
@@ -146,6 +155,7 @@ class EstimateLambda(BaseLambdaStrategy):
             hidden_layer_sizes=(64, 32),
             max_iter=200,
             early_stopping=True,
+            alpha=self.mlp_alpha,  # L2 regularization
             random_state=42,
         )
         self._mlp.fit(X_np, targets_np)
@@ -173,7 +183,7 @@ class EstimateLambda(BaseLambdaStrategy):
 
         self._rf = RandomForestRegressor(
             n_estimators=100,
-            max_depth=10,
+            max_depth=self.rf_max_depth,  # Depth regularization
             random_state=42,
         )
         self._rf.fit(X_np, targets_np)
@@ -193,6 +203,7 @@ class EstimateLambda(BaseLambdaStrategy):
             n_estimators=100,
             max_depth=6,
             learning_rate=0.1,
+            reg_lambda=self.lgbm_reg_lambda,  # L2 regularization
             random_state=42,
             verbose=-1,
         )

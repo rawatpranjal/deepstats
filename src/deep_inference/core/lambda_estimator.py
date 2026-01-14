@@ -80,12 +80,12 @@ class LambdaEstimator:
             # Heavy regularization to ensure stable (near-PSD) Lambda estimates
             return MultiOutputRegressor(
                 LGBMRegressor(
-                    n_estimators=50,        # Fewer trees
-                    max_depth=3,            # Shallow trees
-                    learning_rate=0.05,     # Slower learning
-                    min_child_samples=50,   # More samples per leaf
-                    reg_alpha=1.0,          # L1 regularization
-                    reg_lambda=1.0,         # L2 regularization
+                    n_estimators=30,        # Few trees
+                    max_depth=2,            # Very shallow
+                    learning_rate=0.05,     # Slow learning
+                    min_child_samples=100,  # Many samples per leaf
+                    reg_alpha=2.0,          # Strong L1
+                    reg_lambda=2.0,         # Strong L2
                     random_state=42,
                     verbose=-1,
                 )

@@ -2,6 +2,16 @@
 
 ## 2026-01-13
 
+### Eval 03: Regularization Ablation Study (Part D)
+- Added `--reg-study` CLI flag to run regularization ablation (12 configs, ~60s)
+- Exposed regularization params in EstimateLambda: `mlp_alpha`, `rf_max_depth`, `lgbm_reg_lambda`
+- **Key findings:**
+  - MLP: No effect (all ~0.997 corr regardless of alpha)
+  - Ridge: Slight improvement with MORE reg (0.52 at α=100 vs 0.51 at α=1)
+  - **RF: HUGE improvement** with shallow trees (0.992 at depth=3 vs 0.871 at depth=None)
+  - LightGBM: Minimal effect (0.978 across all settings)
+- **Conclusion**: RF default (max_depth=10) is overfitting; max_depth=3 is optimal
+
 ### Documentation Overhaul: New API Alignment
 - Updated `CLAUDE.md` package structure to reflect new modules (models/, targets/, lambda_/, engine/)
 - Updated `README.md` with new `inference()` API section and regime table
