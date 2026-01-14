@@ -5,25 +5,46 @@ Complete API documentation for `deep-inference`.
 ```{toctree}
 :maxdepth: 2
 
-families
 inference
+families
+targets
+lambda
 models
 metrics
 ```
 
 ## Quick Reference
 
-### Main Entry Point
+### Two APIs
+
+| API | Use Case |
+|-----|----------|
+| `structural_dml()` | Production, 8 families, fixed target E[β] |
+| `inference()` | Flexible targets, regime detection, RCT support |
+
+### Main Entry Points
 
 ```python
-from deep_inference import structural_dml
+from deep_inference import structural_dml, inference
 
+# Legacy API (production-ready)
 result = structural_dml(
     Y=Y, T=T, X=X,
     family='linear',
     hidden_dims=[64, 32],
     epochs=100,
     n_folds=50
+)
+
+# New API (flexible)
+from deep_inference.lambda_.compute import Normal
+
+result = inference(
+    Y=Y, T=T, X=X,
+    model='logit',
+    target='ame',              # Flexible target
+    is_randomized=True,        # Regime A
+    treatment_dist=Normal(0, 1)
 )
 ```
 
@@ -86,6 +107,14 @@ The result object returned by `structural_dml`:
 ### families
 
 Statistical families defining loss functions, gradients, Hessians, and influence scores.
+
+### targets
+
+Target functionals for inference: `AverageParameter`, `AME`, `CustomTarget`.
+
+### lambda
+
+Lambda estimation strategies: `ComputeLambda` (Regime A), `AnalyticLambda` (B), `EstimateLambda` (C).
 
 ### models
 

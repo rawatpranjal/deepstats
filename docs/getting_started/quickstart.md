@@ -91,6 +91,69 @@ result = structural_dml(Y, T, X, family='tobit')
 # And more: gamma, gumbel, negbin, weibull
 ```
 
+## New `inference()` API
+
+The new API provides additional flexibility for targets and experimental designs.
+
+### Flexible Targets
+
+```python
+from deep_inference import inference
+
+# Average Marginal Effect (probability scale, not log-odds)
+result = inference(
+    Y, T, X,
+    model='logit',
+    target='ame',
+    t_tilde=0.0  # Evaluate at T=0
+)
+
+print(f"AME: {result.mu_hat:.4f} ± {result.se:.4f}")
+```
+
+### Custom Target Functions
+
+Define any target and get autodiff Jacobians for free:
+
+```python
+import torch
+
+def avg_prediction(x, theta, t_tilde):
+    """Average P(Y=1|T=t̃)"""
+    alpha, beta = theta[0], theta[1]
+    return torch.sigmoid(alpha + beta * t_tilde)
+
+result = inference(
+    Y, T, X,
+    model='logit',
+    target_fn=avg_prediction,
+    t_tilde=0.0
+)
+```
+
+### Randomized Experiments (Regime A)
+
+For RCTs with known treatment distribution, Lambda can be computed instead of estimated:
+
+```python
+from deep_inference.lambda_.compute import Normal
+
+result = inference(
+    Y, T, X,
+    model='logit',
+    target='beta',
+    is_randomized=True,
+    treatment_dist=Normal(mean=0.0, std=1.0)
+)
+
+print(f"Regime: {result.diagnostics['regime']}")  # 'A'
+```
+
+Benefits:
+- No neural network needed for Lambda
+- 2-way cross-fitting (faster)
+- More stable estimates
+
 ## Next Steps
 
 - See [Tutorials](../tutorials/index.md) for detailed examples with each model

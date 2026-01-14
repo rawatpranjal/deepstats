@@ -2,6 +2,15 @@
 
 ## 2026-01-13
 
+### Documentation Overhaul: New API Alignment
+- Updated `CLAUDE.md` package structure to reflect new modules (models/, targets/, lambda_/, engine/)
+- Updated `README.md` with new `inference()` API section and regime table
+- Rewrote `docs/api/inference.md` documenting both `structural_dml()` and `inference()` APIs
+- Created `docs/api/targets.md` (AverageParameter, AME, CustomTarget)
+- Created `docs/api/lambda.md` (Regime A/B/C, ComputeLambda, treatment distributions)
+- Updated `docs/index.md` feature grid and added inference() example
+- Updated `docs/getting_started/quickstart.md` with new API examples
+
 ### Eval 07: End-to-End User Experience + Round G SE Calibration
 - Created `evals/eval_07_e2e.py` demonstrating full analyst workflow
 - Scenario: Loan application with heterogeneous rate sensitivity

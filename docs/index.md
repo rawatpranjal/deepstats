@@ -19,6 +19,14 @@ Deep Learning for Individual Heterogeneity with Valid Inference
     <p>Linear, Logit, Poisson, Tobit, Gamma, NegBin, Weibull, Gumbel</p>
   </div>
   <div class="feature-card">
+    <h3>Flexible Targets</h3>
+    <p>AME, custom targets with autodiff Jacobians</p>
+  </div>
+  <div class="feature-card">
+    <h3>Regime Detection</h3>
+    <p>Auto-selects optimal Lambda strategy for RCTs vs observational data</p>
+  </div>
+  <div class="feature-card">
     <h3>PyTorch Backend</h3>
     <p>Automatic differentiation for exact gradients and Hessians</p>
   </div>
@@ -49,6 +57,22 @@ result = structural_dml(
 
 print(f"Estimate: {result.mu_hat:.4f} +/- {result.se:.4f}")
 print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
+```
+
+### New `inference()` API
+
+The new API supports flexible targets and randomization mode:
+
+```python
+from deep_inference import inference
+from deep_inference.lambda_.compute import Normal
+
+# Average Marginal Effect (probability scale)
+result = inference(Y, T, X, model='logit', target='ame', t_tilde=0.0)
+
+# Randomized experiment (compute Lambda instead of estimating)
+result = inference(Y, T, X, model='logit', target='beta',
+                   is_randomized=True, treatment_dist=Normal(0, 1))
 ```
 
 ## Why deep-inference?

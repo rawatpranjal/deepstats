@@ -26,6 +26,7 @@ import numpy as np
 import torch
 from typing import List, Dict
 from dataclasses import dataclass
+from tqdm import tqdm
 
 sys.path.insert(0, "/Users/pranjal/deepest/src")
 
@@ -51,6 +52,7 @@ def run_single_simulation(
     dgp: CanonicalDGP,
     n_folds: int = 20,
     epochs: int = 50,
+    lambda_method: str = "mlp",
     verbose: bool = False,
 ) -> SimulationResult:
     """
@@ -71,6 +73,8 @@ def run_single_simulation(
             X=X.numpy(),
             model="logit",
             target="ame",
+            t_tilde=0.0,  # Must match DGP's mu_true() definition
+            lambda_method=lambda_method,  # Use MLP for accurate Lambda(x) estimation
             n_folds=n_folds,
             epochs=epochs,
             hidden_dims=[64, 32],
@@ -163,10 +167,11 @@ def compute_coverage_metrics(results: List[SimulationResult], mu_true: float) ->
 
 
 def run_eval_06(
-    M: int = 20,
-    n: int = 1000,
+    M: int = 50,
+    n: int = 5000,
     n_folds: int = 20,
-    epochs: int = 50,
+    epochs: int = 200,
+    lambda_method: str = "mlp",
     verbose: bool = True,
 ):
     """
@@ -177,6 +182,7 @@ def run_eval_06(
         n: Sample size per simulation
         n_folds: Cross-fitting folds
         epochs: Training epochs
+        lambda_method: Lambda estimation method (default: mlp for accurate Λ(x))
     """
     print("=" * 60)
     print("EVAL 06: FREQUENTIST COVERAGE")
@@ -195,6 +201,7 @@ def run_eval_06(
     print(f"  n = {n} observations")
     print(f"  n_folds = {n_folds}")
     print(f"  epochs = {epochs}")
+    print(f"  lambda_method = {lambda_method}")
 
     # Run simulations
     print(f"\n" + "-" * 60)
@@ -202,10 +209,7 @@ def run_eval_06(
     print("-" * 60)
 
     results = []
-    for m in range(1, M + 1):
-        if verbose and m % 5 == 0:
-            print(f"  Running simulation {m}/{M}...")
-
+    for m in tqdm(range(1, M + 1), desc="Simulations", ncols=80):
         result = run_single_simulation(
             sim_id=m,
             n=n,
@@ -213,6 +217,7 @@ def run_eval_06(
             dgp=dgp,
             n_folds=n_folds,
             epochs=epochs,
+            lambda_method=lambda_method,
             verbose=False,
         )
         results.append(result)
@@ -291,5 +296,6 @@ def run_eval_06(
 
 
 if __name__ == "__main__":
-    # Run with modest M for quick test; increase M for rigorous validation
-    result = run_eval_06(M=20, n=1000, n_folds=20, epochs=50)
+    # Run with M=50, n=5000, epochs=200, lambda_method=mlp for rigorous validation
+    # Two key fixes: t_tilde=0.0 (target definition) + lambda_method=mlp (SE accuracy)
+    result = run_eval_06(M=50, n=5000, n_folds=20, epochs=200, lambda_method="mlp")

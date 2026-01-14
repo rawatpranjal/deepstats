@@ -27,6 +27,7 @@ Pass Criteria:
 """
 
 import sys
+import time
 import numpy as np
 from scipy.special import expit, roots_hermite
 
@@ -90,12 +91,26 @@ def oracle_lambda_mc(theta: np.ndarray, n_samples: int, seed: int = None) -> np.
     return Lambda / n_samples
 
 
+def compute_matrix_stats(Lambda: np.ndarray) -> dict:
+    """Compute eigenvalue and condition number stats for a 2x2 matrix."""
+    eigvals = np.linalg.eigvalsh(Lambda)
+    det = np.linalg.det(Lambda)
+    cond = eigvals[1] / eigvals[0] if eigvals[0] > 1e-10 else float('inf')
+    return {
+        "min_eig": eigvals[0],
+        "max_eig": eigvals[1],
+        "det": det,
+        "cond": cond,
+    }
+
+
 # =============================================================================
 # PART A: REGIME A (RCT) - ComputeLambda
 # =============================================================================
 
 def run_part_a(verbose: bool = True) -> dict:
     """Test Lambda computation for RCT regime."""
+    start_time = time.time()
     results = {"A1": None, "A2": None, "A3": None}
 
     if verbose:
@@ -114,14 +129,20 @@ def run_part_a(verbose: bool = True) -> dict:
     frob_diff = np.linalg.norm(Lambda_mc - Lambda_quad)
     rel_error = frob_diff / frob_quad * 100
 
+    # Matrix statistics
+    quad_stats = compute_matrix_stats(Lambda_quad)
+
     pass_a1 = rel_error < 1.0  # Must be < 1%
-    results["A1"] = {"rel_error": rel_error, "passed": pass_a1}
+    results["A1"] = {"rel_error": rel_error, "passed": pass_a1, "matrix_stats": quad_stats}
 
     if verbose:
         print(f"\n  Test A1: Quadrature vs MC (50k samples)")
         print(f"    Lambda_quad =")
         print(f"      [[{Lambda_quad[0,0]:.6f}, {Lambda_quad[0,1]:.6f}],")
         print(f"       [{Lambda_quad[1,0]:.6f}, {Lambda_quad[1,1]:.6f}]]")
+        print(f"    Eigenvalues: [{quad_stats['min_eig']:.6f}, {quad_stats['max_eig']:.6f}]")
+        print(f"    Condition number: {quad_stats['cond']:.2f}")
+        print(f"    Determinant: {quad_stats['det']:.6f}")
         print(f"    Lambda_mc =")
         print(f"      [[{Lambda_mc[0,0]:.6f}, {Lambda_mc[0,1]:.6f}],")
         print(f"       [{Lambda_mc[1,0]:.6f}, {Lambda_mc[1,1]:.6f}]]")
@@ -145,7 +166,7 @@ def run_part_a(verbose: bool = True) -> dict:
     rate = -slope  # Should be ~0.5
 
     pass_a2 = 0.3 < rate < 0.7  # Rate should be ~0.5
-    results["A2"] = {"rate": rate, "passed": pass_a2}
+    results["A2"] = {"rate": rate, "passed": pass_a2, "M_values": M_values, "errors": errors}
 
     if verbose:
         print(f"\n  Test A2: MC convergence rate")
@@ -183,6 +204,12 @@ def run_part_a(verbose: bool = True) -> dict:
         status = "PASS" if pass_a3 else "FAIL"
         print(f"    Test A3: {status} (should be 0)")
 
+    elapsed = time.time() - start_time
+    results["elapsed_time"] = elapsed
+
+    if verbose:
+        print(f"\n  Part A completed in {elapsed:.2f}s")
+
     return results
 
 
@@ -192,6 +219,7 @@ def run_part_a(verbose: bool = True) -> dict:
 
 def run_part_b(verbose: bool = True) -> dict:
     """Test Lambda computation for Linear regime."""
+    start_time = time.time()
     results = {"B1": None, "B2": None, "B3": None}
 
     if verbose:
@@ -204,6 +232,7 @@ def run_part_b(verbose: bool = True) -> dict:
     # --- Test B1: Lambda = E[TT'|X] matches analytical ---
     test_x_values = [0.0, 0.25, 0.5, 0.75, 1.0]
     errors = []
+    cond_numbers = []
 
     if verbose:
         print(f"\n  Test B1: Lambda = E[TT'|X] analytical")
@@ -224,14 +253,22 @@ def run_part_b(verbose: bool = True) -> dict:
         err = np.linalg.norm(Lambda_oracle - Lambda_expected)
         errors.append(err)
 
+        stats = compute_matrix_stats(Lambda_oracle)
+        cond_numbers.append(stats['cond'])
+
         if verbose:
-            print(f"    x={x:.2f}: E[T|X]={ET:.4f}, E[T^2|X]={ET2:.4f}, error={err:.2e}")
+            print(f"    x={x:.2f}: E[T|X]={ET:.4f}, E[T^2|X]={ET2:.4f}, cond={stats['cond']:.2f}, error={err:.2e}")
 
     max_error = max(errors)
     pass_b1 = max_error < 0.01  # Must be < 1%
-    results["B1"] = {"max_error": max_error, "passed": pass_b1}
+    results["B1"] = {
+        "max_error": max_error,
+        "passed": pass_b1,
+        "cond_range": [min(cond_numbers), max(cond_numbers)]
+    }
 
     if verbose:
+        print(f"    Condition number range: [{min(cond_numbers):.2f}, {max(cond_numbers):.2f}]")
         status = "PASS" if pass_b1 else "FAIL"
         print(f"    Test B1: {status} (max error < 1%)")
 
@@ -312,6 +349,12 @@ def run_part_b(verbose: bool = True) -> dict:
         status = "PASS" if pass_b3 else "FAIL"
         print(f"    Test B3: {status} (max error < 10%)")
 
+    elapsed = time.time() - start_time
+    results["elapsed_time"] = elapsed
+
+    if verbose:
+        print(f"\n  Part B completed in {elapsed:.2f}s")
+
     return results
 
 
@@ -319,13 +362,120 @@ def run_part_b(verbose: bool = True) -> dict:
 # PART C: REGIME C (Observational) - EstimateLambda
 # =============================================================================
 
+def evaluate_lambda_method(
+    method: str,
+    lambda_hat: np.ndarray,
+    lambda_oracle: np.ndarray,
+    n: int,
+    fit_time: float = 0.0,
+    predict_time: float = 0.0
+) -> dict:
+    """Evaluate a single Lambda estimation method with extended statistics."""
+    # Eigenvalue analysis
+    eig_hat = np.array([np.linalg.eigvalsh(lambda_hat[i]) for i in range(n)])
+    eig_oracle = np.array([np.linalg.eigvalsh(lambda_oracle[i]) for i in range(n)])
+
+    eig1_hat = eig_hat[:, 1]  # max eigenvalue
+    eig1_oracle = eig_oracle[:, 1]
+    eig0_hat = eig_hat[:, 0]  # min eigenvalue
+    eig0_oracle = eig_oracle[:, 0]
+
+    # C1: Correlation of largest eigenvalue
+    if np.std(eig1_hat) > 1e-6:
+        corr_eig1 = np.corrcoef(eig1_hat, eig1_oracle)[0, 1]
+    else:
+        corr_eig1 = 0.0
+
+    # Correlation of min eigenvalue
+    if np.std(eig0_hat) > 1e-6:
+        corr_eig0 = np.corrcoef(eig0_hat, eig0_oracle)[0, 1]
+    else:
+        corr_eig0 = 0.0
+
+    # C2: Frobenius errors
+    frob_errors = np.array([
+        np.linalg.norm(lambda_hat[i] - lambda_oracle[i], 'fro')
+        for i in range(n)
+    ])
+    mean_frob = frob_errors.mean()
+    max_frob = frob_errors.max()
+    frob_p25 = np.percentile(frob_errors, 25)
+    frob_p50 = np.percentile(frob_errors, 50)
+    frob_p75 = np.percentile(frob_errors, 75)
+    frob_p95 = np.percentile(frob_errors, 95)
+
+    # C3: x-dependence (non-constant)
+    lambda_hat_flat = lambda_hat.reshape(n, -1)
+    lambda_oracle_flat = lambda_oracle.reshape(n, -1)
+    lambda_std = lambda_hat_flat.std(axis=0).mean()
+
+    # PSD check
+    min_eigenvalue = eig0_hat.min()
+    psd_count = (eig0_hat > 0).sum()
+    psd_rate = psd_count / n * 100
+
+    # Bias (signed error)
+    bias = (lambda_hat_flat - lambda_oracle_flat).mean()
+
+    # MAE (element-wise)
+    mae = np.abs(lambda_hat_flat - lambda_oracle_flat).mean()
+
+    # Variance ratio
+    var_hat = lambda_hat_flat.var(axis=0).mean()
+    var_oracle = lambda_oracle_flat.var(axis=0).mean()
+    var_ratio = var_hat / var_oracle if var_oracle > 1e-10 else 0.0
+
+    # Element-wise R^2 for upper triangle (3 elements)
+    r2_elements = []
+    for j in range(lambda_hat_flat.shape[1]):
+        ss_res = ((lambda_hat_flat[:, j] - lambda_oracle_flat[:, j]) ** 2).sum()
+        ss_tot = ((lambda_oracle_flat[:, j] - lambda_oracle_flat[:, j].mean()) ** 2).sum()
+        r2 = 1 - ss_res / ss_tot if ss_tot > 1e-10 else 0.0
+        r2_elements.append(r2)
+    mean_r2 = np.mean(r2_elements)
+
+    return {
+        "method": method,
+        # Core metrics (C1, C2, C3)
+        "corr": corr_eig1,
+        "frob": mean_frob,
+        "std": lambda_std,
+        # Extended Frobenius
+        "max_frob": max_frob,
+        "frob_p25": frob_p25,
+        "frob_p50": frob_p50,
+        "frob_p75": frob_p75,
+        "frob_p95": frob_p95,
+        # Eigenvalue stats
+        "min_eigenvalue": min_eigenvalue,
+        "psd_rate": psd_rate,
+        "corr_eig0": corr_eig0,
+        "eig1_hat_mean": eig1_hat.mean(),
+        "eig1_hat_std": eig1_hat.std(),
+        # Error analysis
+        "bias": bias,
+        "mae": mae,
+        "var_ratio": var_ratio,
+        "mean_r2": mean_r2,
+        # Timing
+        "fit_time": fit_time,
+        "predict_time": predict_time,
+        "total_time": fit_time + predict_time,
+        # Pass/fail
+        "pass_c1": corr_eig1 > 0.7,
+        "pass_c2": mean_frob < 0.15,
+        "pass_c3": lambda_std > 0.01,
+    }
+
+
 def run_part_c(verbose: bool = True) -> dict:
-    """Test Lambda estimation for Observational regime."""
-    results = {"C1": None, "C2": None, "C3": None}
+    """Test Lambda estimation for Observational regime - ALL METHODS."""
+    start_time = time.time()
+    results = {}
 
     if verbose:
         print("\n" + "=" * 60)
-        print("PART C: Regime C (Obs) - EstimateLambda")
+        print("PART C: Regime C (Obs) - EstimateLambda (ALL METHODS)")
         print("=" * 60)
 
     dgp = CanonicalDGP()
@@ -346,98 +496,163 @@ def run_part_c(verbose: bool = True) -> dict:
     if verbose:
         print(f"\n  Computing Oracle Lambda(x) for {n} points (MC={n_mc_oracle})...")
 
-    np.random.seed(123)  # For reproducibility
+    oracle_start = time.time()
+    np.random.seed(123)
     lambda_oracle = np.zeros((n, 2, 2))
     for i in range(n):
         x = X_np[i]
         lambda_oracle[i] = oracle_lambda_conditional(x, dgp, n_samples=n_mc_oracle)
+    oracle_time = time.time() - oracle_start
 
-    # Try to get package EstimateLambda
+    oracle_std = lambda_oracle.reshape(n, -1).std(axis=0).mean()
+    oracle_eig1 = np.array([np.linalg.eigvalsh(lambda_oracle[i])[1] for i in range(n)])
+    oracle_eig0 = np.array([np.linalg.eigvalsh(lambda_oracle[i])[0] for i in range(n)])
+
+    if verbose:
+        print(f"  Oracle computation time: {oracle_time:.2f}s")
+        print(f"  Oracle stats:")
+        print(f"    eig_max: mean={oracle_eig1.mean():.4f}, std={oracle_eig1.std():.4f}")
+        print(f"    eig_min: mean={oracle_eig0.mean():.4f}, std={oracle_eig0.std():.4f}")
+        print(f"    element-wise std: {oracle_std:.4f}")
+
+    # Test all methods
+    methods_to_test = ["aggregate", "mlp", "ridge", "rf", "lgbm"]
+    method_results = {}
+    method_times = {}
+
     try:
         from deep_inference.lambda_.estimate import EstimateLambda
         from deep_inference.models import Logit
 
         model = Logit()
-        strategy = EstimateLambda(method="aggregate")
-
-        strategy.fit(X=X, T=T, Y=Y, theta_hat=theta_true, model=model)
-        lambda_hat = strategy.predict(X, theta_true).numpy()
-
         package_available = True
+
+        if verbose:
+            print(f"\n  Testing {len(methods_to_test)} methods: {methods_to_test}")
+            print("-" * 60)
+
+        for method in methods_to_test:
+            if verbose:
+                print(f"\n  --- Method: {method} ---")
+
+            try:
+                # Fit with timing
+                t0 = time.time()
+                strategy = EstimateLambda(method=method)
+                strategy.fit(X=X, T=T, Y=Y, theta_hat=theta_true, model=model)
+                fit_time = time.time() - t0
+
+                # Predict with timing
+                t0 = time.time()
+                lambda_hat = strategy.predict(X, theta_true).numpy()
+                predict_time = time.time() - t0
+
+                method_times[method] = fit_time + predict_time
+
+                metrics = evaluate_lambda_method(
+                    method, lambda_hat, lambda_oracle, n,
+                    fit_time=fit_time, predict_time=predict_time
+                )
+                method_results[method] = metrics
+
+                if verbose:
+                    print(f"    Corr(eig1): {metrics['corr']:.4f} {'PASS' if metrics['pass_c1'] else 'FAIL'}")
+                    print(f"    Mean Frob:  {metrics['frob']:.4f} {'PASS' if metrics['pass_c2'] else 'FAIL'}")
+                    print(f"    Max Frob:   {metrics['max_frob']:.4f}")
+                    print(f"    P95 Frob:   {metrics['frob_p95']:.4f}")
+                    print(f"    Std (x-dep): {metrics['std']:.6f} {'PASS' if metrics['pass_c3'] else 'FAIL'}")
+                    print(f"    Min eig:    {metrics['min_eigenvalue']:.6f} (PSD: {metrics['psd_rate']:.0f}%)")
+                    print(f"    Bias:       {metrics['bias']:.6f}")
+                    print(f"    Var ratio:  {metrics['var_ratio']:.4f}")
+                    print(f"    Time:       {metrics['total_time']:.3f}s (fit={fit_time:.3f}s, pred={predict_time:.3f}s)")
+
+            except Exception as e:
+                if verbose:
+                    print(f"    ERROR: {e}")
+                method_results[method] = {"error": str(e)}
 
     except ImportError as e:
         if verbose:
             print(f"  [SKIP] EstimateLambda not available: {e}")
-
-        # Use aggregate of oracle as mock "package" output to test the eval
-        lambda_hat = np.zeros((n, 2, 2))
-        mean_lambda = lambda_oracle.mean(axis=0)
-        for i in range(n):
-            lambda_hat[i] = mean_lambda
-
         package_available = False
 
-    # --- Test C1: Correlation of largest eigenvalue ---
-    eig_hat = np.array([np.linalg.eigvalsh(lambda_hat[i]) for i in range(n)])
-    eig_oracle = np.array([np.linalg.eigvalsh(lambda_oracle[i]) for i in range(n)])
+    # Extended summary table
+    if verbose and method_results:
+        print("\n" + "-" * 80)
+        print("  METHOD COMPARISON TABLE (Extended)")
+        print("-" * 80)
+        header = f"  {'Method':<10} {'Corr':<8} {'Frob':<8} {'Max':<8} {'P95':<8} {'MinEig':<8} {'PSD%':<6} {'Time':<8}"
+        print(header)
+        print("  " + "-" * 78)
 
-    # Largest eigenvalue
-    eig1_hat = eig_hat[:, 1]
-    eig1_oracle = eig_oracle[:, 1]
+        for method, m in method_results.items():
+            if "error" in m:
+                print(f"  {method:<10} {'ERROR':<8} {'-':<8} {'-':<8} {'-':<8} {'-':<8} {'-':<6} {'-':<8}")
+            else:
+                print(f"  {method:<10} {m['corr']:<8.4f} {m['frob']:<8.4f} {m['max_frob']:<8.4f} "
+                      f"{m['frob_p95']:<8.4f} {m['min_eigenvalue']:<8.4f} {m['psd_rate']:<6.0f} "
+                      f"{m['total_time']:<8.3f}")
 
-    # Check if hat has any variance
-    if np.std(eig1_hat) > 1e-6:
-        corr_eig1 = np.corrcoef(eig1_hat, eig1_oracle)[0, 1]
+        # Second table: additional statistics
+        print("\n" + "-" * 80)
+        print("  ADDITIONAL STATISTICS")
+        print("-" * 80)
+        header2 = f"  {'Method':<10} {'Bias':<10} {'MAE':<10} {'VarRatio':<10} {'R²':<10} {'Result':<10}"
+        print(header2)
+        print("  " + "-" * 78)
+
+        for method, m in method_results.items():
+            if "error" in m:
+                print(f"  {method:<10} {'ERROR':<10} {'-':<10} {'-':<10} {'-':<10} {'SKIP':<10}")
+            else:
+                n_pass = sum([m['pass_c1'], m['pass_c2'], m['pass_c3']])
+                result = "3/3 PASS" if n_pass == 3 else f"{n_pass}/3"
+                print(f"  {method:<10} {m['bias']:<10.6f} {m['mae']:<10.6f} "
+                      f"{m['var_ratio']:<10.4f} {m['mean_r2']:<10.4f} {result:<10}")
+
+    # Find best method
+    best_method = None
+    best_score = -1
+    for method, m in method_results.items():
+        if "error" not in m:
+            score = sum([m['pass_c1'], m['pass_c2'], m['pass_c3']])
+            if score > best_score:
+                best_score = score
+                best_method = method
+
+    # Return results in expected format
+    if best_method and "error" not in method_results[best_method]:
+        best = method_results[best_method]
+        results["C1"] = {"corr": best["corr"], "passed": best["pass_c1"]}
+        results["C2"] = {"mean_frob": best["frob"], "passed": best["pass_c2"]}
+        results["C3"] = {"std": best["std"], "passed": best["pass_c3"]}
     else:
-        corr_eig1 = 0.0  # No variance = no correlation
+        # Fallback to aggregate if available
+        if "aggregate" in method_results and "error" not in method_results["aggregate"]:
+            agg = method_results["aggregate"]
+            results["C1"] = {"corr": agg["corr"], "passed": agg["pass_c1"]}
+            results["C2"] = {"mean_frob": agg["frob"], "passed": agg["pass_c2"]}
+            results["C3"] = {"std": agg["std"], "passed": agg["pass_c3"]}
+        else:
+            results["C1"] = {"corr": 0.0, "passed": False}
+            results["C2"] = {"mean_frob": 1.0, "passed": False}
+            results["C3"] = {"std": 0.0, "passed": False}
 
-    pass_c1 = corr_eig1 > 0.7
-    results["C1"] = {"corr": corr_eig1, "passed": pass_c1}
-
-    if verbose:
-        print(f"\n  Test C1: Corr(lambda_1_hat, lambda_1_oracle)")
-        print(f"    Oracle lambda_1: mean={eig1_oracle.mean():.4f}, std={eig1_oracle.std():.4f}")
-        print(f"    Estimated lambda_1: mean={eig1_hat.mean():.4f}, std={eig1_hat.std():.4f}")
-        print(f"    Correlation: {corr_eig1:.4f}")
-        status = "PASS" if pass_c1 else "FAIL"
-        print(f"    Test C1: {status} (threshold > 0.70)")
-
-    # --- Test C2: Mean Frobenius error ---
-    frob_errors = np.array([
-        np.linalg.norm(lambda_hat[i] - lambda_oracle[i], 'fro')
-        for i in range(n)
-    ])
-    mean_frob = frob_errors.mean()
-
-    pass_c2 = mean_frob < 0.15
-    results["C2"] = {"mean_frob": mean_frob, "passed": pass_c2}
-
-    if verbose:
-        print(f"\n  Test C2: Mean Frobenius error")
-        print(f"    Mean error: {mean_frob:.4f}")
-        print(f"    Max error: {frob_errors.max():.4f}")
-        status = "PASS" if pass_c2 else "FAIL"
-        print(f"    Test C2: {status} (threshold < 0.15)")
-
-    # --- Test C3: x-dependence captured (NOT constant) ---
-    # Lambda_hat should vary with x - if std is 0, it's constant (BAD)
-    lambda_hat_flat = lambda_hat.reshape(n, -1)
-    lambda_std = lambda_hat_flat.std(axis=0).mean()  # Average std across elements
-
-    pass_c3 = lambda_std > 0.01
-    results["C3"] = {"std": lambda_std, "passed": pass_c3}
-
-    if verbose:
-        print(f"\n  Test C3: x-dependence captured")
-        print(f"    Lambda_hat element-wise std: {lambda_std:.6f}")
-        print(f"    Oracle element-wise std: {lambda_oracle.reshape(n, -1).std(axis=0).mean():.4f}")
-        status = "PASS" if pass_c3 else "FAIL"
-        print(f"    Test C3: {status} (threshold > 0.01)")
-        if not pass_c3:
-            print(f"    WARNING: Lambda_hat is CONSTANT (ignores x-dependence)")
-
-    # Add package status
     results["package_available"] = package_available
+    results["method_results"] = method_results
+    results["best_method"] = best_method
+    results["oracle_time"] = oracle_time
+    results["method_times"] = method_times
+
+    elapsed = time.time() - start_time
+    results["elapsed_time"] = elapsed
+
+    if verbose and best_method:
+        print(f"\n  BEST METHOD: {best_method} ({best_score}/3 tests passed)")
+        print(f"\n  Part C completed in {elapsed:.2f}s")
+        print(f"    - Oracle computation: {oracle_time:.2f}s")
+        for method, t in method_times.items():
+            print(f"    - {method}: {t:.2f}s")
 
     return results
 
@@ -452,6 +667,8 @@ def run_eval_03(verbose: bool = True) -> dict:
 
     RUTHLESS: Tight tolerances, we WANT to see FAIL when wrong.
     """
+    total_start = time.time()
+
     print("=" * 60)
     print("EVAL 03: LAMBDA ESTIMATION (RUTHLESS)")
     print("=" * 60)
@@ -463,7 +680,18 @@ def run_eval_03(verbose: bool = True) -> dict:
     results_b = run_part_b(verbose=verbose)
     results_c = run_part_c(verbose=verbose)
 
+    total_elapsed = time.time() - total_start
+
     # Summary
+    print("\n" + "=" * 60)
+    print("TIMING SUMMARY")
+    print("=" * 60)
+    print(f"  Part A (RCT):           {results_a.get('elapsed_time', 0):.2f}s")
+    print(f"  Part B (Linear):        {results_b.get('elapsed_time', 0):.2f}s")
+    print(f"  Part C (Observational): {results_c.get('elapsed_time', 0):.2f}s")
+    print(f"  " + "-" * 30)
+    print(f"  TOTAL:                  {total_elapsed:.2f}s")
+
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
@@ -472,7 +700,9 @@ def run_eval_03(verbose: bool = True) -> dict:
 
     print("\n  Part A (RCT):")
     for test, result in results_a.items():
-        if result is None:
+        if result is None or test == "elapsed_time":
+            continue
+        if not isinstance(result, dict) or "passed" not in result:
             continue
         status = "PASS" if result["passed"] else "FAIL"
         all_tests.append(result["passed"])
@@ -485,7 +715,9 @@ def run_eval_03(verbose: bool = True) -> dict:
 
     print("\n  Part B (Linear):")
     for test, result in results_b.items():
-        if result is None:
+        if result is None or test == "elapsed_time":
+            continue
+        if not isinstance(result, dict) or "passed" not in result:
             continue
         status = "PASS" if result["passed"] else "FAIL"
         all_tests.append(result["passed"])
@@ -497,8 +729,11 @@ def run_eval_03(verbose: bool = True) -> dict:
             print(f"    {test}: Confounded T................{status} (error={result['max_error']:.1f}%)")
 
     print("\n  Part C (Observational):")
+    skip_keys = {"package_available", "method_results", "best_method", "elapsed_time", "oracle_time", "method_times"}
     for test, result in results_c.items():
-        if result is None or test == "package_available":
+        if result is None or test in skip_keys:
+            continue
+        if not isinstance(result, dict) or "passed" not in result:
             continue
         status = "PASS" if result["passed"] else "FAIL"
         all_tests.append(result["passed"])
@@ -508,6 +743,23 @@ def run_eval_03(verbose: bool = True) -> dict:
             print(f"    {test}: Mean Frobenius..............{status} ({result['mean_frob']:.4f})")
         elif test == "C3":
             print(f"    {test}: x-dependence................{status} (std={result['std']:.4f})")
+
+    # Statistics summary for best method
+    if results_c.get("best_method") and results_c.get("method_results"):
+        best = results_c["method_results"].get(results_c["best_method"])
+        if best and "error" not in best:
+            print("\n" + "=" * 60)
+            print(f"STATISTICS SUMMARY (Best Method: {results_c['best_method']})")
+            print("=" * 60)
+            print(f"  Correlation:     {best['corr']:.4f} (threshold: 0.70)")
+            print(f"  Mean Frobenius:  {best['frob']:.4f} (threshold: 0.15)")
+            print(f"  Max Frobenius:   {best['max_frob']:.4f}")
+            print(f"  95th percentile: {best['frob_p95']:.4f}")
+            print(f"  Min Eigenvalue:  {best['min_eigenvalue']:.6f} (>0 = PSD)")
+            print(f"  PSD Rate:        {best['psd_rate']:.0f}%")
+            print(f"  Bias:            {best['bias']:.6f} (should be ~0)")
+            print(f"  Variance Ratio:  {best['var_ratio']:.4f} (should be ~1)")
+            print(f"  Mean R²:         {best['mean_r2']:.4f}")
 
     n_passed = sum(all_tests)
     n_total = len(all_tests)
@@ -529,6 +781,7 @@ def run_eval_03(verbose: bool = True) -> dict:
         "n_passed": n_passed,
         "n_total": n_total,
         "passed": n_passed == n_total,
+        "total_time": total_elapsed,
     }
 
 

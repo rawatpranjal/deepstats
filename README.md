@@ -68,6 +68,41 @@ print(f"Standard Error:         {result.se:.4f}")
 print(f"95% CI:                 [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 ```
 
+## New `inference()` API
+
+The new `inference()` API provides additional flexibility:
+
+- **Flexible targets**: Average Marginal Effect (AME), custom target functions
+- **Randomization mode**: For RCTs, compute Λ directly instead of estimating
+- **Regime auto-detection**: Automatically chooses optimal Lambda strategy
+
+```python
+from deep_inference import inference
+from deep_inference.lambda_.compute import Normal
+
+# Average Marginal Effect (probability scale, not log-odds)
+result = inference(Y, T, X, model='logit', target='ame', t_tilde=0.0)
+
+# Custom target with autodiff Jacobian
+import torch
+def my_target(x, theta, t_tilde):
+    return torch.sigmoid(theta[0] + theta[1] * t_tilde)
+
+result = inference(Y, T, X, model='logit', target_fn=my_target)
+
+# Randomized experiment (Regime A)
+result = inference(Y, T, X, model='logit', target='beta',
+                   is_randomized=True, treatment_dist=Normal(0, 1))
+```
+
+### Three Estimation Regimes
+
+| Regime | Condition | Lambda Method | Cross-Fitting |
+|--------|-----------|---------------|---------------|
+| **A** | RCT with known treatment distribution | Compute via MC | 2-way |
+| **B** | Linear structural model | Closed-form analytic | 2-way |
+| **C** | Observational, nonlinear | Neural network estimation | 3-way |
+
 ## Supported Structural Families
 
 The package abstracts the math of influence functions. You simply select the family that matches your outcome variable.

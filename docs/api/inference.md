@@ -1,36 +1,60 @@
-# Inference Module
+# Inference API
 
-The main inference function for structural estimation.
+This module provides two main functions for structural estimation with valid inference.
 
-## Main Function
+## API Overview
 
-### structural_dml
+| Function | Use Case | Target | Lambda |
+|----------|----------|--------|--------|
+| `structural_dml()` | Production, 8 families | E[β(X)] fixed | Estimated |
+| `inference()` | Flexible targets, regimes | Custom h(θ) | Auto-selected |
+
+---
+
+## `structural_dml()` - Legacy API
+
+The production-ready API supporting 8 GLM families.
+
+### Signature
 
 ```python
 from deep_inference import structural_dml
 
 result = structural_dml(
-    Y,                      # Outcome variable (n,) array-like
-    T,                      # Treatment variable (n,) array-like
-    X,                      # Covariates (n, d) array-like
-    family='linear',        # Family name or instance
+    Y,                      # (n,) outcomes
+    T,                      # (n,) treatments
+    X,                      # (n, d) covariates
+    family='linear',        # Family name: 'linear', 'logit', 'poisson', etc.
+    target=None,            # Target variant (e.g., 'ame' for logit)
     hidden_dims=[64, 32],   # Network architecture
     epochs=100,             # Training epochs
     n_folds=50,             # Cross-fitting folds
-    lr=0.01,               # Learning rate
-    batch_size=64,         # Mini-batch size
-    weight_decay=1e-4,     # L2 regularization
-    verbose=False          # Print progress
+    lr=0.01,                # Learning rate
+    lambda_method='aggregate',  # Lambda estimation method
+    verbose=False           # Print progress
 )
 ```
 
-## Usage Example
+### Supported Families
+
+| Family | Model | θ_dim | Notes |
+|--------|-------|-------|-------|
+| `linear` | Y = α + βT + ε | 2 | OLS-equivalent |
+| `logit` | P(Y=1) = σ(α + βT) | 2 | Binary outcomes |
+| `poisson` | Y ~ Pois(exp(α + βT)) | 2 | Count data |
+| `gamma` | Y ~ Gamma(k, exp(α + βT)) | 2 | Positive continuous |
+| `gumbel` | Y ~ Gumbel(α + βT, σ) | 2 | Extreme values |
+| `tobit` | Y = max(0, α + βT + σε) | 3 | Censored |
+| `negbin` | Y ~ NegBin(exp(α + βT), r) | 2 | Overdispersed counts |
+| `weibull` | Y ~ Weibull(k, exp(α + βT)) | 2 | Survival/duration |
+
+### Example
 
 ```python
 import numpy as np
 from deep_inference import structural_dml
 
-# Prepare data
+# Generate data
 np.random.seed(42)
 n = 2000
 X = np.random.randn(n, 10)
@@ -41,100 +65,188 @@ Y = X[:, 0] + 0.5 * T + np.random.randn(n)
 result = structural_dml(
     Y=Y, T=T, X=X,
     family='linear',
-    hidden_dims=[64, 32],
-    epochs=100,
-    n_folds=50
+    n_folds=50,
+    epochs=100
 )
 
-# Access results
-print(f"Estimate: {result.mu_hat:.4f}")
-print(f"SE: {result.se:.4f}")
+print(f"Estimate: {result.mu_hat:.4f} ± {result.se:.4f}")
 print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
-print(f"Naive: {result.mu_naive:.4f}")
 ```
 
-## DMLResult Object
-
-The result object contains:
+### DMLResult Object
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `mu_hat` | float | Debiased point estimate of E[beta(X)] |
+| `mu_hat` | float | Debiased estimate of E[β(X)] |
 | `mu_naive` | float | Naive (biased) estimate |
 | `se` | float | Standard error |
-| `ci_lower` | float | Lower bound of 95% CI |
-| `ci_upper` | float | Upper bound of 95% CI |
-| `theta_hat` | ndarray | Estimated parameters (n, theta_dim) |
-| `psi` | ndarray | Influence scores (n,) |
+| `ci_lower` | float | Lower 95% CI bound |
+| `ci_upper` | float | Upper 95% CI bound |
+| `theta_hat` | ndarray | Estimated θ(x) for all observations |
+| `psi` | ndarray | Influence function values |
 | `diagnostics` | dict | Training diagnostics |
 
-### Diagnostics Dictionary
+---
+
+## `inference()` - New Flexible API
+
+The new API with flexible targets and automatic regime detection.
+
+### Signature
 
 ```python
-diagnostics = result.diagnostics
-print(diagnostics.get('min_lambda_eigenvalue'))  # Hessian stability
-print(diagnostics.get('correction_ratio'))       # IF correction magnitude
-print(diagnostics.get('pct_regularized'))        # % observations regularized
+from deep_inference import inference
+
+result = inference(
+    Y,                      # (n,) outcomes
+    T,                      # (n,) treatments
+    X,                      # (n, d) covariates
+    # Model specification (choose one):
+    model='logit',          # Built-in: 'linear', 'logit'
+    loss=None,              # OR custom loss function
+    theta_dim=None,         # Required if custom loss
+    # Target specification (choose one):
+    target='beta',          # Built-in: 'beta', 'ame'
+    target_fn=None,         # OR custom target function
+    t_tilde=None,           # Evaluation point (default: mean(T))
+    # Regime settings:
+    is_randomized=False,    # True for RCTs
+    treatment_dist=None,    # Known F_T (e.g., Normal(0, 1))
+    lambda_method=None,     # Override auto-detection
+    # Cross-fitting:
+    n_folds=50,
+    # Network:
+    hidden_dims=[64, 32],
+    epochs=100,
+    lr=0.01,
+    ridge=1e-4,
+    verbose=False
+)
 ```
 
-## Configuration Options
+### Built-in Targets
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `hidden_dims` | `[64, 32]` | Hidden layer sizes |
-| `epochs` | `100` | Training epochs |
-| `n_folds` | `50` | Cross-fitting folds |
-| `lr` | `0.01` | Learning rate |
-| `batch_size` | `64` | Mini-batch size |
-| `weight_decay` | `1e-4` | L2 regularization |
-| `verbose` | `False` | Print progress |
+| Target | Formula | Use Case |
+|--------|---------|----------|
+| `'beta'` | E[β(X)] | Average treatment effect (log-odds for logit) |
+| `'ame'` | E[p(1-p)β] | Average marginal effect (probability scale) |
 
-### Architecture Guidelines
+### Custom Target Functions
 
-| Sample Size | Recommended Architecture |
-|-------------|-------------------------|
+Define any target h(x, θ, t̃) and the Jacobian is computed via autodiff:
+
+```python
+import torch
+
+def my_target(x, theta, t_tilde):
+    """Average prediction at treatment level t_tilde."""
+    alpha, beta = theta[0], theta[1]
+    return torch.sigmoid(alpha + beta * t_tilde)
+
+result = inference(
+    Y, T, X,
+    model='logit',
+    target_fn=my_target,
+    t_tilde=0.0
+)
+```
+
+### Three Regimes
+
+| Regime | Condition | Lambda Method | Cross-Fitting |
+|--------|-----------|---------------|---------------|
+| **A** | RCT + known F_T | Compute (MC integration) | 2-way |
+| **B** | Linear model | Analytic (closed-form) | 2-way |
+| **C** | Observational + nonlinear | Estimate (neural net) | 3-way |
+
+```python
+from deep_inference.lambda_.compute import Normal
+
+# Regime A: Randomized experiment
+result = inference(
+    Y, T, X,
+    model='logit',
+    target='beta',
+    is_randomized=True,
+    treatment_dist=Normal(mean=0.0, std=1.0)
+)
+print(f"Regime: {result.diagnostics['regime']}")  # 'A'
+```
+
+### InferenceResult Object
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `mu_hat` | float | Point estimate |
+| `se` | float | Standard error |
+| `ci_lower` | float | Lower 95% CI |
+| `ci_upper` | float | Upper 95% CI |
+| `psi_values` | Tensor | Influence function values |
+| `theta_hat` | Tensor | Estimated θ(x) |
+| `diagnostics` | dict | Regime, lambda method, etc. |
+
+---
+
+## Configuration Guidelines
+
+### Network Architecture
+
+| Sample Size | Recommended |
+|-------------|-------------|
 | n < 1,000 | `[32, 16]` |
-| 1,000 < n < 10,000 | `[64, 32]` |
-| 10,000 < n < 100,000 | `[128, 64, 32]` |
+| 1,000 - 10,000 | `[64, 32]` |
+| 10,000 - 100,000 | `[128, 64, 32]` |
 | n > 100,000 | `[256, 128, 64]` |
 
-### Fold Selection
+### Cross-Fitting Folds
 
-| Use Case | Recommended K |
-|----------|--------------|
+| Use Case | K |
+|----------|---|
 | Quick exploration | 10-20 |
-| Final results | 50 |
+| Production | 50 |
 | Very large data | 20-50 |
 
-## Cross-Fitting Algorithm
+### Lambda Method (for `structural_dml`)
 
-The `structural_dml` function uses K-fold cross-fitting:
+| Method | When to Use |
+|--------|-------------|
+| `'aggregate'` | Default for nonlinear models |
+| `'pointwise'` | When heterogeneity is smooth |
 
-1. Split data into K folds
-2. For each fold k:
-   - Train structural network on all other folds
-   - Compute influence scores on fold k
-3. Aggregate all influence scores
-4. Compute: `mu_hat = mean(psi)`, `se = std(psi) / sqrt(n)`
+---
 
-This prevents overfitting bias in the influence function estimates.
+## Algorithm Overview
 
-## Comparing Naive vs Debiased
+### Cross-Fitting (K-Fold)
 
-```python
-result = structural_dml(Y, T, X, family='linear')
+```
+For k = 1 to K:
+    Train: Fit θ̂(x) on folds ≠ k
+    [If 3-way: Fit Λ̂(x) on separate fold]
+    Eval: Compute ψ on fold k
 
-print(f"Naive estimate:    {result.mu_naive:.4f}")
-print(f"Debiased estimate: {result.mu_hat:.4f}")
-print(f"Bias correction:   {result.mu_hat - result.mu_naive:.4f}")
-
-# The naive estimate underestimates uncertainty
-# The debiased estimate has valid 95% coverage
+Aggregate: μ̂ = mean(ψ), SE = std(ψ)/√n
 ```
 
-## Expected Coverage
+### Influence Function
 
-| Method | Coverage | SE Calibration |
-|--------|----------|----------------|
-| Naive | ~10-30% | Underestimates |
-| **Influence** | **~95%** | **Correct** |
+The influence function corrects for regularization bias:
+
+```
+ψ(z) = H(θ̂) - H_θ · Λ(x)⁻¹ · ℓ_θ(z, θ̂)
+```
+
+Where:
+- H(θ) = target functional (e.g., E[β])
+- H_θ = Jacobian of target w.r.t. θ
+- Λ(x) = E[ℓ_θθ | X=x] = conditional Hessian
+- ℓ_θ = score (gradient of loss)
+
+---
+
+## Expected Performance
+
+| Method | Coverage | SE Ratio |
+|--------|----------|----------|
+| Naive | ~10-30% | << 1 |
+| **Influence** | **~95%** | **~1.0** |

@@ -40,7 +40,7 @@ class EstimateLambda(BaseLambdaStrategy):
 
     def __init__(
         self,
-        method: Literal["mlp", "rf", "ridge", "aggregate"] = "aggregate",
+        method: Literal["mlp", "rf", "ridge", "aggregate", "lgbm"] = "aggregate",
         ridge_alpha: float = 1.0,
     ):
         """
@@ -125,6 +125,9 @@ class EstimateLambda(BaseLambdaStrategy):
         elif self.method == "rf":
             self._fit_rf(X, hessians)
 
+        elif self.method == "lgbm":
+            self._fit_lgbm(X, hessians)
+
     def _fit_mlp(self, X: Tensor, hessians: Tensor) -> None:
         """Fit MLP regression for Λ(x)."""
         from sklearn.neural_network import MLPRegressor
@@ -175,6 +178,27 @@ class EstimateLambda(BaseLambdaStrategy):
         )
         self._rf.fit(X_np, targets_np)
 
+    def _fit_lgbm(self, X: Tensor, hessians: Tensor) -> None:
+        """Fit LightGBM for Λ(x)."""
+        from lightgbm import LGBMRegressor
+        from sklearn.multioutput import MultiOutputRegressor
+
+        targets = hessians[:, self._triu_idx[0], self._triu_idx[1]]
+
+        X_np = X.detach().cpu().numpy()
+        targets_np = targets.detach().cpu().numpy()
+
+        # Wrap in MultiOutputRegressor for multi-target support
+        base_lgbm = LGBMRegressor(
+            n_estimators=100,
+            max_depth=6,
+            learning_rate=0.1,
+            random_state=42,
+            verbose=-1,
+        )
+        self._lgbm = MultiOutputRegressor(base_lgbm)
+        self._lgbm.fit(X_np, targets_np)
+
     def predict(self, X: Tensor, theta_hat: Optional[Tensor] = None) -> Tensor:
         """
         Predict Λ(x) for new observations.
@@ -213,6 +237,13 @@ class EstimateLambda(BaseLambdaStrategy):
         elif self.method == "rf":
             X_np = X.detach().cpu().numpy()
             pred = self._rf.predict(X_np)
+            pred = torch.tensor(pred, dtype=dtype, device=device)
+            Lambda[:, self._triu_idx[0], self._triu_idx[1]] = pred
+            Lambda[:, self._triu_idx[1], self._triu_idx[0]] = pred
+
+        elif self.method == "lgbm":
+            X_np = X.detach().cpu().numpy()
+            pred = self._lgbm.predict(X_np)
             pred = torch.tensor(pred, dtype=dtype, device=device)
             Lambda[:, self._triu_idx[0], self._triu_idx[1]] = pred
             Lambda[:, self._triu_idx[1], self._triu_idx[0]] = pred

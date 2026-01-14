@@ -47,30 +47,46 @@ Target: μ* = E[β(X)] with valid 95% confidence intervals.
 
 ```
 src/deep_inference/
-├── __init__.py           # Main API: structural_dml()
+├── __init__.py              # Main APIs: structural_dml(), inference()
 ├── core/
-│   ├── algorithm.py      # DML core algorithm
-│   ├── autodiff.py       # Gradient/Hessian computation
-│   └── lambda_estimator.py
-├── families/
-│   ├── base.py           # BaseFamily protocol
-│   ├── linear.py
-│   ├── logit.py
-│   ├── poisson.py
-│   ├── gamma.py
-│   ├── gumbel.py
-│   ├── tobit.py
-│   ├── negbin.py
-│   └── weibull.py
-├── models/
-│   └── structural_net.py
+│   ├── algorithm.py         # Legacy DML algorithm
+│   ├── autodiff.py          # Gradient/Hessian computation
+│   └── lambda_estimator.py  # Legacy Lambda estimation
+├── families/                 # 8 GLM families (legacy API)
+│   ├── base.py              # BaseFamily protocol
+│   ├── linear.py, logit.py, poisson.py, gamma.py
+│   ├── gumbel.py, tobit.py, negbin.py, weibull.py
+├── models/                   # NEW: Structural models
+│   ├── base.py              # StructuralModel protocol
+│   ├── linear.py, logit.py  # Built-in models
+│   ├── structural_net.py    # Neural network θ(x)
+│   └── custom.py            # CustomModel, model_from_loss()
+├── targets/                  # NEW: Target functionals
+│   ├── base.py              # Target protocol, BaseTarget
+│   ├── average_parameter.py # E[θ_j] target
+│   ├── marginal_effect.py   # AME target
+│   └── custom.py            # CustomTarget with autodiff Jacobian
+├── lambda_/                  # NEW: Lambda strategies
+│   ├── base.py              # LambdaStrategy protocol
+│   ├── compute.py           # ComputeLambda (Regime A: randomized)
+│   ├── analytic.py          # AnalyticLambda (Regime B: linear)
+│   ├── estimate.py          # EstimateLambda (Regime C: observational)
+│   └── selector.py          # detect_regime(), select_lambda_strategy()
+├── engine/                   # NEW: Cross-fitting engine
+│   ├── crossfit.py          # CrossFitter, run_crossfit()
+│   ├── assembler.py         # compute_psi() - influence function assembly
+│   └── variance.py          # SE and CI computation
+├── autodiff/                 # NEW: Autodiff utilities
+│   └── jacobian.py          # vmap Jacobians for targets
 └── utils/
     └── linalg.py
 
-archive/deep_inference_v1/  # Old implementation (MC tools, DGPs, etc.)
+archive/deep_inference_v1/    # Old implementation (MC tools, DGPs, etc.)
 ```
 
 ## Quick Start
+
+### Legacy API: `structural_dml()` (production-ready)
 
 ```python
 import numpy as np
@@ -88,6 +104,37 @@ result = structural_dml(Y, T, X, family='linear', epochs=50, n_folds=50)
 print(f"Estimate: {result.mu_hat:.4f} +/- {result.se:.4f}")
 print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 ```
+
+### New API: `inference()` (flexible targets & regimes)
+
+```python
+from deep_inference import inference
+from deep_inference.lambda_.compute import Normal
+
+# Same data as above...
+
+# Flexible target: Average Marginal Effect
+result = inference(Y, T, X, model='logit', target='ame', t_tilde=0.0)
+
+# Custom target function (Jacobian computed via autodiff)
+import torch
+def my_target(x, theta, t_tilde):
+    return torch.sigmoid(theta[0] + theta[1] * t_tilde)
+
+result = inference(Y, T, X, model='logit', target_fn=my_target, t_tilde=0.0)
+
+# Randomized experiment (Regime A: compute Λ instead of estimate)
+result = inference(Y, T, X, model='logit', target='beta',
+                   is_randomized=True, treatment_dist=Normal(0, 1))
+```
+
+### Three Regimes
+
+| Regime | When | Lambda Method | Cross-Fitting |
+|--------|------|---------------|---------------|
+| A | RCT with known F_T | Compute (MC integration) | 2-way |
+| B | Linear model | Analytic (closed-form) | 2-way |
+| C | Observational, nonlinear | Estimate (neural net) | 3-way |
 
 ## Monte Carlo Tools (Archived)
 
