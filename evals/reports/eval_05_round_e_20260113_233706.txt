@@ -1,0 +1,48 @@
+
+============================================================
+ROUND E: AGGREGATE vs PER-OBSERVATION LAMBDA
+============================================================
+
+Hypothesis: Per-obs Λ(xᵢ) fixes SE ratio issue
+Paper reference: Remark 4 - Λ(x) varies with x through θ(x)
+
+  n = 500
+  --------------------------------------------------
+    aggregate   : coverage= 92.0%, SE_ratio=0.870 ✓
+    per_obs     : coverage= 96.0%, SE_ratio=0.985 ✓
+
+  n = 1000
+  --------------------------------------------------
+    aggregate   : coverage= 88.0%, SE_ratio=0.873 ✓
+    per_obs     : coverage= 94.0%, SE_ratio=0.998 ✓
+
+  n = 2000
+  --------------------------------------------------
+    aggregate   : coverage= 92.0%, SE_ratio=0.836 ✓
+    per_obs     : coverage= 92.0%, SE_ratio=0.969 ✓
+
+  n = 5000
+  --------------------------------------------------
+    aggregate   : coverage= 98.0%, SE_ratio=1.150 ✓
+    per_obs     : coverage= 98.0%, SE_ratio=1.177 ✓
+
+============================================================
+SUMMARY: SE Ratio by Lambda Method
+============================================================
+
+     n |    Aggregate |      Per-Obs |        Δ
+---------------------------------------------
+   500 |        0.870 |        0.985 |   +0.115
+  1000 |        0.873 |        0.998 |   +0.125
+  2000 |        0.836 |        0.969 |   +0.134
+  5000 |        1.150 |        1.177 |   +0.027
+
+============================================================
+DIAGNOSIS
+============================================================
+  Aggregate shows U-shape: True
+  Per-obs is stable: False
+
+  Hypothesis not fully confirmed - investigate further
+
+  ROUND E: FAIL

@@ -66,7 +66,7 @@ from scipy.special import expit
 
 sys.path.insert(0, "/Users/pranjal/deepest/src")
 
-from deep_inference.families import get_family, FAMILY_REGISTRY
+from deep_inference.families import get_family
 
 
 # =============================================================================

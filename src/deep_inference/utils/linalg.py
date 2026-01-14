@@ -121,22 +121,3 @@ def condition_number(matrix: Tensor) -> float:
     if s.min() < 1e-10:
         return float('inf')
     return (s.max() / s.min()).item()
-
-
-def batch_condition_numbers(matrices: Tensor) -> Tensor:
-    """
-    Compute condition numbers for a batch of matrices.
-
-    Args:
-        matrices: (n, d, d) batch of matrices
-
-    Returns:
-        (n,) condition numbers
-    """
-    n = matrices.shape[0]
-    conds = torch.zeros(n, dtype=matrices.dtype, device=matrices.device)
-
-    for i in range(n):
-        conds[i] = condition_number(matrices[i])
-
-    return conds

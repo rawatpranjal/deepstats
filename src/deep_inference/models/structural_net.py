@@ -223,14 +223,3 @@ def train_structural_net(
         model.load_state_dict(best_state)
 
     return history
-
-
-def clone_model(model: StructuralNet) -> StructuralNet:
-    """Create a copy of a structural network."""
-    new_model = StructuralNet(
-        input_dim=model.input_dim,
-        theta_dim=model.theta_dim,
-        hidden_dims=model.hidden_dims,
-    )
-    new_model.load_state_dict(model.state_dict())
-    return new_model

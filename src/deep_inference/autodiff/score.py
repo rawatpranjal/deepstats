@@ -109,31 +109,3 @@ def compute_score_loop(
         gradients[i] = grad_i
 
     return gradients
-
-
-def compute_score_from_batched_loss(
-    loss_fn: Callable[[Tensor, Tensor, Tensor], Tensor],
-    y: Tensor,
-    t: Tensor,
-    theta: Tensor,
-) -> Tensor:
-    """
-    Compute score when loss_fn expects batched inputs.
-
-    This handles the case where loss_fn(y, t, theta) returns (n,) losses.
-    We use the sum trick: since losses are separable, ∂(Σℓᵢ)/∂θᵢ = ∂ℓᵢ/∂θᵢ.
-
-    Args:
-        loss_fn: Batched loss function (y, t, theta) -> (n,) losses
-        y: (n,) outcomes
-        t: (n,) or (n, d_t) treatments
-        theta: (n, d_theta) parameters
-
-    Returns:
-        (n, d_theta) gradient tensor
-    """
-    theta_grad = theta.clone().requires_grad_(True)
-    losses = loss_fn(y, t, theta_grad)  # (n,)
-    total_loss = losses.sum()
-    grad = torch.autograd.grad(total_loss, theta_grad)[0]
-    return grad

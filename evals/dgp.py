@@ -391,6 +391,114 @@ def oracle_jacobian_elasticity_poisson(theta: np.ndarray, t_bar: float = 1.0) ->
     return np.array([0.0, t_bar])
 
 
+# === ADDITIONAL FAMILY JACOBIANS (log-linear families) ===
+
+def oracle_jacobian_ame_gamma(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Gamma AME: H(θ) = β·exp(α + βt̃).
+
+    Same as Poisson (log-linear link).
+    """
+    return oracle_jacobian_ame_poisson(theta, t_tilde)
+
+
+def oracle_jacobian_ame_weibull(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Weibull AME: H(θ) = β·exp(α + βt̃).
+
+    Same as Poisson (log-linear link for scale parameter).
+    """
+    return oracle_jacobian_ame_poisson(theta, t_tilde)
+
+
+def oracle_jacobian_ame_negbin(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Negative Binomial AME: H(θ) = β·exp(α + βt̃).
+
+    Same as Poisson (log-linear link).
+    """
+    return oracle_jacobian_ame_poisson(theta, t_tilde)
+
+
+def oracle_jacobian_ame_gumbel(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Gumbel AME: H(θ) = β.
+
+    Gumbel has identity link for location, so AME is constant.
+    Same as linear.
+    """
+    return np.array([0.0, 1.0])
+
+
+def oracle_jacobian_ame_beta(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Beta AME: H(θ) = σ(α + βt̃)·(1 - σ(α + βt̃))·β.
+
+    Beta regression uses logit link for mean, so AME formula matches logit.
+    """
+    return oracle_jacobian_ame_logit(theta, t_tilde)
+
+
+# === HIGHER-DIMENSIONAL PARAMETER JACOBIANS ===
+
+def oracle_jacobian_avg_param_nd(theta: np.ndarray, param_index: int = 1) -> np.ndarray:
+    """
+    Average Parameter target for n-dimensional theta: H(θ) = θ_k.
+
+    Jacobian is the k-th unit vector.
+
+    Args:
+        theta: (d_theta,) parameter vector
+        param_index: Which parameter to extract
+
+    Returns:
+        (d_theta,) Jacobian with 1 at param_index, 0 elsewhere
+    """
+    jac = np.zeros(len(theta))
+    jac[param_index] = 1.0
+    return jac
+
+
+def oracle_jacobian_prediction_gaussian(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Gaussian prediction: H(θ) = α + βt̃.
+
+    For 3D Gaussian θ = [α, β, γ], the prediction doesn't depend on γ.
+    Jacobian: [1, t̃, 0]
+    """
+    return np.array([1.0, t_tilde, 0.0])
+
+
+def oracle_jacobian_prediction_tobit(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    Tobit latent prediction: H(θ) = α + βt̃.
+
+    For 3D Tobit θ = [α, β, γ], the latent prediction doesn't depend on γ.
+    Jacobian: [1, t̃, 0]
+    """
+    return np.array([1.0, t_tilde, 0.0])
+
+
+def oracle_jacobian_zip_rate_effect(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    ZIP rate effect: H(θ) = β (effect on log-rate).
+
+    For 4D ZIP θ = [α, β, γ, δ], target is just β.
+    Jacobian: [0, 1, 0, 0]
+    """
+    return np.array([0.0, 1.0, 0.0, 0.0])
+
+
+def oracle_jacobian_zip_zeroinfl_effect(theta: np.ndarray, t_tilde: float = 0.0) -> np.ndarray:
+    """
+    ZIP zero-inflation effect: H(θ) = δ (effect on logit(π)).
+
+    For 4D ZIP θ = [α, β, γ, δ], target is just δ.
+    Jacobian: [0, 0, 0, 1]
+    """
+    return np.array([0.0, 0.0, 0.0, 1.0])
+
+
 def oracle_lambda_conditional(x: float, dgp: CanonicalDGP, n_samples: int = 10000) -> np.ndarray:
     """
     Oracle Λ(x) = E[ℓ_θθ | X=x] via Monte Carlo integration.

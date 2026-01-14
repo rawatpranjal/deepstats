@@ -1,25 +1,50 @@
 """
-Eval 05: Influence Function Assembly (ψ) — RUTHLESS VERSION
+============================================================
+EVAL 05: INFLUENCE FUNCTION ASSEMBLY (ψ)
+============================================================
 
-Goal: Verify assembled ψ matches Oracle ψ with RUTHLESS tolerances.
+WHAT THIS TESTS:
+    The influence function ψ is the core object enabling valid inference.
+    This eval verifies that our package's ψ assembly matches the Oracle
+    formula from Theorem 2 of Farrell, Liang, Misra (2021).
 
-Formula (Theorem 2):
+WHY IT MATTERS:
+    - If ψ is wrong → CIs are invalid, coverage fails
+    - ψ must be computed correctly for EVERY observation
+    - The IF correction is what makes neural net inference valid
+
+FORMULA (Theorem 2):
     ψ_i = H(θ_i) - H_θ(θ_i) · Λ(x_i)⁻¹ · ℓ_θ(y_i, t_i, θ_i)
 
-ROUND A: Mechanical Assembly (identical inputs)
-    - Corr(ψ̂, ψ*) > 0.999
-    - |Bias| < 0.001
-    - Max|diff| < 0.01
-    - RMSE < 0.01
+    Where:
+    - H(θ)      = target functional (e.g., AME = σ(α)(1-σ(α))·β)
+    - H_θ       = Jacobian of target w.r.t. θ
+    - Λ(x)      = E[ℓ_θθ | X=x] = expected Hessian
+    - ℓ_θ       = score (gradient of loss)
 
-ROUND B: Neyman Orthogonality
-    - Perturb θ, verify bias scales as O(δ²)
+ROUNDS:
+    A: Mechanical Assembly - package vs oracle with IDENTICAL inputs
+       (Corr > 0.999, Max|diff| < 0.01 → verifies assembly code is correct)
 
-ROUND C: Variance Formula
-    - Verify SE estimation
+    B: Neyman Orthogonality - perturb θ, verify bias ~ O(δ²) not O(δ)
+       (The IF is first-order insensitive to θ estimation error)
 
-ROUND D: Multi-Seed Coverage (M=50)
-    - Coverage should be 88-98%
+    C: Variance Formula - verify Var(ψ)/n gives valid SE
+       (Theorem 3: √n(μ̂ - μ*) →_d N(0, Var(ψ)))
+
+    D: Multi-Seed Coverage - 50 seeds, coverage should be 88-98%
+       (If assembly is correct, CIs should have valid coverage)
+
+    E: Lambda Method Comparison - aggregate vs per-observation Λ(xᵢ)
+       (Paper Remark 4: Λ varies with x through θ(x). Tests if aggregate
+        Lambda causes the U-shaped SE ratio pattern we observed.)
+
+DGP: Heterogeneous Logistic (Regime C - most stressful)
+    - X ~ Uniform(-2, 2)
+    - α*(x) = 0.5·sin(x), β*(x) = 1.0 + 0.5·x
+    - T = β*(x) + N(0, 0.5²)  [CONFOUNDED]
+    - Y ~ Bernoulli(σ(α*(x) + β*(x)·T))
+    - Target: AME at t̃=0, μ* ≈ 0.241
 """
 
 import sys
@@ -473,10 +498,11 @@ def run_round_d(n: int, M: int = 50, verbose: bool = True, lambda_method: str = 
 def compute_lambda_per_obs_randomized(
     theta: np.ndarray,
     T_samples: np.ndarray,
-    family: str = "logit"
+    family: str = "logit",
+    n_mc: int = 100,  # Use fewer MC samples for speed
 ) -> np.ndarray:
     """
-    Compute Λ(xᵢ) for each observation under randomization.
+    Compute Λ(xᵢ) for each observation under randomization (VECTORIZED).
 
     From Remark 4 of FLM paper:
     "If T is randomly assigned... Λ(xᵢ) can be computed and need not
@@ -488,40 +514,49 @@ def compute_lambda_per_obs_randomized(
         theta: (n, d_theta) - parameter estimates for each observation
         T_samples: (M,) - samples from treatment distribution F_T
         family: model family
+        n_mc: number of MC samples to use (subsample if M > n_mc)
 
     Returns:
         lambda_matrices: (n, d_theta, d_theta)
     """
     n, d_theta = theta.shape
-    M = len(T_samples)
+
+    # Subsample T if too many
+    if len(T_samples) > n_mc:
+        idx = np.random.choice(len(T_samples), n_mc, replace=False)
+        T_sub = T_samples[idx]
+    else:
+        T_sub = T_samples
+
+    M = len(T_sub)
+
+    # Build treatment design matrix: (M, 2) with [1, t]
+    T_design = np.column_stack([np.ones(M), T_sub])  # (M, 2)
+
+    # Compute tt' for all t: (M, 2, 2)
+    tt_outer = np.einsum('mi,mj->mij', T_design, T_design)  # (M, 2, 2)
 
     lambda_matrices = np.zeros((n, d_theta, d_theta))
 
-    for i in range(n):
-        theta_i = theta[i]
-        hessians = []
+    if family == "logit":
+        # Vectorized over observations
+        # eta = theta @ T_design.T  → (n, M)
+        eta = theta @ T_design.T  # (n, M)
+        p = expit(eta)  # (n, M)
+        weights = p * (1 - p)  # (n, M)
 
-        for t in T_samples:
-            # Build treatment vector (intercept, t)
-            t_vec = np.array([1.0, t])
+        # Λ(xᵢ) = (1/M) Σₘ w_{im} · tₘtₘ'
+        # (n, M) @ (M, 2, 2) → need einsum
+        for i in range(n):
+            lambda_matrices[i] = np.average(tt_outer, axis=0, weights=weights[i])
 
-            if family == "logit":
-                # η = θ'·t
-                eta = theta_i @ t_vec
-                # σ(η)
-                p = expit(eta)
-                # Weight = σ(1-σ)
-                weight = p * (1 - p)
-                # Hessian contribution: σ(1-σ) · tt'
-                hessians.append(weight * np.outer(t_vec, t_vec))
-            elif family == "linear":
-                # For linear: Λ = E[tt'] (doesn't depend on θ)
-                hessians.append(np.outer(t_vec, t_vec))
-            else:
-                raise ValueError(f"Unknown family: {family}")
+    elif family == "linear":
+        # For linear: Λ = E[tt'] (same for all observations)
+        lambda_mean = np.mean(tt_outer, axis=0)
+        lambda_matrices[:] = lambda_mean
 
-        # Λ(xᵢ) = (1/M) Σₘ ℓ_θθ(tₘ, θ(xᵢ))
-        lambda_matrices[i] = np.mean(hessians, axis=0)
+    else:
+        raise ValueError(f"Unknown family: {family}")
 
     return lambda_matrices
 
