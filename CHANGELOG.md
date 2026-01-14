@@ -2,6 +2,10 @@
 
 ## 2026-01-13
 
+### PyPI Release v0.1.2
+- Published `deep-inference` v0.1.2 to PyPI
+- Includes complete documentation overhaul and new `inference()` API
+
 ### Documentation Overhaul: New API Alignment
 - Updated `CLAUDE.md` package structure to reflect new modules (models/, targets/, lambda_/, engine/)
 - Updated `README.md` with new `inference()` API section and regime table
