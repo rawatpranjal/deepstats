@@ -748,8 +748,8 @@ def print_final_summary(all_results: dict):
 
 
 def run_eval_08(
-    M_a: int = 30,
-    M_b: int = 20,
+    M_a: int = 50,
+    M_b: int = 50,
     epochs: int = 50,
     verbose: bool = True,
 ) -> dict:
@@ -757,8 +757,8 @@ def run_eval_08(
     Run Eval 08: Cross-Fitting Necessity & Ridge Calibration.
 
     Args:
-        M_a: Number of simulations for Part A
-        M_b: Number of simulations for Part B
+        M_a: Number of simulations for Part A (default: 50 for rigorous MC)
+        M_b: Number of simulations for Part B (default: 50 for rigorous MC)
         epochs: Training epochs per simulation
         verbose: Print detailed output
     """
@@ -818,14 +818,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Eval 08: Cross-Fitting & Ridge")
     parser.add_argument("--quick", action="store_true", help="Quick mode (M=10)")
-    parser.add_argument("--M-a", type=int, default=30, help="Simulations for Part A")
-    parser.add_argument("--M-b", type=int, default=20, help="Simulations for Part B")
+    parser.add_argument("--M-a", type=int, default=50, help="Simulations for Part A (default: 50)")
+    parser.add_argument("--M-b", type=int, default=50, help="Simulations for Part B (default: 50)")
     parser.add_argument("--epochs", type=int, default=50, help="Training epochs")
     args = parser.parse_args()
 
     if args.quick:
-        M_a, M_b = 10, 10
+        M_a, M_b = 10, 10  # Quick mode for testing
     else:
-        M_a, M_b = args.M_a, args.M_b
+        M_a, M_b = args.M_a, args.M_b  # Full mode: M=50 for rigorous MC
 
     result = run_eval_08(M_a=M_a, M_b=M_b, epochs=args.epochs)
