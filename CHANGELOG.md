@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-01-16 (Night)
+
+### Next-Gen Requirements Document
+- Created `full_requirements_next_gen.md`: Comprehensive requirements for incremental improvements to deep-inference
+- **IN SCOPE**: IV/2SLS, Doubly Robust ATE, Causal Estimands (ATE, ATT, CATE), New Targets (Elasticity, WTP, Welfare), API unification
+- **OUT OF SCOPE**: Berry models, vector treatments, multi-equation systems, Bayesian uncertainty
+- Defines new protocols: `MomentModel` (for IV), `PropensityEstimator` (for DR-ATE)
+- 8-week implementation roadmap with 5 phases
+- New evals specified: eval_09_dr_ate.py, eval_10_iv.py
+- LOC estimate: ~2900 new + ~650 refactor = ~3550 total
+
 ## 2026-01-16 (Late Evening)
 
 ### Implementation Verification: deep_inference vs FLM Papers & External Repo
