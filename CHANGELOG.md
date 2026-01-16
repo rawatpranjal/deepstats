@@ -2,6 +2,11 @@
 
 ## 2026-01-16
 
+### Quick Start Documentation: Visual Plot Images
+- Added `plot_distributions()` and `plot_heterogeneity()` images to Quick Start in `docs/index.md`
+- Created `docs/_static/quickstart_distributions.png` and `docs/_static/quickstart_heterogeneity.png`
+- Added `docs/generate_quickstart_plots.py` script to regenerate plots if needed
+
 ### Smoke Test: Eval-Validated Hyperparameters
 - Updated `smoke_test.py` with eval-validated settings for `structural_dml()` API
 - **New settings**: n=5000 (8000 for binary), epochs=100, n_folds=50, hidden_dims=[64,32], lr=0.01

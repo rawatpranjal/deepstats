@@ -103,6 +103,14 @@ result.plot_distributions()
 result.plot_heterogeneity(feature_idx=1)  # β(X) vs X₁
 ```
 
+**Distribution of estimated parameters:**
+
+![Parameter distributions](_static/quickstart_distributions.png)
+
+**Treatment effect heterogeneity (β vs X₁):**
+
+![Heterogeneity plot](_static/quickstart_heterogeneity.png)
+
 ### New `inference()` API
 
 The new API supports flexible targets and randomization mode:
