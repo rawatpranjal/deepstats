@@ -1,0 +1,23 @@
+�� (x)z
+⋆
+ℓθ (w, θ (x)) = −
+⊗z
+t − ζ1⋆ (x) − ζ2⋆ (x)z
+
+and
+
+ℓθθ (w, θ ⋆ (x)) = I2 ⊗ z1 z1′ .
+
+Therefore Λ(x) = I2 ⊗ ΛZ (x), where ΛZ (x) = E[z1 z1′ | X = x].
+As before, our score is not the only possibility for estimation and inference IV models.
+Our approach aims for ease of use and transparency, both by sticking to the two stage least
+squares and by the structural compatibility of deep learning. Restricting to homogeneous
+effects, Chernozhukov et al. (2018a) study partially linear IV models and study three different
+possibly orthogonal scores, each requiring different functions in the first step and in the
+correction term. The same could be done in our unrestricted model. As in partially linear
+models, if any parameters are constant this can be enforced in the architecture. It is not
+obvious which approach is best.
+
+66
+
+

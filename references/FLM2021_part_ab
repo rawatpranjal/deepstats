@@ -1,0 +1,1678 @@
+. Whereas τ is the gain in assigning the
+next person to treatment and is given by the difference in potential outcomes, π(s) is the expected
+outcome that would be observed for the next person if the treatment rule were s(x).
+A natural question is whether a candidate targeting strategy, say s0 (x), is superior to baseline
+or status quo policy, s0 (x). This amounts to testing the hypothesis H0 : π(s0 ) ≥ π(s0 ). To evaluate
+this, we can study the difference in expected profits, which amounts to
+
+
+
+π(s0 , s0 ) = π(s0 ) − π(s0 ) = E (s0 (X) − s0 (X))Y (1) + s0 (X) − s0 (X) Y (0) .
+
+(3.3)
+
+Assumption 4 provides identification for π(s) and π(s0 , s0 ), arguing analogously as for τ . Moreover,
+notice that π(s0 , s0 ) = E[(s0 (X) − s0 (X))(Y (1) − Y (0))] = E[(s0 (X) − s0 (X))τ (X)], where τ (x) =
+E[Y (1) − Y (0) | X = x] is the conditional average treatment effect. The latter form makes clear
+that only those differently treated, of course, impact the evaluation of s0 compared to s0 . The
+strategy s0 will be superior if, on average, it targets those with a higher individual treatment effect.
+Estimating the optimal treatment policy from the data is discussed briefly in Section 3.3.
+The common structure of these parameters is that they all involve full-population averages of
+the potential outcomes, possibly scaled by a known function. For these parameters, the influence
+function is known from Hahn (1998), and estimators based on the influence function are doubly
+robust, as they remain consistent if either the regression functions or the propensity score are
+correctly specified (Robins et al., 1994, 1995). With a slight abuse of terminology (since we are
+
+20
+
+omitting the centering), the influence function for a single average potential outcome, t ∈ {0, 1}, is
+given by, for z = (y, t, x0 )0 ,
+
+ψt (z) =
+
+1{T = t}(y − µt (x))
+P[T = t | X = x]
+
++ µt (x).
+
+(3.4)
+
+Our estimation of τ , π(s), and π(s0 , s0 ) will utilize sample averages of this function, with unknown
+objects replaced by estimators. Our use of influence functions here follows the recent literature in
+econometrics showing that the double robustness implies valid inference under weaker conditions
+on the first step nonparametric estimates (Farrell, 2015; Chernozhukov et al., 2018a).
+
+3.2
+
+Subpopulation Effect Parameters
+
+The second type of causal effects of interest are based on potential outcomes averaged over only a
+specific treatment group. A single such average, for t, t0 ∈ {0, 1}, is denoted by
+ρt,t0 = E[Y (t) | T = t0 ].
+
+(3.5)
+
+Many interesting parameters are linear combinations of these for different t and t0 . We focus on
+two for concreteness. (We could also consider averages restricted by targeting-type functions, as in
+expected utility/profit, but for brevity we omit this.) The most well-studied of these parameters is
+the treatment effect on the treated, given by
+
+τ1,0 = E[Y (1) − Y (0) | T = 1] = ρ1,1 − ρ0,1 .
+
+(3.6)
+
+To appreciate the breadth of this framework, and the applicability of our causal inference results, we also consider a decomposition parameter, a semiparametric analogue of Oaxaca-Blinder
+(Kitagawa, 1955; Oaxaca, 1973; Blinder, 1973). In this context, the “treatment” variable T is typically not a treatment assignment per se, but rather an exogenous covariate such as a demographic
+indicator, perhaps most commonly a male/female indicator. See Fortin et al. (2011) for a complete
+discussion and further references. The parameter of interest in this case is the decomposition of
+∆ = E[Y (1) | T = 1] − E[Y (0) | T = 0], into the difference in the covariate distributions and the
+difference in expected outcomes. These can be written as functions of different ρt,t0 . For example,
+21
+
+∆X = E[Y (1)|T = 1] − E[Y (1)|T = 0] = E[µ1 (X)|T = 1] − E[µ1 (X)|T = 0] = ρ1,1 − ρ1,0 . We are in
+general interested in
+
+∆ = ∆X + ∆µ ,
+
+∆X = ρ1,1 − ρ1,0 ,
+
+and
+
+∆µ = ρ1,0 − ρ0,0 .
+
+(3.7)
+
+Just as in the case of full-population averages, the influence function is known and leads to a
+doubly robust estimator. For a single ρt,t0 , the (uncentered) influence function is (cf. (3.4)):
+
+ψt,t0 (z) =
+
+P[T = t0 | X = x] 1{T = t}(y − µt (x)) 1{T = t0 }µt (x)
++
+.
+P[T = t0 ]
+P[T = t | X = x]
+P[T = t0 ]
+
+(3.8)
+
+Estimation and inference requires, as above, estimation of the propensity scores and regression functions, depending on the exact choices of t and t0 , and here we also require the marginal probability
+of treatments.
+
+3.3
+
+Optimal Policies
+
+Moving beyond a fixed parameter, our results on deep neural networks can be used to address
+optimal targeting. In the notation of Section 3.1, this amounts to finding a policy, say s? (x),
+that maximizes a given measure of utility stemming from treatment, generally the expected gain
+relative to a baseline policy. In Section 3.1 we considered the utility (or profit) difference between
+two given strategies, a candidate s0 (x) and a baseline s0 (x). Instead of inference on π(s0 , s0 ), we
+can use the data to find the s? (x) which maximizes the gain relative to the baseline. This problem
+has been widely studied in econometrics and statistics; for detailed discussion and numerous references see Manski (2004), Hirano and Porter (2009), Kitagawa and Tetenov (2018), and Athey and
+Wager (2018). In particular, the latter noticed using the locally robust framework allows policy
+optimization under nearly the same conditions as inference and proved fast convergence rates of
+the estimated policy in terms of regret.
+More formally, we want to find the optimal choice s? (x) in some policy/action space S. The
+policy space, and thus its complexity, is user determined. Simple examples include simple decision trees or univariate-based strategies; more can be found in the references above. Recall that
+π(s0 , s0 ) = E[Y (s0 )] − E[Y (s0 )] = E[(s0 (X) − s0 (X))τ (X)], where τ (x) = E[Y (1) − Y (0) | X = x]
+
+22
+
+is the conditional average treatment effect. Given a space S, we wish to find the policy s? (x) ∈ S
+which solves maxs0 ∈S π(s0 , s0 ). The main result of Athey and Wager (2018) is that replacing π
+with the doubly-robust π̂ of Equation (4.3), and minimizing the empirical analogue of regret, one
+obtains an estimator ŝ(x) of the optimal policy that obeys the regret bound π(s? , s0 ) − π(ŝ, s0 ) =
+p
+OP ( VC(S)/n) (a formal statement would be notationally burdensome). The complexity of the
+user-chosen policy space enters the bound through its VC dimension. Simple, interpretable policy
+classes often have bounded or slowly-growing dimension, implying rapid convergence.
+
+3.4
+
+Other Estimands
+
+There are of course many other contexts where first-step deep learning is useful. Only trivial
+extensions to the above would be required for other causal effects, such as multi-valued treatments (reviewed by Cattaneo, 2010) and others with doubly-robust estimators (Sloczynski and
+Wooldridge, 2018). Further, under selection on observables, treatment effects, missing data, measurement error, and data combination are equivalent, and thus all our results apply immediately
+to those contexts. For reviews of these and Assumption 4 more broadly, see Chen et al. (2004);
+Tsiatis (2006); Heckman and Vytlacil (2007); Imbens and Wooldridge (2009).
+Moving beyond causal effects, any estimand with a locally/doubly robust estimator depending
+only on target functions falling into our class of losses can be covered using the results of Section 2.
+For example, estimands requiring distribution estimation require further study; see Liang (2018) for
+recent results via Generative Adversarial Networks (GANs). More precisely, along with regularity
+conditions, our theory can be used to verify the conditions of Chernozhukov et al. (2018c), who
+treat more general semiparametric estimands using local robustness, sometimes relying on sample
+splitting or cross fitting. Further in this vein, our results on deep neural networks can be used
+to address optimal targeting, i.e., finding the policy, say s? (x), that maximizes a given measure
+of utility, by applying the results of Athey and Wager (2018), who noticed that using the locally
+robust framework allows policy optimization.
+More broadly, the learning of features using deep neural networks is becoming increasingly
+popular and our results speak to this context directly. To illustrate, consider the simple example
+of a linear model where some predictors are features learned from independent data. Here, the
+object of interest is the fixed-dimension coefficient vector λ, which we assume can be partitioned
+23
+
+as λ = (λ01 , λ02 )0 according to the model Y = f (X)0 λ1 + W 0 λ2 + ε. The features f (X), often a
+“score” of some type, are generally learned from auxiliary (and independent) data. For a recent
+example, see Liu et al. (2017). In such cases, inference on λ can proceed directly, as long as care
+is taken to interpret the results. See Section 4.2.
+
+4
+
+Asymptotic Inference
+
+We now turn to asymptotic inference for the causal parameters discussed above. We first define the
+estimators, which are based on sample averages of the (uncentered) influence functions (3.4) and
+(3.8). We then give a generic result for single averages which can then be combined for inference on
+a given parameter of interest. Below we discuss inference under randomized treatment and using
+sample splitting.
+Throughout, we assume we have a sample {zi = (yi , ti , x0i )0 }ni=1 from Z = (Y, T, X 0 )0 . We then
+form
+ψ̂t (zi ) =
+
+1{ti = t}(yi − µ̂t (xi ))
+P̂[T = t | X = xi ]
+
++ µ̂t (xi ),
+
+(4.1)
+
+where P̂[T = t | X = xi ] = p̂(xi ) for t = 1 and 1 − p̂(xi ) for t = 0, and similarly
+
+ψ̂t,t0 (zi ) =
+
+P̂[T = t0 | X = xi ] 1{ti = t}(yi − µ̂t (xi ))
+P̂[T = t0 ]
+
+P̂[T = t | X = xi ]
+
++
+
+1{ti = t0 }µ̂t (xi )
+P̂[T = t0 ]
+
+,
+
+(4.2)
+
+where P̂[T = t0 ] is simply the sample frequency En [1{ti = t0 }].
+For the first stage estimates appearing in (4.1) and (4.2) we use our results on deep nets, and
+Theorem 1 in particular. Specifically, the estimated propensity score, p̂(x), is the estimate that
+results from solving (2.4), with the MLP architecture, for the logistic loss (2.3) with T as the
+outcome. Similarly, for each status t ∈ {0, 1}, we can let µ̂t (x) be the deep-MLP estimate of
+f∗ (x) = E[Y |T = t, X = x], solving (2.4) for least squares loss, (2.2), with outcome Y , using
+only observations with ti = t. However, it is worth noting that the theoretically-equivalent joint
+estimation of Equation (5.1) performs much better, as the two groups may share features. To state
+the results, let βp and βµ be the smoothness parameters of Assumption 2 for the propensity score
+and outcome models, respectively.
+We then obtain inference using the following results, essentially taken from Farrell (2015).
+24
+
+Similar results are given by Belloni et al. (2017) and Chernozhukov et al. (2018a). All of these
+provide high-level conditions for valid inference, and none verify these for deep nets as we do here.
+Theorem 3. Suppose that {zi = (yi , ti , x0i )0 }ni=1 are i.i.d. obeying Assumption 4 and the conditions
+Theorem 1 hold with βp ∧ βµ > d. Further assume that, for t ∈ {0, 1}, E[(s(X)ψt (Z))2 |X] is
+bounded away from zero and, for some δ > 0, E[(s(X)ψt (Z))4+δ |X] is bounded. Then the deep
+MLP-ReLU network estimators defined above obey the following, for t ∈ {0, 1},
+
+
+(a) En [(p̂(xi ) − p(xi ))2 ] = oP (1) and En (µ̂t (xi ) − µt (xi ))2 = oP (1),
+(b) En [(µ̂t (xi ) − µt (xi ))2 ]1/2 En [(p̂(xi ) − p(xi ))2 ]1/2 = oP (n−1/2 ), and
+(c) En [(µ̂t (xi ) − µt (xi ))(1 − 1{ti = t}/P[T = t|X = xi ])] = oP (n−1/2 ),
+and therefore, if p̂(xi ) is bounded inside (0, 1), for a given s(x) and t ∈ {0, 1}, we have
+√
+
+h
+i
+nEn s(xi )ψ̂t (zi ) − s(xi )ψt (zi ) = oP (1)
+
+and
+
+En [(s(xi )ψ̂t (zi ))2 ]
+= oP (1),
+En [(s(xi )ψt (zi ))2 ]
+
+h
+i
+√
+nEn ψ̂t,t0 (zi ) − ψt,t0 (zi ) = oP (1)
+
+and
+
+En [ψ̂t,t0 (zi )2 ]
+= oP (1).
+En [ψt,t0 (zi )2 ]
+
+as well as,
+
+This result, our main inference contribution, shows exactly how deep learning delivers valid
+asymptotic inference for our parameters of interest. Theorem 1 (a generic result using Theorem 2
+could be stated) proves that the nonparametric estimates converge sufficiently fast, as formalized
+by conditions (a), (b), and (c), enabling feasible efficient semiparametric inference. In general, these
+are implied by, but may be weaker than, the requirement of that the first step estimates converge
+faster than n−1/4 , which our results yield for deep ReLU nets. The first is a mild consistency
+requirement. The second requires a rate, but on the product of the two estimates, which can be
+satisfied under weaker conditions. Finally, the third condition is the strongest. Intuitively, this
+condition arises from a “leave-in” type remainder, and as such, it can be weakened using sample
+splitting Chernozhukov et al. (2018a); Newey and Robins (2018). We opt to maintain (c) exactly
+because deep nets are not amenable to either simple leave-one-out forms (as are, e.g., classical
+kernel regression) or to sample splitting, being a data hungry method the gain in theoretically
+weaker rate requirements may not be worth the price paid in constants in finite samples. Instead,
+25
+
+we employ our localization analysis, as was used to obtain the results of Section 2, to verify (c)
+directly (see Lemma 10); this appears to be a novel application of localization, and this approach
+may be useful in future applications of second-step inference using machine learning methods.
+From this result we immediately obtain inference for all the causal parameters discussed above.
+For the full-population averages, for example, we would form
+h
+i
+τ̂ = En ψ̂1 (zi ) − ψ̂0 (zi ) ,
+h
+i
+π̂(s) = En s(xi )ψ̂1 (zi ) + (1 − s(xi ))ψ̂0 (zi ) ,
+h
+i
+π̂(s0 , s0 ) = En [s0 (xi ) − s0 (xi )]ψ̂1 (zi ) − [s0 (xi ) − s0 (xi )]ψ̂0 (zi ) .
+
+(4.3)
+
+The estimator τ̂ is exactly the doubly/locally robust estimator of the average treatment effect that
+is standard in the literature. The estimators for profits can be thought of as the doubly robust
+version of the constructs described in Hitsch and Misra (2018). Furthermore, to add a per-unit
+cost of treatment/targeting c and a margin m, simply replace ψ1 with mψ1 − c and ψ0 with mψ0 .
+ˆ X , and ∆
+ˆ µ would be linear combinations of different ρ̂t,t0 = En [ψ̂t,t0 (zi )].
+Similarly, τ̂1,0 , ∆
+It is immediate from Theorem 3 that all such estimators are asymptotically Normal. The
+asymptotic variance can be estimated by simply replacing the sample first moments of (4.3) with
+second moments. That is, looking at π̂(s) to fix ideas,
+√
+
+d
+
+nΣ̂−1/2 (π̂(s) − π(s)) → N (0, 1),
+
+with
+
+Σ̂ = En
+
+
+
+2 
+s(xi )ψ̂1 (zi ) + (1 − s(xi ))ψ̂0 (zi )
+− π̂(s)2 .
+
+The others are similar. Further, Theorem 3 can be generalized straightforwardly to yield uniformly
+valid inference, following the approach of Romano (2004), exactly as in Belloni et al. (2014) or
+Farrell (2015).
+Finally, we note that our focus with Theorem 3 is showcasing the practical utility of deep
+learning. Our use of local/double robustness here is toward the aim of attaining feasible inference
+without requiring more detailed assumptions on the machine learning step. This comes at the
+expense of, for example, stronger-than-minimal smoothness assumptions. That is, the requirement
+that βp ∧ βµ > d is not minimal, and moreover, neither is the weaker condition βp ∧ βµ > d/2 that
+would be required after applying Corollary 1 instead of Theorem 1. Obtaining a Gaussian limit, and
+
+26
+
+possibly semiparametric efficiency, under minimal conditions has been studied by many, dating at
+least to Bickel and Ritov (1988); see Robins et al. (2009) for recent results and references on optimal
+estimation and minimal conditions. For causal inference, Chen et al. (2008) and Athey et al. (2018)
+obtain semiparametric efficiency under strictly weaker conditions than ours on p(x) (the former
+under minimal smoothness on µt (x) and the latter under a sparsity in a high-dimensional linear
+model). Further, as above, cross-fitting (Newey and Robins, 2018) paired with local robustness
+may yield weaker smoothness conditions by providing underfitting” robustness (i.e. weakening biasrelated tuning parameter assumptions). On the other hand, weaker variance-related assumptions,
+or “overfitting” robust inference procedures, (Cattaneo and Jansson, 2018; Cattaneo et al., 2018),
+may also be possible following deep learning, but are less automatic at present. Finally, other
+methods designed for causal inference under relaxed assumptions may be useful here, such as the
+recently developed extensions to doubly robust estimation (Tan, 2018) and inverse weighting (Ma
+and Wang, 2018): pursuing these in the context of deep learning is left to future work.
+
+4.1
+
+Inference Under Randomization
+
+Our analysis thus far has focused on observational data, but it is worth spelling out results for randomized experiments. This is particularly important in the Internet age, where experimentation
+is common, vast amounts of data are available, and effects are often small in magnitude (Taddy
+et al., 2015). Indeed, our empirical illustration, detailed in the next section, stems from an experiment with 300,000 units and hundreds of covariates. When treatment is randomized, inference
+can be done directly using the mean outcomes in the treatment and control groups, such as the
+difference for the average treatment effect or the corresponding weighted sum for profit. However,
+pre-treatment covariates can be used to increase efficiency (Hahn, 2004).
+We will focus on the simple situation of a purely randomized binary treatment, but our results
+can be extended naturally to other randomization schemes. We formalize this with the following.
+Assumption 5 (Randomized Treatment). T is independent of Y (0), Y (1), and X, and is distributed Bernoulli with parameter p∗ , such that p̄ ≤ p∗ ≤ 1 − p̄ for some p̄ > 0.
+Under this assumption, the obvious simplification is that the propensity score need not be
+estimated using the covariates, but can be replaced with the (still nonparametric) sample frequency:
+27
+
+p̂(xi ) ≡ p̂ = En [ti ]. This is plugged into Equation (4.3) and estimation and inference proceeds as
+above. Only rate conditions on the regression functions µ̂t (x) are needed. Further, conditions (a)
+and (b) of Theorem 3 collapse, as p̂ is root-n consistent, leaving only condition (c) to be verified.
+Again, cross-fitting can be used in theory to remove this condition and thus weaken the requirement
+that βµ > d, but we maintain this for simplicity. We collect this into the following result, which is
+a trivial corollary of Theorem 3.
+Corollary 3. Let the conditions of Theorem 3 hold with Assumption 5 in place of Assumption 4
+and only βµ > d. Then deep MLP-ReLU network estimators obey
+
+
+(a0 ) En (µ̂t (xi ) − µt (xi ))2 = oP (1) and
+(c0 ) En [(µ̂t (xi ) − µt (xi ))(1 − 1{ti = t}/p∗ )] = oP (n−1/2 )
+and the conclusions of Theorem 3 hold.
+
+4.2
+
+Sample Splitting
+
+Sample splitting may be used to obtain valid inference in cases, unlike those above, where the
+parameter of interest itself is learned from the data. For the causal estimands above, the regression
+functions and propensity score must be estimated, but these are nuisance functions. This is not
+true in the inference after policy or feature learning (Sections 3.3 and 3.4). For policy learning,
+our results can be used to verify the high-level conditions of Athey and Wager (2018), though they
+require the additional condition of uniform consistency of the first stage estimators, and for machine
+learning estimators this is not clearly innocuous. However, this gives only point estimation.
+Sample splitting is used in the obvious way: the first subsample, or more generally, independent
+auxiliary data, is used to learn the features or optimal policy, and then Theorem 3 is applied in
+the second subsample, conditional on the results of the first. For policy learning this delivers valid
+inference on π(ŝ) or π(ŝ, s0 ), while for the simple example of feature learning in a linear model we
+obtain inference on the parameters defined by the “model” Y = f (X)0 λ1 + W 0 λ2 + ε, where f (X)
+is estimated from auxiliary data. Care must be taken in interpreting the results. The results of
+the first-subsample estimation are effectively conditioned upon in the inference stage, redefining
+the target parameter to be in terms of the learned object. In many contexts this may be sufficient
+
+28
+
+(Chernozhukov et al., 2018b), but further assumptions will generally be needed to assume that the
+first subsample has recovered the true population object. To fix ideas, consider policy learning:
+inference on π(ŝ, s0 ), conditional on the map ŝ(x) learned in the first subsample, is immediate
+and requires no additional assumptions, but inference on π(s? , s0 ) is not obvious without further
+conditions.
+
+5
+
+Empirical Application
+
+To illustrate our results, Theorems 1 and 3 in particular, we study, from a marketing point of
+view, a randomized experiment from a large US retailer of consumer products. The outcome of
+interest is consumer spending and the treatment is a catalog mailing. The firm sells directly to
+the customer (as opposed to via retailers) using a variety of channels such as the web and mail.
+The data consists of nearly three hundred thousand (292,657) consumers chosen at random from
+the retailer’s database. Of these, 2/3 were randomly chosen to receive a catalog, and in addition
+to treatment status, we observe roughly one hundred fifty covariates, including demographics, past
+purchase behaviors, interactions with the firm, and other relevant information. For more on the
+data and a complete discussion of the decision making issues, we refer the reader to Hitsch and
+Misra (2018) (we use the 2015 sample). That paper studied various estimators, both traditional
+and modern, of average and heterogeneous causal effects. Importantly, they did not consider neural
+networks. Our results show that deep nets are at least as good as (and sometimes better than) the
+best methods in Hitsch and Misra (2018).
+In terms of motivation, a key element of a firm’s toolkit is the design and implementation of
+targeted marketing instruments. These instruments, aiming to induce demand, often contain advertising and informational content about the firms offerings. The targeting aspect thus boils down
+to the selection of which particular customers should be sent the material. This is a particularly
+important decision since the costs of creation and dissemination of the material can accumulate
+rapidly, particularly over a large customer base. For a typical retailer engaging in direct marketing
+the costs of sending out a catalog can be close to a dollar per targeted customer. With millions of
+catalogs being sent out, the cost of a typical campaign is quite high.
+Given these expenses, an important problem for firms is ascertaining the causal effects of such
+
+29
+
+targeted mailing, and then using these effects to evaluate potential targeting strategies. At a high
+level, this approach is very similar to modern personalized medicine where treatments have to be
+targeted. In these contexts, both the treatment and the targeting can be costly, and thus careful
+assessment of π(s) (interpreted as welfare) is crucial for decision making.
+The outcome of interest for the firm is customer spending. This is the total amount of money
+that a given customer spends on purchases of the firm’s products, within a specified time window.
+For the experiment in question the firm used a window of three months, and aggregated sales from
+all available purchase channels including phone, mail, and the web. In our data 6.2% of customers
+made a purchase. Overall mean spending is $7.31; average spending conditional on buying is $117.7,
+with a standard deviation of $132.44. The idea then is to examine the incremental effect that the
+catalog had on this spending metric. Table 1 presents summary statistics for the outcome and
+treatment. Figure 3 displays the complete density of spending conditional on a purchase, which is
+
+2000
+1500
+1000
+500
+0
+
+Frequency
+
+2500
+
+3000
+
+quite skewed.
+
+0
+
+200
+
+400
+
+600
+
+800
+
+Spend conditional on purchase
+
+Figure 3: Spend Conditional on Purchase
+
+30
+
+1000
+
+Table 1: Summary Statistics
+
+Purchase
+Spend
+Spend Conditional on Purchase
+Treatment
+Purchase | Treatment=1
+Purchase | Treatment=0
+Spend | Treatment=1
+Spend | Treatment=0
+
+5.1
+
+Mean
+
+SD
+
+N
+
+0.062
+7.311
+117.730
+0.669
+0.069
+0.047
+8.158
+5.597
+
+0.24
+43.55
+132.44
+0.47
+0.25
+0.21
+44.71
+41.04
+
+292657
+292657
+18174
+292657
+195821
+96836
+195821
+96836
+
+Implementation Details
+
+We estimated deep neural nets under a variety of architecture choices. In what follows we present
+eight examples and focus on one particular architecture to compute various statistics and tests to
+illustrate the use of the theory developed above. All computation was done using TensorFlowTM .
+For treatment effect and profit estimation we follow Equations (4.1) and (4.3). Because treatment is randomized, we apply Corollary 3, and thus, only require estimates of the regression
+functions µt (x) = E[Y (t)|X = x], t ∈ {0, 1}. An important implementation detail, from a computation point of view (recall Remark 2) is that we will estimate µ0 (x) and τ (x) (and thereby µ1 (x))
+jointly (results from separate estimation are available). To be precise, recalling Equations (2.2)
+and (2.4), we solve
+
+
+
+
+n
+2
+X
+µ̂0 (x)
+1
+
+
+yi − µ̃0 (xi ) − τ̃ (xi )ti
+
+ := arg min
+2
+µ̃0 ,τ̃
+τ̂ (x) = µ̂1 (x) − µ̂0 (x)
+i=1
+
+(5.1)
+
+where the minimization is over the relevant network architecture. Recall that, in the context of
+our empirical example yi is the customer’s spending, xi are her characteristics, and ti indicates
+receipt of a catalog. In this format, µ0 (xi ) reflects base spending and τ (x) = µ1 (xi ) − µ0 (xi )
+is the conditional average treatment effect of the catalog mailing. In our application, this joint
+estimation outperforms separately estimating each µt (x) on the respective samples (though these
+two approaches are equivalent theoretically).
+The details of the eight deep net architectures are presented in Table 2. See Section 2.1 for an
+
+31
+
+introduction to the terminology and network construction. Most yielded similar results, both in
+terms of fit and final estimates. A key measure of fit reported in the final column of the table is the
+portion of τ̂ (xi ) that were negative. As argued by Hitsch and Misra (2018), it is implausible under
+standard marketing or economic theory that receipt of a catalog causes lower purchasing. On this
+metric of fit, deep nets perform as well as, and sometimes better than, the best methods found
+by Hitsch and Misra (2018): Causal KNN with Treatment Effect Projections (detailed therein) or
+Causal Forests (Wager and Athey, 2018). Figure 4 shows the distribution of τ̂ (xi ) across customers
+for each of the eight architectures. While there are differences in the shapes of the densities, the
+mean and variance estimates are nonetheless quite similar.
+Table 2: Deep Network Architectures
+
+Architecture
+
+Learning
+Rate
+
+Widths
+[H1 , H2 , ...]
+
+Dropout
+[H1 , H2 , ...]
+
+Total
+Parameters
+
+Validation
+Loss
+
+Training
+Loss
+
+Pn [τ̂ (xi ) < 0]
+
+1
+2
+3
+4
+5
+6
+7
+8
+
+0.0003
+0.0003
+0.0001
+0.0009
+0.0003
+0.0003
+0.0003
+0.00005
+
+[60]
+[100]
+[30, 20]
+[30, 10]
+[30, 30]
+[30, 30]
+[100, 30, 20]
+[80, 30, 20]
+
+[0.5]
+[0.5]
+[0.5, 0]
+[0.3, 0.1]
+[0, 0]
+[0.5, 0]
+[0.5, 0.5, 0]
+[0.5, 0.5, 0]
+
+8702
+14502
+4952
+4622
+5282
+5282
+17992
+14532
+
+1405.62
+1406.48
+1408.22
+1408.56
+1403.57
+1408.57
+1408.62
+1413.70
+
+1748.91
+1751.87
+1751.20
+1751.62
+1738.59
+1755.28
+1751.52
+1756.93
+
+0.0014
+0.0251
+0.0072
+0.0138
+0.0226
+0.0066
+0.0103
+0.0002
+
+Notes: All networks use the ReLU activation function. The width of each layer is shown, e.g. Architecture 3 consists
+of two layers, with 30 and 20 hidden units respectively. The final column shows the portion of estimated individual
+treatment effects below zero.
+
+5.2
+
+Results
+
+We present now results for treatment effects, utility/profits, and targeting policy evaluations. Table
+3 shows the estimates of the average treatment effect from the eight network architectures along with
+their respective 95% confidence intervals. These results are constructed following Section 4, using
+Equations (4.1) and (4.3) in particular, and valid by Corollary 3. Because this is an experiment,
+we can compare to the standard unadjusted difference in means, which yields an average treatment
+effect of 2.561.
+
+
+Turning to expected profits, we estimate π(s) = E s(X)(mY (1) − c) + (1 − s(X)) mY (0) ,
+
+32
+
+1.0
+0.8
+0.6
+0.4
+0.0
+
+0.2
+
+Density
+
+−5
+
+0
+
+5
+
+10
+
+15
+
+20
+
+Conditional Average Treatment Effect
+
+Figure 4: Conditional Average Treatment Effects Across Architectures
+Table 3: Average Treatment Effect Estimates and 95% Confidence Intervals
+
+Architecture
+1
+2
+3
+4
+5
+6
+7
+8
+
+Average Treatment
+Effect (τ̂ )
+2.606
+2.577
+2.547
+2.488
+2.459
+2.430
+2.400
+2.371
+
+95% Confidence
+Interval
+[2.273 , 2.932]
+[2.252 , 2.901]
+[2.223 , 2.872]
+[2.160 , 2.817]
+[2.127 , 2.791]
+[2.093 , 2.767]
+[2.057 , 2.744]
+[2.021 , 2.721]
+
+adding a profit margin m and a mailing cost c to (3.2) (our NDA with the firm forbids revealing
+m and c). We consider three different counterfactual policies s(x): (i) never treat, s(x) ≡ 0; (ii) a
+blanket treatment, s(x) ≡ 1; (iii) a loyalty policy, s(xi ) = 1 only for those who had purchased in
+the prior calendar year. Results are shown in Table 4. It is clear that profits from the three policies
+are ordered as π(never) < π(blanket) < π(loyalty).
+For both the average effects of Table 3 and the counterfactuals of Table 4 there is broad agree-
+
+33
+
+Table 4: Counterfactual Profits from Three Targeting Strategies
+
+Architecture
+1
+2
+3
+4
+5
+6
+7
+8
+
+Never Treat
+π̂(s)
+95% CI
+2.016 [1.923 , 2.110]
+2.022 [1.929 , 2.114]
+2.027 [1.934 , 2.120]
+2.037 [1.944 , 2.130]
+2.043 [1.950 , 2.136]
+2.048 [1.954 , 2.142]
+2.053 [1.959 , 2.148]
+2.059 [1.963 , 2.154]
+
+Blanket Treatment
+π̂(s)
+95% CI
+2.234 [2.162 , 2.306]
+2.229 [2.157 , 2.301]
+2.224 [2.152 , 2.296]
+2.213 [2.140 , 2.286]
+2.208 [2.135 , 2.281]
+2.202 [2.128 , 2.277]
+2.197 [2.122 , 2.272]
+2.192 [2.116 , 2.268]
+
+Loyalty Policy
+π̂(s)
+95% CI
+2.367 [2.292 , 2.443]
+2.363 [2.288 , 2.438]
+2.358 [2.283 , 2.434]
+2.350 [2.274 , 2.425]
+2.345 [2.269 , 2.422]
+2.341 [2.263 , 2.418]
+2.336 [2.258 , 2.414]
+2.332 [2.253 , 2.411]
+
+ment among the eight architectures both numerically and substantially. This may be due to the
+fact that the data is experimental, so that the propensity score is constant. In true observational
+data this may not be the case. We explore this issue in our Monte Carlo analysis below.
+
+5.2.1
+
+Placebo Experiment
+
+We conducted a set of placebo tests to examine whether the deep neural networks we use can truly
+recover causal effects. In particular, we take only the untreated customers in the data and randomly
+assign half to treated status.2 We then ran the eight architectures of Table 2, as in the true data.
+The conditional average treatment effects across the architectures are plotted in Figure 5. We see
+that the “true” zero average effect is recovered precisely and with the expected distribution. The
+average treatment effect across all models is estimated to be around -0.024, compared to 2.56 in the
+original data. Exercises with different proportions of (placebo) treated customers revealed similar
+results.
+
+5.2.2
+
+Optimal Targeting
+
+To explore further, we focus on architecture #3 and study subpopulation treatment targeting
+strategies following the ideas of Section 3.3. (The other architectures yield similar results, so
+we omit them.) Architecture #3 has depth L = 2 with widths H1 = 30 and H2 = 20. The
+learning rate was set at 0.0001 and the specification had a total of 4,952 parameters. For this
+architecture, recalling Remark 1, we added dropout for the second layer with a fixed probability
+2
+
+We thank Guido Imbens suggesting this analysis.
+
+34
+
+15
+10
+0
+
+5
+
+Density
+
+−20
+
+−10
+
+0
+Conditional Average Treatment Effect
+
+Figure 5: Placebo Test
+
+35
+
+10
+
+20
+
+0.25
+0.20
+0.15
+0.10
+0.05
+−0.05
+
+0.00
+
+Profit Difference
+
+0
+
+200
+
+400
+
+600
+
+800
+
+1000
+
+1200
+
+Spend
+
+Figure 6: Expected Profits from Threshold Targeting Based on Prior Year Spend
+of 1/2. Using this architecture, we compare the blanket strategy (so s0 (x) = 1) to targeting
+customers with spend of at least ȳ dollars in the prior calendar year (prior spending is one of the
+covariates), in $50 increments to $1200. The policy class is therefore S = {s(x) = 1(prior spend >
+ȳ), ȳ = 0, 50, 100, . . . , 1150, 1200}. Figure 6 presents the results. The black dots show the difference
+
+π̂(spend > ȳ) − π̂(blanket) and the shaded region gives a pointwise 95% confidence band (to ease
+presentation, sample splitting is not used). We see that there is a significant difference between
+various choices of ȳ. Initially, targeting customers with higher spend yields higher profits, as would
+be expected, but this effect diminishes beyond a certain ȳ, roughly $500, as fewer and fewer are
+targeted. The optimal policy estimate is ŝ(x) = 1(prior spend > 400). In general, simpler policy
+classes may yield better decisions, but it is certainly possible to expand our search to different S
+by considering further covariates and/or transformations.
+
+36
+
+6
+
+Monte Carlo Analysis
+
+We conducted a set of Monte Carlo experiments to evaluate our theoretical results. We study
+inference on the average treatment effect, τ of (3.1), under different data generating processes
+(DGPs). In each DGP we take n = 10, 000 i.i.d. samples and use 1,000 replications. For either
+d = 20 or 100, X includes a constant term and d independent uniform random variables, U(0, 1).
+Treatment assignment is Bernoulli with probability p(x), where p(x) is the propensity score. We
+consider both (i) randomized treatments with p(x) = 0.5 and (ii) observational data with p(x) =
+(1 + exp(−α0p x))−1 , where αp,1 = 0.09 and the remainder are drawn once as U(−0.55, 0.55), and
+then fixed for the replications. For d = 100, we maintain kαp k0 = 20 for the simplicity. These
+generate propensities with an approximate range of approximately (0.30, 0.75) and mean roughly
+0.5.
+Given covariates and treatment assignment, the outcomes are generated according to
+
+yi = µ0 (xi ) + τ (xi )ti + εi ,
+
+µ0 (x) = α0µ x + βµ0 ϕ(x),
+
+τ (xi ) = α0τ x + βτ0 ϕ(x),
+
+where εi ∼ N (0, 1) and ϕ(x) are second-degree polynomials including pairwise interactions. For
+µ0 (x) and τ (x) we consider two cases, linear and nonlinear models. In both cases the intercepts
+are αµ,1 = 0.09 and ατ,1 = −0.05 and slopes are drawn (once) as αµ,k ∼ N (0.3, 0.7) and ατ,k ∼
+U(0.1, 0.22), k = 2, . . . , d + 1. The linear models set βµ = βτ = 0 while the nonlinear models take
+βµ,k ∼ N (0.01, 0.3) and βτ,k ∼ U(−0.05, 0.06). Altogether, this yields eight designs: d = 20 or 100,
+p(x) constant or not, and outcome models linear or nonlinear.
+For each design, we consider a variety of network architectures, all ReLU-based MLPs. These
+architectures are variants of the ones used in the empirical application (which were customized for
+the application). All networks vary in their depth and width, as spelled out in Table 5.
+Tables 6 and 7 show the results for all eight DGPs. Table 6 shows randomized treatment while
+Table 7 shows results mimicking observational data. Overall, the results reported show excellent
+performance of deep learning based semiparametric inference. The bias is minimal and the coverage
+is quite accurate, while the interval length is under control. Notice that the most architectures
+yield similar results with no architecture dominating the others. Further, the coverage and interval
+
+37
+
+Table 5: Monte Carlo Architectures Explored
+Architecture
+1
+2
+3
+4
+5
+6
+7
+8
+9
+
+Structure
+{20, 15, 5}
+{60, 30, 20}
+{80, 80, 80}
+{20, 15, 10, 5}
+{60, 30, 20, 10}
+{80, 80, 80, 80}
+{20, 15, 15, 10, 10, 5}
+{60, 30, 20, 20, 10, 5}
+{80, 80, 80, 80, 80, 80}
+
+length are fairly similar with the more complex architecture not exhibiting any systematic patterns
+of length inflation.
+None of the architectures we presented earlier used regularization. In typical empirical applications, including our own, researchers adopt architectures that employ dropout, a common method
+of regularization; see Remark 1. Our own preliminary exploration of dropout and other forms of
+regularization found expected departures form nonregularized models. In most, but not all, cases
+the coverage remained accurate, but with increased bias and interval length compared to Table 6
+and 7. The results preach caution when applying regularization in applications.
+
+7
+
+Conclusion
+
+The utility of deep learning in social science applications is still a subject of interest and debate.
+While there is an acknowledgment of its predictive power, there has been limited adoption of deep
+learning in social sciences such as economics. Some part of the reluctance to adopting these methods
+stems from the lack of theory facilitating use and interpretation. We have shown, both theoretically
+as well as empirically, that these methods can offer excellent performance.
+In this paper, we have given a formal proof that inference can be valid after using deep learning
+methods for first-step estimation. To the best of our knowledge, ours is the first inference result
+using deep nets. Our results thus contribute directly to the recent explosion in both theoretical
+and applied research using machine learning methods in economics, and to the recent adoption of
+deep learning in empirical settings. We obtained novel bounds for deep neural networks, speaking
+directly to the modern (and empirically successful) practice of using fully-connected feedfoward
+38
+
+Table 6: Simulations Results - Constant Propensity Score
+
+Model
+
+Linear
+
+Nonlinear
+
+Architecture
+
+20 Covariates
+
+100 Covariates
+
+Bias
+
+IL
+
+Coverage
+
+Bias
+
+IL
+
+Coverage
+
+1
+
+0.00027
+
+0.079
+
+0.947
+
+0.00067
+
+0.080
+
+0.946
+
+2
+
+-0.00032
+
+0.079
+
+0.951
+
+0.00012
+
+0.080
+
+0.958
+
+3
+
+-0.00025
+
+0.079
+
+0.955
+
+-0.00167
+
+0.080
+
+0.939
+
+4
+
+-0.00068
+
+0.079
+
+0.949
+
+0.00038
+
+0.080
+
+0.949
+
+5
+
+0.00008
+
+0.079
+
+0.945
+
+-0.00219
+
+0.080
+
+0.929
+
+6
+
+0.00007
+
+0.079
+
+0.955
+
+-0.00010
+
+0.080
+
+0.946
+
+7
+
+0.00128
+
+0.079
+
+0.952
+
+-0.00041
+
+0.080
+
+0.944
+
+8
+
+0.00108
+
+0.079
+
+0.949
+
+-0.00088
+
+0.080
+
+0.941
+
+9
+
+0.00021
+
+0.078
+
+0.948
+
+-0.00080
+
+0.081
+
+0.953
+
+1
+
+0.00087
+
+0.081
+
+0.946
+
+-0.00067
+
+0.163
+
+0.940
+
+2
+
+0.00015
+
+0.079
+
+0.954
+
+0.00093
+
+0.153
+
+0.927
+
+3
+
+-0.00072
+
+0.079
+
+0.940
+
+0.00245
+
+0.148
+
+0.926
+
+4
+
+0.00101
+
+0.080
+
+0.945
+
+-0.00087
+
+0.165
+
+0.956
+
+5
+
+0.00027
+
+0.079
+
+0.935
+
+-0.00190
+
+0.154
+
+0.923
+
+6
+
+-0.00025
+
+0.079
+
+0.929
+
+-0.00117
+
+0.146
+
+0.902
+
+7
+
+-0.00052
+
+0.080
+
+0.947
+
+0.00091
+
+0.165
+
+0.941
+
+8
+
+0.00077
+
+0.079
+
+0.938
+
+0.00201
+
+0.153
+
+0.927
+
+9
+
+-0.00013
+
+0.079
+
+0.940
+
+0.00049
+
+0.154
+
+0.936
+
+networks. Our results allow for different network architectures, including fixed width, very deep
+networks. Our results cover general nonparametric regression-type loss functions, covering most
+nonparametric practice. We used our bounds to deliver fast convergence rates allowing for secondstage inference on a finite-dimensional parameter of interest.
+There are practical implications of the theory presented in this paper. We focused on semiparametric causal effects as a concrete illustration, but deep learning is a potentially valuable tool in
+many diverse economic settings. Our results allow researchers to embed deep learning into standard econometric models such as linear regressions, generalized linear models, and other forms of
+limited dependent variables models (e.g. censored regression). Our theory can also be used as a
+starting point for constructing deep learning implementations of two-step estimators in the context
+of selection models, dynamic discrete choice, and the estimation of games.
+39
+
+Table 7: Simulations Results - Non-constant Propensity Score
+
+Model
+
+Linear
+
+Linear
+
+Architecture
+
+20 Covariates
+
+100 Covariates
+
+Bias
+
+IL
+
+Coverage
+
+Bias
+
+IL
+
+Coverage
+
+1
+
+-0.00202
+
+0.080
+
+0.948
+
+0.0009
+
+0.081
+
+0.955
+
+2
+
+0.00011
+
+0.079
+
+0.946
+
+0.0007
+
+0.081
+
+0.945
+
+3
+
+-0.00130
+
+0.079
+
+0.964
+
+-0.0001
+
+0.081
+
+0.937
+
+4
+
+-0.00106
+
+0.079
+
+0.945
+
+0.0002
+
+0.081
+
+0.933
+
+5
+
+-0.00083
+
+0.079
+
+0.951
+
+-0.0004
+
+0.081
+
+0.944
+
+6
+
+-0.00068
+
+0.079
+
+0.955
+
+0.0001
+
+0.081
+
+0.924
+
+7
+
+-0.00119
+
+0.079
+
+0.953
+
+-0.0001
+
+0.081
+
+0.942
+
+8
+
+-0.00056
+
+0.079
+
+0.952
+
+-0.0008
+
+0.081
+
+0.939
+
+9
+
+-0.00096
+
+0.079
+
+0.948
+
+-0.0007
+
+0.081
+
+0.952
+
+1
+
+-0.00076
+
+0.081
+
+0.946
+
+-0.00279
+
+0.164
+
+0.937
+
+2
+
+-0.00122
+
+0.080
+
+0.939
+
+0.00020
+
+0.155
+
+0.941
+
+3
+
+-0.00074
+
+0.080
+
+0.926
+
+-0.00080
+
+0.148
+
+0.914
+
+4
+
+-0.00171
+
+0.081
+
+0.940
+
+-0.00184
+
+0.166
+
+0.938
+
+5
+
+-0.00135
+
+0.080
+
+0.952
+
+-0.00103
+
+0.154
+
+0.912
+
+6
+
+-0.00075
+
+0.080
+
+0.950
+
+-0.00174
+
+0.147
+
+0.905
+
+7
+
+-0.00153
+
+0.081
+
+0.928
+
+-0.00377
+
+0.165
+
+0.929
+
+8
+
+0.00082
+
+0.080
+
+0.953
+
+0.00031
+
+0.154
+
+0.919
+
+9
+
+-0.00127
+
+0.080
+
+0.931
+
+-0.00094
+
+0.156
+
+0.917
+
+To be clear, we see our paper as a first step in the exploration of deep learning as a tool for
+economic applications. There are a number of opportunities, questions, and challenges that remain.
+For example, factor models in finance might benefit from the use of auto-encoders and recurrent
+neural nets may have applications in time series. For some estimands, it may be crucial to estimate
+the density as well, and this problem can be challenging in high dimensions. Deep nets, in the
+form of GANs are a promising tool for distribution estimation. There are also interesting questions
+remaining as to an optimal network architecture, and if this can be itself learned from the data,
+as well as computational and optimization guidance. Research into these further applications and
+structures is underway.
+
+40
+
+8
+
+References
+
+Abadie, A. and M. D. Cattaneo (2018): “Econometric Methods for Program Evaluation,”
+Annual Review of Economics, 10, 465–503.
+Anthony, M. and P. L. Bartlett (1999): Neural Network Learning: Theoretical Foundations,
+Campbridge University Press.
+Athey, S., G. Imbens, T. Pham, and S. Wager (2017): “Estimating average treatment effects: Supplementary analyses and remaining challenges,” American Economic Review: Papers
+& Proceeding, 107, 278–81.
+Athey, S., G. W. Imbens, and S. Wager (2018): “Approximate residual balancing: debiased
+inference of average treatment effects in high dimensions,” Journal of the Royal Statistical Society,
+Series B, 80, 597–623.
+Athey, S. and S. Wager (2018): “Efficient Policy Learning,” arXiv preprint arXiv:1702.02896.
+Barron, A. R. (1993): “Universal approximation bounds for superpositions of a sigmoidal function,” IEEE Transactions on Information theory, 39, 930–945.
+Bartlett, P. L., O. Bousquet, and S. Mendelson (2005): “Local rademacher complexities,”
+The Annals of Statistics, 33, 1497–1537.
+Bartlett, P. L., N. Harvey, C. Liaw, and A. Mehrabian (2017): “Nearly-tight VCdimension bounds for piecewise linear neural networks,” in Proceedings of the 22nd Annual
+Conference on Learning Theory (COLT 2017).
+Bauer, B. and M. Kohler (2017): “On Deep Learning as a remedy for the curse of dimensionality
+in nonparametric regression,” Tech. rep., Technical report.
+Belloni, A., D. Chen, V. Chernozhukov, and C. Hansen (2012): “Sparse models and
+methods for optimal instruments with an application to eminent domain,” Econometrica, 80,
+2369–2429.
+Belloni, A., V. Chernozhukov, D. Chetverikov, C. Hansen, and K. Kato (2018): “HighDimensional Econometrics and Generalized GMM,” arXiv preprint arXiv:1806.01888.
+Belloni, A., V. Chernozhukov, I. Fernández-Val, and C. Hansen (2017): “Program
+Evaluation and Causal Inference With High-Dimensional Data,” Econometrica, 85, 233–298.
+Belloni, A., V. Chernozhukov, and C. Hansen (2014): “Inference on Treatment Effects after
+Selection Amongst High-Dimensional Controls,” Review of Economic Studies, 81, 608–650.
+Belloni, A., V. Chernozhukov, and L. Wang (2011): “Square-root lasso: pivotal recovery of
+sparse signals via conic programming,” Biometrika, 98, 791–806.
+Bickel, P. J. and Y. Ritov (1988): “Estimating Integrated Squared Density Derivatives: Sharp
+Best Order of Convergence Estimates,” Sankhyā, 50, 381–393.
+Bickel, P. J., Y. Ritov, and A. B. Tsybakov (2009): “Simultaneous Analysis of LASSO and
+Dantzig Selector,” The Annals of Statistics, 37, 1705–1732.
+41
+
+Blinder, A. (1973): “Wage Discrimination: Reduced Form and Structural Estimates,” Journal
+of Human Resources, 8, 436–455.
+Cattaneo, M. D. (2010): “Efficient Semiparametric Estimation of Multi-valued Treatment Effects
+under Ignorability,” Journal of Econometrics, 155, 138–154.
+Cattaneo, M. D. and M. Jansson (2018): “Kernel-Based Semiparametric Estimators: Small
+Bandwidth Asymptotics and Bootstrap Consistency,” Econometrica, 86, 955–995.
+Cattaneo, M. D., M. Jansson, and X. Ma (2018): “Two-step Estimation and Inference with
+Possibly Many Included Covariates,” arXiv:1807.10100, Review of Economic Studies, forthcoming.
+Chen, X. (2007): “Large Sample Sieve Estimation of Semi-Nonparametric Models,” in Handbook of
+Econometrics, ed. by J. Heckman and E. Leamer, Elsevier, vol. 6B of Handbook of Econometrics,
+chap. 76.
+Chen, X., H. Hong, and A. Tarozzi (2004): “Semiparametric Efficiency in GMM Models of
+Nonclassical Measurament Errors, Missing Data and Treatment Effects,” Cowles Foundation
+Discussion Paper No. 1644.
+——— (2008): “Semiparametric Efficiency in GMM Models With Auxiliary Data,” The Annals of
+Statistics, 36, 808–843.
+Chen, X. and X. Shen (1998): “Sieve extremum estimates for weakly dependent data,” Econometrica, 66, 289–314.
+Chen, X. and H. White (1999): “Improved rates and asymptotic normality for nonparametric
+neural network estimators,” IEEE Transactions on Information Theory, 45, 682–691.
+Chernozhukov, V., D. Chetverikov, M. Demirer, E. Duflo, C. Hansen, W. Newey,
+and J. Robins (2018a): “Double/debiased machine learning for treatment and structural parameters,” The Econometrics Journal, 21, C1–C68.
+Chernozhukov, V., M. Demirer, E. Duflo, and I. Fernandez-Val (2018b): “Generic
+Machine Learning Inference on Heterogenous Treatment Effects in Randomized Experiments,”
+arXiv preprint arXiv:1712.04802.
+Chernozhukov, V., J. C. Escanciano, H. Ichimura, W. K. Newey, and J. M. Robins
+(2018c): “Locally Robust Semiparametric Estimation,” arXiv:1608.00033.
+Daniely, A. (2017): “Depth separation for neural networks,” arXiv preprint arXiv:1702.08489.
+Farrell, M. H. (2015): “Robust Inference on Average Treatment Effects with Possibly More
+Covariates than Observations,” arXiv:1309.4686, Journal of Econometrics, 189, 1–23.
+Fortin, N., T. Lemieux, and S. Firpo (2011): “Decomposition Methods in Economics,” vol. 4
+of Handbook of Labor Economics, 1–102.
+Gine, E. and R. Nickl (2016): Mathematical Foundations of Infinite-Dimensional Models, Cambridge.
+Goodfellow, I., Y. Bengio, and A. Courville (2016): Deep learning, Cambridge: MIT Press.
+42
+
+Hahn, J. (1998): “On the Role of the Propensity Score in Efficient Semiparametric Estimation of
+Average Treatment Effects,” Econometrica, 66, 315–331.
+——— (2004): “Functional restriction and efficiency in causal inference,” Review of Economics and
+Statistics, 84, 73–76.
+Hanin, B. (2017): “Universal function approximation by deep neural nets with bounded width
+and relu activations,” arXiv preprint arXiv:1708.02691.
+Hansen, C., D. Kozbur, and S. Misra (2017): “Targeted Undersmoothing,” arXiv:1706.07328.
+Hartford, J., G. Lewis, K. Leyton-Brown, and M. Taddy (2017): “Deep iv: A flexible
+approach for counterfactual prediction,” in International Conference on Machine Learning, 1414–
+1423.
+Hastie, T., R. Tibshirani, and J. Friedman (2009): The elements of statistical learning,
+Springer Series in Statistics, New York: Springer-Verlag.
+He, K., X. Zhang, S. Ren, and J. Sun (2016): “Identity mappings in deep residual networks,”
+in European conference on computer vision, Springer, 630–645.
+Heckman, J. and E. J. Vytlacil (2007): “Econometric Evaluation of Social Programs, Part
+I,” in Handbook of Econometrics, vol. VIB, ed. by J. Heckman and E. Leamer, Elsevier Science
+B.V., 4780–4874.
+Hirano, K. and J. Porter (2009): “Asymptotics for statistical treatment rules,” Econometrica,
+77, 1683–1701.
+Hitsch, G. J. and S. Misra (2018): “Heterogeneous Treatment Effects and Optimal Targeting
+Policy Evaluation,” SSRN preprint 3111957.
+Hornik, K., M. Stinchcombe, and H. White (1989): “Multilayer feedforward networks are
+universal approximators,” Neural networks, 2, 359–366.
+Imbens, G. W. and D. B. Rubin (2015): Causal Inference in Statistics, Social, and Biomedical
+Sciences, Cambridge University Press.
+Imbens, G. W. and J. M. Wooldridge (2009): “Recent Developments in the Econometrics of
+Program Evaluation,” Journal of Economic Literature, 47, 5–86.
+Javanmard, A. and A. Montanari (2014): “Confidence intervals and hypothesis testing for
+high-dimensional regression,” The Journal of Machine Learning Research, 15, 2869–2909.
+Johansson, F., U. Shalit, and D. Sontag (2016): “Learning representations for counterfactual
+inference,” in International Conference on Machine Learning, 3020–3029.
+Kingma, D. P. and J. Ba (2014): “Adam: A method for stochastic optimization,” arXiv preprint
+arXiv:1412.6980.
+Kitagawa, E. M. (1955): “Components of a Difference Between Two Rates,” Journal of the
+American Statistical Association, 50, 1168–1194.
+Kitagawa, T. and A. Tetenov (2018): “Who should be treated? empirical welfare maximization
+methods for treatment choice,” Econometrica, 86, 591–616.
+43
+
+Koltchinskii, V. (2006): “Local Rademacher complexities and oracle inequalities in risk minimization,” The Annals of Statistics, 34, 2593–2656.
+——— (2011): Oracle Inequalities in Empirical Risk Minimization and Sparse Recovery Problems,
+Springer-Verlag.
+Koltchinskii, V. and D. Panchenko (2000): “Rademacher processes and bounding the risk of
+function learning,” in High dimensional probability II, Springer, 443–457.
+Krizhevsky, A., I. Sutskever, and G. E. Hinton (2012): “Imagenet classification with deep
+convolutional neural networks,” in Advances in neural information processing systems, 1097–
+1105.
+LeCun, Y., L. Bottou, Y. Bengio, and P. Haffner (1998): “Gradient-based learning applied
+to document recognition,” Proceedings of the IEEE, 86, 2278–2324.
+Liang, T. (2018): “On How Well Generative Adversarial Networks Learn Densities: Nonparametric and Parametric Results,” arXiv:1811.03179.
+Liang, T., A. Rakhlin, and K. Sridharan (2015): “Learning with square loss: Localization
+through offset Rademacher complexity,” in Conference on Learning Theory, 1260–1285.
+Liu, X., D. Le

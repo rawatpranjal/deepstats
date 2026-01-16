@@ -1,0 +1,1209 @@
+e, and K. Srinivasan (2017): “Large scale cross category analysis of consumer
+review content on sales conversion leveraging deep learning,” working paper, NYU Stern.
+Ma, X. and J. Wang (2018): “Robust Inference Using Inverse Probability Weighting,” arXiv
+preprint arXiv:1810.11397.
+Makovoz, Y. (1996): “Random approximants and neural networks,” Journal of Approximation
+Theory, 85, 98–109.
+Manski, C. F. (2004): “Statistical treatment rules for heterogeneous populations,” Econometrica,
+72, 1221–1246.
+Mendelson, S. (2003): “A few notes on statistical learning theory,” in Advanced lectures on
+machine learning, Springer, 1–40.
+——— (2014): “Learning without concentration,” in Conference on Learning Theory, 25–39.
+Mhaskar, H. and T. Poggio (2016a): “Deep vs. shallow networks: An approximation theory
+perspective,” arXiv preprint arXiv:1608.03287.
+Mhaskar, H. N. and T. Poggio (2016b): “Deep vs. shallow networks: An approximation theory
+perspective,” Analysis and Applications, 14, 829–848.
+Nair, V. and G. E. Hinton (2010): “Rectified linear units improve restricted boltzmann machines,” in Proceedings of the 27th international conference on machine learning (ICML-10),
+807–814.
+Newey, W. K. and J. M. Robins (2018): “Cross-fitting and fast remainder rates for semiparametric estimation,” arXiv preprint arXiv:1801.09138.
+Oaxaca, R. (1973): “Male-Female Wage Differentials in Urban Labor Markets,” International
+Economic Review, 14, 693–709.
+44
+
+Pisier, G. (1981): “Remarques sur un résultat non publié de B. Maurey,” in Séminaire Analyse
+fonctionnelle (dit” Maurey-Schwartz”), 1–12.
+Polson, N. and V. Rockova (2018): “Posterior Concentration for Sparse Deep Learning,” arXiv
+preprint arXiv:1803.09138.
+Raghu, M., B. Poole, J. Kleinberg, S. Ganguli, and J. Sohl-Dickstein (2017): “On the
+Expressive Power of Deep Neural Networks,” in Proceedings of the 34th International Conference
+on Machine Learning, ed. by D. Precup and Y. W. Teh, International Convention Centre, Sydney,
+Australia: PMLR, vol. 70 of Proceedings of Machine Learning Research, 2847–2854.
+Robins, J., L. Li, R. Mukherjee, E. Tchetgen, and A. van der Vaart (2017): “Minimax
+Estimation of a Functional on a Structured High-Dimensional Model,” The Annals of Statistics,
+45, 1951–1987.
+Robins, J., L. Li, E. Tchetgen, and A. van der Vaart (2008): “Higher order influence
+functions and minimax estimation of nonlinear functionals,” in Probability and Statistics: Essays
+in Honor of David A. Freedman, ed. by D. Nolan and T. Speed, Beachwood, Ohio, USA: Institute
+of Mathematical Statistics, vol. 2.
+Robins, J., E. T. Tchetgen, L. Li, and A. van der Vaart (2009): “Semiparametric Minimax
+Rates,” Electronic Journal of Statistics, 3, 1305–1321.
+Robins, J. M., A. Rotnitzky, and L. Zhao (1994): “Estimation of Regression Coefficients
+When Some Regressors Are Not Always Observed,” Journal of the American Statistical Association, 89, 846–866.
+——— (1995): “Analysis of Semiparametric Regression Models for Repeated Outcomes in the
+Presence of Missing Data,” Journal of the American Statistical Association, 90, 846–866.
+Romano, J. P. (2004): “On non-parametric testing, the uniform behaviour of the t-test, and
+related problems,” Scandinavian Journal of Statistics, 31, 567–584.
+Safran, I. and O. Shamir (2016): “Depth separation in relu networks for approximating smooth
+non-linear functions,” arXiv preprint arXiv:1610.09887.
+Schmidt-Hieber, J. (2017): “Nonparametric regression using deep neural networks with ReLU
+activation function,” arXiv preprint arXiv:1708.06633.
+Shalit, U., F. D. Johansson, and D. Sontag (2017): “Estimating individual treatment effect:
+generalization bounds and algorithms,” arXiv preprint arXiv:1606.03976.
+Sloczynski, T. and J. M. Wooldridge (2018): “A General Double Robustness Result for
+Estimating Average Treatment Effects,” Econometric Theory, 34, 112–133.
+Stone, C. J. (1982): “Optimal global rates of convergence for nonparametric regression,” The
+annals of statistics, 1040–1053.
+Taddy, M., M. Gardner, L. Chen, and D. Draper (2015): “A nonparametric Bayesian
+analysis of heterogeneous treatment effects in digital experimentation,” Arxiv preprint
+arXiv:1412.8563.
+Tan, Z. (2018): “Model-assisted inference for treatment effects using regularized calibrated estimation with high-dimensional data,” arXiv preprint arXiv:1801.09817.
+45
+
+Telgarsky, M. (2016): “Benefits of depth in neural networks,” arXiv preprint arXiv:1602.04485.
+Tsiatis, A. A. (2006): Semiparametric Theory and Missing Data, New York: Springer.
+van de Geer, S., P. Buhlmann, Y. Ritov, and R. Dezeure (2014): “On Asymptotically
+Optimal Confidence Regions and Tests for High-Dimensional Models,” The Annals of Statistics,
+42, 1166–1202.
+van der Laan, M. and S. Rose (2001): Targeted Learning: Causal Inference for Observational
+and Experimental Data, Springer-Verlag.
+Wager, S. and S. Athey (2018): “Estimation and Inference of Heterogeneous Treatment Effects
+using Random Forests,” Journal of the American Statistical Association, forthcoming.
+Westreich, D., J. Lessler, and M. J. Funk (2010): “Propensity score estimation: neural
+networks, support vector machines, decision trees (CART), and meta-classifiers as alternatives
+to logistic regression,” Journal of clinical epidemiology, 63, 826–833.
+White, H. (1989): “Learning in artificial neural networks: A statistical perspective,” Neural
+computation, 1, 425–464.
+——— (1992): Artificial neural networks: approximation and learning theory, Blackwell Publishers,
+Inc.
+Yarotsky, D. (2017): “Error bounds for approximations with deep ReLU networks,” Neural
+Networks, 94, 103–114.
+——— (2018): “Optimal approximation of continuous functions by very deep ReLU networks,”
+arXiv preprint arXiv:1802.03620.
+Zhang, C., S. Bengio, M. Hardt, B. Recht, and O. Vinyals (2016): “Understanding deep
+learning requires rethinking generalization,” arXiv preprint arXiv:1611.03530.
+
+A
+
+Proofs
+
+In this section we provide a proof of Theorems 1 and 2, our main theoretical results for deep
+ReLU networks, and their corollaries. The proof proceeds in several steps. We first give the main
+breakdown and bound the bias (approximation error) term. We then turn our attention to the
+empirical process term, to which we apply our localization. Much of the proof uses a generic
+architecture, and thus pertains to both results. We will specialize the architecture to the multilayer perceptron only when needed later on. Other special cases and related results are covered in
+Section A.4. Supporting Lemmas are stated in Section B.
+The statements of Theorems 1 and 2 assume that n is large enough. Precisely, we require
+n > (2eM )2 ∨ Pdim(FDNN ). For notational simplicity we will denote fbDNN := fˆ, see (2.4), and
+DNN := n , see Assumption 3. As we are simultaneously consider Theorems 1 and 2, the generic
+notation DNN will be used throughout.
+
+46
+
+A.1
+
+Main Decomposition and Bias Term
+
+Referring to Assumption 3, define the best approximation realized by the deep ReLU network class
+FDNN as
+fn := arg min kf − f∗ k∞ .
+f ∈FDNN
+kf k∞ ≤2M
+
+By definition, n := DNN := kfn − f∗ k∞ .
+Recalling the optimality of the estimator in (2.4), we know, as both fn and fˆ are in FDNN , that
+−En [`(fˆ, z)] + En [`(fn , z)] ≥ 0.
+This result does not hold for f∗ in place of fn , because f∗ 6∈ FDNN . Using the above display and
+the curvature of Equation (2.1) (which does not hold with fn in place of f∗ therein), we obtain
+c1 kfˆ − f∗ k2L2 (x) ≤ E[`(fˆ, z)] − E[`(f∗ , z)]
+≤ E[`(fˆ, z)] − E[`(f∗ , z)] − En [`(fˆ, z)] + En [`(fn , z)]
+h
+i
+h
+i
+= E `(fˆ, z) − `(f∗ , z) − En `(fˆ, z) − `(f∗ , z) + En [`(fn , z) − `(f∗ , z)]
+h
+i
+= (E − En ) `(fˆ, z) − `(f∗ , z) + En [`(fn , z) − `(f∗ , z)] .
+(A.1)
+Equation (A.1) is the main decomposition that begins the proof. The decomposition must be
+done this way because of the above notes regarding f∗ and fn . The first term is the empirical
+process term that will be treated in the subsequent subsection. For the second term in (A.1), the
+bias term or approximation error, we apply Bernstein’s inequality to find that, with probability at
+least 1 − e−γ̃ ,
+s
+
+2C`2 kfn − f∗ k2∞ γ̃ 21C` M γ̃
+En [`(fn , z) − `(f∗ , z)] ≤ E [`(fn , z) − `(f∗ , z)] +
++
+n
+3n
+s
+
+
+2C`2 kfn − f∗ k2∞ γ̃ 7C` M γ̃
++
+≤ c2 E kfn − f∗ k2 +
+n
+n
+s
+2C`2 γ̃ 7C` M γ̃
+≤ c2 2n + n
++
+,
+n
+n
+
+(A.2)
+
+
+
+using the Lipschitz and curvature of the loss function defined in Equation (2.1) and E kfn − f∗ k2 ≤
+kfn − f∗ k2∞ , along with the definition of 2n .
+Once the empirical process term is controlled (in Section A.2), the two bounds will be brought
+back together to compute the final result, see Section A.3.
+
+47
+
+A.2
+
+Localization Analysis
+
+We now turn to bounding the first term in (A.1) (the empirical processes term) using a localized
+analysis that derives bounds based on scale insensitive complexity measure. The ideas of our
+localization are rooted in Koltchinskii and Panchenko (2000) and Bartlett et al. (2005), and related
+to Koltchinskii (2011). Localization analysis extending to the unbounded f case has been developed
+in Mendelson (2014); Liang et al. (2015). This proof section proceeds in several steps.
+A key quantity is the Rademacher complexity of the function class at hand. Given i.i.d.
+Rademacher draws, ηi = ±1 with equal probability independent of the data, the random variable Rn F, for a function class F, is defined as
+n
+
+1X
+Rn F := sup
+ηi f (xi ).
+f ∈F n
+i=1
+
+Intuitively, Rn F measures how flexible the function class is for predicting random signs. Taking
+the expectation of Rn F conditioned on the data we obtain the empirical Rademacher complexity,
+denoted Eη [Rn F]. When the expectation is taken over both the data and the draws ηi , ERn F, we
+get the Rademacher complexity.
+A.2.1
+
+Step I: Quadratic Process
+
+The first step is to show that, with high probability, the empirical L2 norm of the error (f −
+f∗ ) is at most twice the population L2 norm bound for the same error, for certain functions f
+outside a certain critical radius. This will be an ingredient to be used later on. Denote kf kn :=
+
+1 Pn
+2 1/2 to be the empirical L norm. To do so, we study the quadratic process
+2
+i=1 f (xi )
+n
+kf − f∗ k2n − kf − f∗ k2L2 (x) = En (f − f∗ )2 − E(f − f∗ )2 .
+We will apply the symmetrization of Lemma 5 to g = (f − f∗ )2 restricted to a radius kf −
+f∗ kL2 (x) ≤ r. This function g has variance bounded as
+V[g] ≤ E[g 2 ] ≤ E((f − f∗ )4 ) ≤ 9M 2 r2 .
+Writing g = (f + f∗ )(f − f∗ ), we see that by Assumption 1, |g| ≤ 3M |f − f∗ | ≤ 9M 2 , where the
+first inequality verifies that g has a Lipschitz constant of 3M (when viewed as a function of its
+argument f ), and second that g itself is bounded. We therefore apply Lemma 5, to obtain, with
+probability at least 1 − exp(−γ̃), that for any f ∈ F with kf − f∗ kL2 (x) ≤ r,
+En (f − f∗ )2 − E(f − f∗ )2
+r
+
+2γ̃ 36M 2 γ̃
+≤ 3ERn {g = (f − f∗ ) : f ∈ F, kf − f∗ kL2 (x) ≤ r} + 3M r
++
+n
+3 n
+r
+2
+2γ̃ 12M γ̃
+≤ 18M ERn {f − f∗ : f ∈ F, kf − f∗ kL2 (x) ≤ r} + 3M r
++
+,
+n
+n
+2
+
+48
+
+(A.3)
+
+where the second inequality applies Lemma 2 to the Lipschitz functions {g} (as a function of the
+real values f (x)) and iterated expectations.
+Suppose the radius r satisfies
+r2 ≥ 18M ERn {f − f∗ : f ∈ F, kf − f∗ kL2 (x) ≤ r}
+
+(A.4)
+
+√
+6 6M 2 γ̃
+r ≥
+.
+n
+
+(A.5)
+
+and
+2
+
+Then we conclude from from (A.3) that
+r
+2
+
+2
+
+2
+
+En (f − f∗ ) ≤ r + r + 3M r
+
+2γ̃ 12M 2 γ̃
++
+≤ (2r)2
+n
+n
+
+(A.6)
+
+where the first inequality uses (A.4) and the second line uses (A.5). This means that for r above
+the “critical radius” (see Step III), the empirical L2 -norm is at most twice the population one
+with probability at least 1 − exp(−γ̃).
+A.2.2
+
+Step II: One Step Improvement
+
+In this step we will show that given a bound on kfˆ− f∗ kL2 (x) we can use this bound as information
+to obtain a tighter bound, if the initial bound is loose as made precise at the end of this step. This
+tightening will then be pursued to its limit in Step III, which leads to the final rate obtained in
+Step IV. Step I will be used herein.
+Suppose we know that for some r0 , kfˆ − f∗ kL2 (x) ≤ r0 . We may always start with r0 = 3M
+given Assumption 1 and (2.4). Apply Lemma 5 with G := {g = `(f, z) − `(f∗ , z) : f ∈ FDNN , kf −
+f∗ kL2 (x) ≤ r0 }, we find that, with probability at least 1 − 2e−γ̃ , the empirical process term of (A.1)
+is bounded as
+s
+h
+i
+(E − En ) `(fˆ, z) − `(f∗ , z) ≤ 6Eη Rn G +
+
+2C`2 r02 γ̃ 23 · 3M C` γ̃
++
+,
+n
+3
+n
+
+(A.7)
+
+where the middle term is due to the following variance calculation (recall Equation (2.1))
+V[g] ≤ E[g 2 ] = E[|`(f, z) − `(f∗ , z)|2 ] ≤ C`2 E(f − f∗ )2 ≤ C`2 r02
+Here the fact that Lemma 5 is variance dependent, and that the variance depends on the radius r0 ,
+is important. It is this property which enables a sharpening of the rate with step-by-step reductions
+in the variance bound, as in Section A.2.4.
+For the empirical Rademacher complexity term, the first term of (A.7), Lemma 2, Step I, and
+
+49
+
+Lemma 3, yield
+Eη Rn G = Eη Rn {g : g = `(f, z) − `(f∗ , z), f ∈ FDNN , kf − f∗ k ≤ r0 }
+≤ 2C` Eη Rn {f − f∗ : f ∈ FDNN , kf − f∗ k ≤ r0 }
+≤ 2C` Eη Rn {f − f∗ : f ∈ FDNN , kf − f∗ kn ≤ 2r0 }
+
+
+Z
+12 2r0 p
+log N (δ, FDNN , k · kn )dδ
+4α + √
+≤ 2C` inf
+0<α<2r0
+n α
+
+
+Z
+q
+12 2r0
+log N (δ, FDNN |x1 ,...,xn , ∞)dδ ,
+≤ 2C` inf
+4α + √
+0<α<2r0
+n α
+with probability 1 − exp(−γ̃) (when applying Step I). Recall Lemma 4, one can further upper
+bound the entropy integral when n > Pdim(FDNN ),
+
+
+Z
+q
+12 2r0
+inf
+4α + √
+log N (δ, FDNN |x1 ,...,xn , ∞)dδ
+0<α<2r0
+n α
+s
+)
+(
+Z
+2eM n
+12 2r0
+Pdim(FDNN ) log
+dδ
+≤ inf
+4α + √
+0<α<2r0
+δ · Pdim(FDNN )
+n α
+s
+
+
+Pdim(FDNN )
+2eM
+3
+≤ 32r0
+log
++ log n
+n
+r0
+2
+with a particular choice of α = 2r0
+
+p
+Pdim(FDNN )/n < 2r0 . Therefore, whenever r0 ≥ 1/n and
+
+n ≥ (2eM )2 ,
+r
+Eη Rn G ≤ 128C` r0
+
+Pdim(FDNN )
+log n.
+n
+
+Applying this bound to (A.7), we have
+h
+i
+(E − En ) `(fˆ, z) − `(f∗ , z) ≤ Kr0
+
+r
+
+s
+Pdim(FDNN )
+log n + r0
+n
+
+2C`2 γ̃ 23M C` γ̃
++
+n
+n
+
+(A.8)
+
+where K = 6 × 128C` .
+Going back now to the main decomposition, plug (A.8) and (A.2) into (A.1), and we overall
+have found that, with probability at least 1 − 4 exp(−γ̃), the following holds:
+c1 kfˆ − f∗ k2L2 (x)
+
+
+s
+s
+r
+2 γ̃
+2 γ̃
+2C
+2C
+Pdim(FDNN )
+23M C` γ̃  2
+7C` M γ̃ 
+`
+`
+≤ Kr0
+log n + r0
++
++ c2 n + n
++
+n
+n
+n
+n
+n
+ r
+
+s
+s
+2 γ̃
+2C
+2C`2 γ̃
+Pdim(F
+)
+γ̃
+DNN
+` 
+≤ r0 · K
+log n +
++ c2 2n + n
++ 30M C`
+n
+n
+n
+n
+
+50
+
+
+
+√
+
+≤ r0 · K C
+
+r
+
+s
+W L log W
+log n +
+n
+
+
+s
+2C`2 γ̃
+2C`2 γ̃
+γ̃
+ + c2 2n + n
++ 30M C` .
+n
+n
+n
+
+(A.9)
+
+q
+
+W L log W
+The last line applies Lemma 6. Therefore, whenever n  r0 and
+log n  r0 , the
+n
+ˆ
+ˆ
+knowledge that kf − f∗ kL (x) ≤ r0 implies that (with high probability) kf − f∗ kL (x) ≤ r1 , for
+2
+
+2
+
+r1  r0 . One can recursively improve the bound r to a fixed point/radius r∗ , which describes the
+fundamental difficulty of the problem. This is done in the course of the next two steps.
+A.2.3
+
+Step III: Critical Radius
+
+We now use the tightening of Step II to obtain the critical radius for this problem that is then
+used as an input in the final rate derivation of Step IV. Formally, define the critical radius r∗ to
+be the largest fixed point
+
+r∗ = inf r > 0 : 18M ERn {f − f∗ : f ∈ F, kf − f∗ kL2 (x) ≤ s} < s2 , ∀s ≥ r .
+By construction this obeys (A.4), and thus so does 2r∗ . Denote the event E (depending on the
+data) to be
+
+E = kf − f∗ kn ≤ 4r∗ , for all f ∈ F and kf − f∗ kL2 (x) ≤ 2r∗
+and 1E to be the indicator that event E holds. We know from (A.6) that P(1E = 1) ≥ 1 − n−1 ,
+p
+√
+provided r∗ ≥ 18M log n/n to satisfy (A.5).
+We can now give an upper bound for the the critical radius r∗ . Using the logic of Step II to
+bound the empirical Rademacher complexity, and then applying Lemma 6, we find that
+
+r∗2 ≤ 18M ERn f − f∗ : f ∈ F, kf − f∗ kL2 (x) ≤ r∗
+
+≤ 18M ERn f − f∗ : f ∈ F, kf − f∗ kL2 (x) ≤ 2r∗
+
+≤ 18M E Eη Rn {f − f∗ : f ∈ F, kf − f∗ kn ≤ 4r∗ }1E + 3M (1 − 1E )
+r
+√
+W L log W
+1
+log n + 36M 2
+≤ 36M K C · r∗
+n
+n
+r
+√
+W L log W
+≤ 72M K C · r∗
+log n,
+n
+p
+√
+with the last line relying on the above restriction that r∗ ≥ 18M log n/n. Dividing through by
+r∗ yields the final bound:
+√
+
+r∗ ≤ 72M K C
+
+r
+
+W L log W
+log n.
+n
+
+51
+
+(A.10)
+
+A.2.4
+
+Step IV: Localization
+
+We are now able to derive the final rate using a localization argument. This applies the results
+of Step I and Step II repeatedly. Divide the space FDNN into shells of increasing radius by
+intersecting it with the L2 balls
+B(f∗ , r̄), B(f∗ , 2r̄)\B(f∗ , r̄), . . . B(f∗ , 2l r̄)\B(f∗ , 2l−1 r̄)
+where l ≥ 1 is chosen to be the largest integer no greater than log2 √ 2M
+
+(log n)/n
+
+(A.11)
+. We will proceed to
+
+find a bound on r̄ which determines the final rate results.
+Suppose r̄ > r∗ . Then for each shell, Step I and the union bound imply that with probability
+at least 1 − 2l exp(−γ̃),
+kf − f∗ kL2 (x) ≤ 2j r̄ ⇒ kf − f∗ kn ≤ 2j+1 r̄.
+
+(A.12)
+
+Further, suppose that for some j ≤ l
+fˆ ∈ B(f∗ , 2j r̄)\B(f∗ , 2j−1 r̄).
+
+(A.13)
+
+Then applying the one step improvement argument in Step II (again the variance dependence
+captured in Lemma 5 is crucial, here reflected in the variance within each shell), Equation (A.9)
+yields that with probability at least 1 − 4 exp(−γ̃),
+
+
+
+
+s
+s
+r
+
+2
+2
+√
+2C` t
+2C` γ̃
+1
+W L log W
+γ̃ 
+ + c2 2n + n
+kfˆ − f∗ k2L2 (x) ≤
+2j r̄ · K C
+log n +
++ 30M C`
+c1 
+n
+n
+n
+n
+≤ 22j−2 r̄2 ,
+if the following two conditions hold:
+
+
+s
+r
+2C`2 γ̃
+1  √
+W L log W
+ ≤ 1 2j r̄
+K C
+log n +
+c1
+n
+n
+2
+
+
+s
+2C`2 γ̃
+1  2
+γ̃
+1
+c2 n + n
++ 26M C`  ≤ 22j r̄2 .
+c1
+n
+n
+4
+It is easy to see that these two hold for all j if we choose
+
+
+8  √
+K C
+r̄ =
+c1
+
+r
+
+s
+W L log W
+log n +
+n
+
+ s
+
+r
+2C`2 γ̃
+ +  2(c2 ∨ 1) n + 120M C` γ̃  + r∗ . (A.14)
+n
+c1
+c1
+n
+
+Therefore with probability at least 1 − 6l exp(−γ̃), we can perform shell-by-shell argument
+
+52
+
+combining the results in Step I and Step II:
+kfˆ − f∗ kL2 (x) ≤ 2l r̄ and kfˆ − f∗ kn ≤ 2l+1 r̄
+implies kfˆ − f∗ kL2 (x) ≤ 2l−1 r̄ and kfˆ − f∗ kn ≤ 2l r̄
+......
+implies kfˆ − f∗ kL2 (x) ≤ 20 r̄ and kfˆ − f∗ kn ≤ 21 r̄.
+The “and” part of each line follows from Step I and the implication uses the above argument
+following Step II. Therefore in the end, we conclude with probability at least 1 − 6l exp(−γ̃),
+kfˆ − f∗ kL2 (x) ≤ r̄ ,
+
+(A.15)
+
+kfˆ − f∗ kn ≤ 2r̄ .
+
+(A.16)
+
+Therefore choose γ = − log(6l) + γ̃, we know from (A.14), and the upper bound on r∗ in (A.10)
+
+r̄ ≤
+
+√
+
+8 
+K C
+c1
+
+≤ C0
+
+s
+
+r
+
+
+
+2C`2 (log log n + γ)
+
+
+W L log W
+log n +
+n
+n
+s
+
+r
+2(c2 ∨ 1)
+120M C` log log n + γ 
++
+n +
++ r∗
+c2
+c1
+n
+!
+r
+r
+W L log W
+log log n + γ
+log n +
++ n ,
+n
+n
+
+(A.17)
+
+with some constant C 0 > 0 that does not depend on n. This completes the proof of Theorem 2.
+
+A.3
+
+Final Steps for the MLP case
+
+For the multi-layer perceptron, W ≤ C · H 2 L, and plugging this into the bound (A.17), we obtain
+r
+C
+
+0
+
+H 2 L2 log(H 2 L)
+log n +
+n
+
+r
+
+log log n + γ
++ n
+n
+
+!
+
+To optimize this upper bound on r̄, we need to specify the trade-offs in n and H and L. To do
+so, we utilize the MLP-specific approximation rate of Lemma 7 and the embedding of Lemma 1.
+Lemma 1 implies that, for any n , one can embed the approximation class FDNN given by Lemma
+7 into a standard MLP architecture FMLP , where specifically
+−d
+
+H = H(n ) ≤ W (n )L(n ) ≤ C 2 n β (log(1/n ) + 1)2 ,
+L = L(n ) ≤ C · (log(1/n ) + 1).
+
+53
+
+For standard MLP architecture FMLP ,
+− 2d
+
+H 2 L2 log(H 2 L) ≤ C̃ · n β (log(1/n ) + 1)7 .
+Thus we can optimize the upper bound
+s
+
+r̄ ≤ C 0 
+
+by choosing n = n
+
+β
+− 2(β+d)
+
+− 2d
+n β (log(1/n ) + 1)7
+
+n
+
+
+r
+log n +
+
+log log n + γ
+
++ n 
+n
+
+d
+
+, H  ·n 2(β+d) log2 n, L  · log n. This gives
+r̄ ≤ C
+
+n
+
+β
+− 2(β+d)
+
+r
+4
+
+log n +
+
+log log n + t0
+n
+
+!
+.
+
+Hence putting everything together, with probability at least 1 − exp(−γ),
+
+
+β
+log log n + γ
+− β+d
+2
+2
+8
+ˆ
+E(f − f∗ ) ≤ r̄ ≤ C n
+log n +
+,
+n
+
+
+log log n + γ
+− β
+En (fˆ − f∗ )2 ≤ (2r̄)2 ≤ 4C n β+d log8 n +
+.
+n
+This completes the proof of Theorem 1.
+
+A.4
+
+Proof of Corollaries 1 and 2
+
+For Corollary 1, we want to optimize
+W L log U
+log log n + γ
+log n +
++ 2DNN .
+n
+n
+Yarotsky (2017, Theorem 1) shows that for the approximation error DNN to obey DNN ≤ , it
+− βd
+
+suffices to choose W, U ∝ 
+
+(log(1/) + 1) and L ∝ (log(1/) + 1), given the specific architecture
+
+described therein. Therefore, we attain   n−β/(2β+d) by setting W, U  nd/(2β+d) and L  log n,
+yielding the desired result.
+For Corollary 2, we need to optimize
+H 2 L2 log(HL)
+log log n + γ
+log n +
++ 2MLP .
+n
+n
+Yarotsky (2018, Theorem 1) shows that for the approximation error MLP to obey MLP ≤ , it
+d
+
+suffices to choose H ∝ 2d + 10 and L ∝ − 2 , given the specific architecture described therein.
+Thus, for   n−1/(2+d) we take L  n−d/(4+2d) , and the result follows.
+
+54
+
+B
+
+Supporting Lemmas
+
+First, we show that one can embed a feedforward network into the multi-layer perceptron architecture by adding auxiliary hidden nodes. This idea is due to Yarotsky (2018).
+Lemma 1 (Embedding). For any function f ∈ FDNN , there is a g ∈ FMLP , with H ≤ W L + U ,
+such that g = f .
+
+Figure 7: Illustration of how to embed a feedforward network into a multi-layer perceptron, with
+auxiliary hidden nodes (shown in yellow).
+Proof. The idea is illustrated in Figure 7. For the edges in the directed graph of f ∈ FDNN
+that connect nodes not in adjacent layers (shown in yellow in Figure 7), one can insert auxiliary
+hidden units in order to simply “pass forward” the information. The number of such auxiliary
+“passforward units” is at most the number of offending edges times the depth L (i.e. for each edge,
+at most L auxiliary nodes are required), and this is bounded by W L. Therefore the width of the
+MLP network that subsumes the original is upper bounded by W L + U while still maintaining the
+required embedding that for any fθ ∈ FDNN , there is a gθ0 ∈ FMLP such that gθ0 = fθ . In order to
+match modern practice we only need to show that auxiliary units can be implemented with ReLU
+activation. This can be done by setting the constant (“bias”) term b of each auxiliary unit large
+enough to ensure σ(x̃0 w + b) = x̃0 w + b, and then subtracting the same b in the last receiving unit
+along the path.
+Next, we give two properties of the Rademacher complexity that we require (see Mendelson,
+2003).
+Lemma 2 (Contraction). Let φ : R → R be a Lipschitz function |φ(f1 ) − φ(f2 )| ≤ L|f1 − f2 |, then
+Eη Rn {φ ◦ f : f ∈ F} ≤ 2LEη Rn F.
+55
+
+Lemma 3 (Dudley’s Chaining). Let N (δ, F, k · kn ) denote the metric entropy for class F (with
+covering radius δ and metric k · kn ), then
+
+
+Z
+12 r p
+4α + √
+Eη Rn {f : f ∈ F, kf kn ≤ r} ≤ inf
+log N (δ, F, k · kn )dδ .
+0<α<r
+n α
+Furthermore, because kf kn ≤ maxi |f (xi )|, and therefore N (δ, F, k · kn ) ≤ N (δ, F|x1 ,...,xn , ∞) and
+so the upper bound in the conclusions also holds with N (δ, F|x1 ,...,xn , ∞).
+The next two results, Theorems 12.2 and 14.1 in Anthony and Bartlett (1999), show that the
+metric entropy may be bounded in terms of the pseudo-dimension and that the latter is bounded
+by the Vapnik-Chervonenkis (VC) dimension.
+Lemma 4. Assume for all f ∈ F, kf k∞ ≤ M . Denote the pseudo-dimension of F as Pdim(F),
+then for n ≥ Pdim(F), we have for any δ,
+
+N (δ, F|x1 ,...,xn , ∞) ≤
+
+2eM · n
+δ · Pdim(F)
+
+Pdim(F )
+.
+
+The following symmetrization lemma bounds the empirical processes term using Rademacher
+complexity, and is thus a crucial piece of our localization. This is a standard result based on
+Talagrand’s concentration, but here special care is taken with the dependence on the variance.
+Lemma 5 (Symmetrization, Theorem 2.1 in Bartlett et al. (2005)). For any g ∈ G, assume that
+|g| ≤ G and V[g] ≤ V . Then for every γ > 0, with probability at least 1 − e−γ
+r
+
+2V γ 4G γ
++
+,
+n
+3 n
+
+r
+
+2V γ 23G γ
++
+.
+n
+3 n
+
+sup {Eg − En g} ≤ 3ERn G +
+g∈G
+
+and with probability at least 1 − 2e−t
+sup {Eg − En g} ≤ 6Eη Rn G +
+g∈G
+
+The same result holds for supg∈G {En g − Eg}.
+When bounding the complexity of FDNN , we use the following result. Bartlett et al. (2017) also
+verify these bounds for the VC-dimension.
+Lemma 6 (Theorem 6 in Bartlett et al. (2017), ReLU case). Consider a ReLU network architecture
+F = FDNN (W, L, U ), then the pseudo-dimension is sandwiched as
+c · W L log(W/L) ≤ Pdim(F) ≤ C · W L log W,
+with some universal constants c, C > 0.
+
+56
+
+For multi-layer perceptrons we use the following approximation result, Theorem 1 of Yarotsky
+(2017).
+Lemma 7. There exists a network class FDNN , with ReLU activation, such that for any  > 0:
+(a) FDNN approximates the W β,∞ ([−1, 1]d ) in the sense for any f∗ ∈ W β,∞ ([−1, 1]d ), there exists
+a fn () := fn ∈ FDNN such that
+kfn − f∗ k∞ ≤ ,
+− βd
+
+(b) and FDNN has L() ≤ C · (log(1/) + 1) and W (), U () ≤ C · 
+
+(log(1/) + 1).
+
+Here C only depends on d and β.
+For completeness, we verify the requirements on the loss functions, Equation (2.1), for several
+examples. We first treat least squares and logistic losses, in slightly more detail, as these are used
+in our subsequent inference results and empirical application.
+Lemma 8. Both the least squares (2.2) and logistic (2.3) loss functions obey the requirements of
+Equation (2.1). For least squares, c1 = c2 = 1/2 and C` = M . For logistic regression, c1 =
+(2(exp(M ) + exp(−M ) + 2))−1 , c2 = 1/8 and C` = 1.
+Proof. The Lipschitz conditions are trivial. For least squares, using iterated expectations
+
+
+2E`(f, Z) − 2E`(f∗ , Z) = E −2Y f + f 2 + 2Y f∗ − f∗2
+
+
+= E −2f∗ f (x) + f 2 + 2(f∗ )2 − f∗2
+
+
+= E (f − f∗ )2 .
+For logistic regression,
+
+
+
+exp(f∗ )
+1 + exp(f )
+E[`(f, Z)] − E[`(f∗ , Z)] = E −
+(f − f∗ ) + log
+.
+1 + exp(f∗ )
+1 + exp(f∗ )
+exp(a)
+Define ha (b) = − 1+exp(a)
+(b − a) + log
+
+
+
+1+exp(b)
+1+exp(a)
+
+
+
+, then
+
+1
+ha (b) = ha (a) + h0a (a)(b − a) + h00a (ξa + (1 − ξ)b) (b − a)2
+2
+1
+and h00a (b) = exp(b)+exp(−b)+2
+≤ 14 . The lower bound holds as |ξf∗ + (1 − ξ)f | ≤ M .
+
+Beyond least squares and logistic regression, we give three further examples, discussed in the
+general language of generalized linear models. Note that in the final example we move beyond a
+simple scalar outcome.
+Lemma 9. For a convex function g(·) : R → R, consider the generalized linear loss function
+`(f, z) = −hy, f (x)i + g(f (x)). The curvature and the Lipschitz conditions in (2.1) will hold given
+specific g(·). In each case, the loss function corresponds to the negative log likelihood function.
+57
+
+(a) Poisson: g(t) = exp(t), with f∗ (x) = log E[y|X = x].
+(b) Gamma: g(t) = − log t, with f∗ (x) = −(E[y|X = x])−1 .
+(c) Multinomial Logistic, K + 1 classes: g(t) = log(1 +
+[k]
+
+exp(f∗ (x))/(1 +
+
+X
+
+P
+
+k∈K exp(t
+
+[k] )), with
+
+[k0 ]
+
+exp(f∗ (x))) = E[y [k] |X = x].
+
+k0 ∈K
+
+Here v [k] denotes the k-th coordinate of a vector v.
+Proof. Denote ∇g, Hessian[g] to be the gradient and Hessian of the convex function g. By the
+convexity of g, the optimal f∗ satisfies E[∂`(f∗ , Z)/∂f |X = x] = 0, which implies
+∇g(f∗ ) = E[Y |X = x].
+If 2c0  Hessian[g(f )]  2c1 for all f of interest, then the curvature condition in (2.1) holds, because
+E[`(f, Z)] − E[`(f∗ , Z)] = E[−h∇g(f∗ ), f − f∗ i + g(f ) − g(f∗ )]
+1
+= Ehf − f∗ , Hessian[g(f˜)]f − f∗ i
+2
+≥ c0 Ekf − f∗ k2 ,
+and the parallel argument for ≤ c1 Ekf −f∗ k2 . The Lipschitz condition is equivalent to k∇g(f )k ≤ C`0
+for all f of interest, with bounded Y .
+For our three examples in particular, we have the following.
+(a) For Poisson regression:
+k∇c(f )k = | exp(f )| ≤ exp(M ),
+
+Hessian[c(f )] = exp(f ) ∈ [exp(−M ), exp(M )].
+
+(b) For Gamma regression, bounding −Y above and below is equivalent to 1/M ≤ kf k ≤ M and
+therefore:
+k∇c(f )k = |1/f | ≤ M, Hessian[c(f )] = 1/f 2 ∈ [1/M 2 , M 2 ].
+(c) For multinomial logistic regression, with general K, we know
+k∇c(f )k ≤ 1
+Hessian[c(f )] = diag{z} − zz > where z [k] :=
+
+58
+
+exp(f [k] )
+P
+.
+1 + k0 f [k0 ]
+
+One can easily verify that the eigenvalues are bounded in the following sense, for bounded f ,
+1
+exp(M )
+≤ λ(Hessian[c(f )]) ≤
+.
+(1 + K exp(M ))2
+1 + (K − 1) exp(−M ) + exp(M )
+This completes the proof.
+Our last result is to verify condition (c) of Theorem 3. We do so using our localization, which
+may be of future interest in second-step inference with machine learning methods.
+Lemma 10. Let the conditions of Theorem 3 hold. Then
+
+En
+
+
+(µ̂t (xi ) − µt (xi )) 1 −
+
+1{ti = t}
+P[T = t|X = xi ]
+
+
+
+
+
+
+
+β
+log log n
+− β+d
+8
+= oP n
+log n +
+= oP n−1/2 .
+n
+
+Proof. Without loss of generality we can take p̄ < 1/2. The only estimated function here is µt (x),
+which plays the role of f∗ here. For function(als) L(·) of the form
+
+L(f ) := (f (xi ) − f∗ (xi )) 1 −
+
+1{ti = t}
+P[T = t|X = xi ]
+
+
+,
+
+it is true that
+
+
+E[1{ti = t}|xi ]
+E[L(f )] = E (f (X) − f∗ (X)) 1 −
+=0
+P[T = t|X = xi ]
+
+
+and
+h
+i
+V[L(f )] ≤ (1/p̄ − 1)2 E (f (X) − f∗ (X))2 ≤ (1/p̄ − 1)2 r̄2
+|L(f )| ≤ (1/p̄ − 1) 2M.
+For r̄ defined in (A.14),
+18M ERn {f − f∗ : f ∈ F, kf − f∗ kL2 (x) ≤ r̄} ≤ r̄2
+ERn {L(f ) : f ∈ F, kf − f∗ kL2 (x) ≤ r̄} ≤ 2 (1/p̄ − 1) ERn {f − f∗ : f ∈ F, kf − f∗ kL2 (x) ≤ r̄}
+where the first line is due to r̄ > r∗ , and second line uses Lemma 2.
+Then by the localization analysis and Lemma 5, for all f ∈ F, kf − f∗ kL2 (x) ≤ r̄, L(f ) obeys
+s
+
+4 (1/p̄ − 1)2 t 8 (1/p̄ − 1) 3M t
+En [L(f )] = En [L(f )] − E[L(f )] ≤ 6C r̄2 + r̄
++
+≤ 4C r̄2
+n
+3
+n
+
+
+β
+log log n
+− β+d
+8
+≤C· n
+log n +
+,
+n
+
+
+log log n
+− β
+sup
+En [L(f )] ≤ C · n β+d log8 n +
+.
+n
+f ∈F ,kf −f∗ kL (x) ≤r̄
+2
+
+59
+
+d
+
+With probability at least 1 − exp(−n β+d log8 n), fˆMLP lies in this set of functions, and therefore
+
+
+b
+ˆ
+En [L(fMLP )] = En (fn,H,L (x) − f∗ (x)) 1 −
+
+1(T = t)
+P (T = t|x = x)
+
+as claimed.
+
+60
+
+
+
+
+≤C· n
+
+β
+− β+d
+
+log log n
+log n +
+n
+8
+
+
+,
+
+

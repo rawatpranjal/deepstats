@@ -2,6 +2,10 @@
 
 ## 2026-01-16
 
+### FLM Papers Converted to Searchable Text
+- Downloaded FLM2025 (arxiv v3) and converted both FLM2021/FLM2025 PDFs to searchable `.txt` files
+- Split into ~50KB chunks for easier searching: `references/FLM2021_part_*`, `references/FLM2025_part_*`
+
 ### Quick Start Example Upgrade
 - Replaced boring Linear example with Logit + Heterogeneous Effects example in `docs/index.md`
 - New example shows: binary outcomes, heterogeneous β(X) = 0.5 + 0.3*X₁, statsmodels-style summary()

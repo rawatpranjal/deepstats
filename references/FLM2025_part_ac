@@ -1,0 +1,1491 @@
+ons on
+Artificial Intelligence 3 (2):275–286. (Cited on page 25.)
+van der Vaart, Aad. 1998. Asymptotic Statistics. Cambridge University Press. (Cited on
+page 43.)
+Varian, Hal R. 2014. “Big Data: New Tricks for Econometrics.” Journal of Economic
+Perspectives 28 (2):3–28. URL https://www.aeaweb.org/articles?id=10.1257/jep.
+28.2.3. (Cited on page 5.)
+Vaswani, Ashish, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
+Łukasz Kaiser, and Illia Polosukhin. 2017. “Attention is all you need.” Advances in neural
+information processing systems 30. (Cited on page 9.)
+Velez, Amilcar. 2024. “On the Asymptotic Properties of Debiased Machine Learning Estimators.” arXiv preprint arXiv:2411.01864 . (Cited on page 16.)
+Wager, Stefan and Susan Athey. 2018. “Estimation and Inference of Heterogeneous Treatment Effects using Random Forests.” Journal of the American Statistical Association
+113 (523):1228–1242. (Cited on page 10.)
+
+38
+
+Wei, Yanhao and Zhenling Jiang. 2025. “Estimating parameters of structural models using
+neural networks.” Marketing Science 44 (1):102–128. (Cited on page 13.)
+Wooldridge, Jeffrey M. 2004. “Estimating average partial effects under conditional moment
+independence assumptions.” cemmap working paper CWP03/04 . (Cited on page 59.)
+———. 2010. Econometric Analysis of Cross Section and Panel Data. Cambridge: MIT
+Press, 2 ed. (Cited on page 64.)
+Yarotsky, Dmitry. 2017. “Error bounds for approximations with deep ReLU networks.” Neural
+Networks 94:103–114. (Cited on pages 26 and 43.)
+———. 2018. “Optimal approximation of continuous functions by very deep ReLU networks.”
+arXiv preprint arXiv:1802.03620 . (Cited on page 26.)
+Zadrozny, Bianca. 2004. “Learning and evaluating classifiers under sample selection bias.”
+ICML ’04. New York, NY, USA: Association for Computing Machinery, 114. URL https:
+//doi.org/10.1145/1015330.1015425. (Cited on page 6.)
+Zeileis, Achim, Torsten Hothorn, and Kurt Hornik. 2008. “Model-based recursive partitioning.”
+Journal of Computational and Graphical Statistics 17 (2):492–514. (Cited on page 13.)
+Zhang, Cun-Hui and Stephanie S. Zhang. 2014. “Confidence intervals for low dimensional
+parameters in high dimensional linear models.” Journal of the Royal Statistical Society.
+Series B 76 (1):217–242. (Cited on page 28.)
+
+39
+
+Appendix A
+A.1
+
+Proofs
+
+Bounds Structural Deep Learning – Theorem 1
+
+Here we prove Theorem 1, using the proof method of Farrell, Liang, and Misra (2021). Some
+details will be deferred to that paper.
+Define θn ∈ Fdnn as the best approximation to θ ⋆ in the class of DNNs as defined in the
+theorem statement and let ϵn denote the error of the approximation:
+θn = arg min ∥θ − θ ⋆ ∥∞ ,
+
+ϵn = ∥θn − θ ⋆ ∥∞ .
+
+θ∈Fdnn
+
+For the MLP case, under Assumption 2 this error is controlled by the width and depth, and
+we specify to this case at the end of the proof. For now we leave the error generic to allow for
+other approximation assumptions (such as other smoothness classes) and other architectures.
+By Assumption 1 and that θb optimizes ℓ over Fdnn in the data,
+h
+i
+⋆
+2
+b
+c1 E ∥θ(X) − θ (X)∥2
+b
+≤ E[ℓ(Y , T , θ(X))]
+− E[ℓ(Y , T , θ ⋆ (X))]
+b
+b
+≤ E[ℓ(Y , T , θ(X))]
+− E[ℓ(Y , T , θ ⋆ (X))] − En [ℓ(Y , T , θ(X))]
++ En [ℓ(Y , T , θn (X))]
+h
+i
+b
+= (E − En ) ℓ(Y , T , θ(X))
+− ℓ(Y , T , θ ⋆ (X)) + En [ℓ(Y , T , θn (X)) − ℓ(Y , T , θ ⋆ (X))] .
+
+Applying Farrell, Liang, and Misra (2021, Equation (A.2)) to the second term of the last line
+above, we find that with probability 1 − e−γ
+
+h
+i
+⋆
+2
+b
+c1 E ∥θ(X) − θ (X)∥2
+h
+
+i
+b
+≤ (E − En ) ℓ(Y , T , θ(X))
+− ℓ(Y , T , θ ⋆ (X)) + c2 ϵ2n + ϵn
+
+r
+
+2Cℓ2 γ 7Cℓ M γ
++
+. (A.1)
+n
+n
+
+We now apply the localization-based analysis of Farrell, Liang, and Misra (2021) to the first
+
+40
+
+⋆
+b
+term above and then collect the results. Suppose that for some r0 , E[∥θ(X)−θ
+(X)∥22 ]1/2 ≤ r0 ,
+0
+which can always be attained given the boundedness. Let Fdnn
+be the subset of Fdnn such
+0
+that θ ∈ Fdnn
+if E[∥θ(X) − θ ⋆ (X)∥22 ]1/2 ≤ r0 . Then by Theorem 2.1 in Bartlett, Bousquet,
+0
+and Mendelson (2005), for G = {g = ℓ(y, t, θ(x)) − ℓ(y, t, θ ⋆ (x)) : θ ∈ Fdnn
+}, we find that,
+
+with probability at least 1 − 2e−γ , the empirical process term of (A.1) is bounded as
+h
+i
+⋆
+b
+(E − En ) ℓ(Y , T , θ(X)) − ℓ(Y , T , θ (X)) ≤ 6Eη Rn G +
+
+r
+
+2Cℓ2 r02 γ 23 · 3M Cℓ γ
++
+, (A.2)
+n
+3
+n
+
+where
+n
+
+n
+
+1X
+1X
+ηi g(wi ) = sup
+ηi (ℓ(y, t, θ(x)) − ℓ(y, t, θ ⋆ (x))) .
+0
+n
+n
+g∈G
+θ∈Fdnn
+i=1
+i=1
+
+Rn G = sup
+
+is the empirical Rademacher complexity and Eη Rn G is its expectation holding fixed the data,
+i.e. over the i.i.d. Rademacher variables ηi . The argument given in Section A.2.2 of Farrell,
+Liang, and Misra (2021) does not apply directly to Eη Rn G because θ is vector valued. Instead,
+we replace Lemma 2 therein with Maurer (2016, Corollary 1), which in our context yields
+(below ηik ’s denote i.i.d. Rademacher random variables)
+dθ
+n
+n
+X
+√
+
+1X
+1X
+⋆
+Eη sup
+ηi (ℓ(y, t, θ(x)) − ℓ(y, t, θ (x))) ≤ 2Cℓ Eη sup
+ηik θk (xi ) − θk⋆ (xi )
+0
+0
+n i=1
+n i=1
+θ∈Fdnn
+θ∈Fdnn
+k=1
+
+≤
+
+√
+
+dθ
+X
+
+n
+
+1X
+2Cℓ
+Eη sup
+ηik θk (xi ) − θk⋆ (xi ) ,
+0
+n i=1
+θk ∈Fdnn,k
+k=1
+
+with the second inequality following because the class of DNNs Fdnn we use is decomposable
+with respect to each coordinate, and therefore we can bound one coordinate at a time.
+We then apply Section A.2.1 and Lemmas 3 and 4 of Farrell, Liang, and Misra (2021) to
+the term for each component function θk , k = 1, . . . , dθ , yielding
+
+Eη
+
+sup
+
+n
+1X
+
+0
+n i=1
+θk ∈Fdnn,k
+
+s
+
+ηik θk (xi ) − θk⋆ (xi ) ≤ 32r0
+
+41
+
+Pdim(Fdnn,k )
+n
+
+
+
+
+2eM
+3
+log
++ log n ,
+r0
+2
+
+with probability 1 − exp−γ , where Pdim(F) is the pseudo-dimension of the class F. Therefore,
+whenever r0 ≥ 1/n and n ≥ (2eM )2 ,
+n
+
+1X
+Eη sup
+ηi (ℓ(y, t, θ(x)) − ℓ(y, t, θ ⋆ (x))) ≤ Kr0
+0
+n i=1
+θ∈Fdnn
+
+r
+
+Pdim(Fdnn )
+log n,
+n
+
+for a constant K that depends on Cℓ and dθ .
+This last bound is then combined with (A.2) and put into (A.1) and we find that
+h
+i
+b
+c1 E ∥θ(X)
+− θ ⋆ (X)∥22
+r
+r
+r
+Pdim(Fdnn )
+2Cℓ2 r02 γ 23 · 3M Cℓ γ
+2Cℓ2 γ 7Cℓ M γ
+2
+≤ 6Kr0
+log n +
++
++ c2 ϵn + ϵn
++
+n
+n
+3
+n
+n
+n
+!
+r
+r
+r
+2
+2
+γ
+Pdim(Fdnn )
+2Cℓ γ
+2Cℓ γ
+log n +
++ K2
+≤ r0 6K
++ c2 ϵ2n + ϵn
+n
+n
+n
+n
+!
+r
+r
+r
+γ
+QL log(Q)
+2Cℓ2 γ
+2Cℓ2 γ
+≤ r0 K1
+log n +
++ K2 ,
+(A.3)
++ c2 ϵ2n + ϵn
+n
+n
+n
+n
+for constants K1 and K2 , where the final inequality applies Theorem 6 in Bartlett et al.
+(2017) to bound the pseudo-dimension of ReLU networks in terms of their depth L and total
+parameters Q.
+⋆
+b
+The bound of Equation (A.3), reached under the assumption that E[∥θ(X)−θ
+(X)∥22 ]1/2 ≤
+
+r0 , provides the key input into Sections A.2.3 and A.2.4 of Farrell, Liang, and Misra (2021),
+which now go through with only change to the constants to capture the dependence on dθ .
+Following those steps exactly we find that with probability 1 − e−γ1 ,
+
+
+h
+i
+QL log(Q)
+log log n + γ1
+⋆
+2
+2
+b
+E ∥θ(X) − θ (X)∥2 ≤ C
+log n +
++ ϵn
+n
+n
+
+
+h
+i
+log log n + γ1
+QL log(Q)
+⋆
+2
+′
+2
+b
+En ∥θ(X) − θ (X)∥2 ≤ C
+log n +
++ ϵn ,
+n
+n
+
+(A.4)
+
+for positive constants C and C ′ which do not depend on n but depend on the constants given
+in Assumption 1 and as well as the dimensionalities, including dθ .
+To specialize this result to the MLP case, for which the total number of parameters obeys
+42
+
+Q ≤ CJ 2 L, we use the approximation result from Theorem 1 of Yarotsky (2017), or its
+restatement in Lemma 7 of Farrell, Liang, and Misra (2021). This result tell us that for each
+θk⋆ , the following holds for width J, depth L, and approximation error ϵn :
+− dc
+
+J = J(ϵn ) ≤ Q(ϵn )L(ϵn ) ≤ C 2 ϵn p (log(1/ϵn ) + 1)2 ,
+L = L(ϵn ) ≤ C · (log(1/ϵn ) + 1).
+
+Therefore, a network that is dθ times wider can yield the same approximation for θ ⋆ .
+Importantly, only dc matters here. To see why, suppose X1 is binary. Then for two smooth,
+⋆
+⋆
+⋆
+(dX − 1)-dimensional functions θk,1
+and θk,0
+, it holds that θk⋆ (x) = x1 θk,1
+(x2 , . . . , xdX ) + (1 −
+⋆
+(x2 , . . . , xdX ). Adding a single node to each hidden layer allows the network to pass
+x1 )θk,0
+
+forward the input x1 and multiply it with two separate learned functions just prior to the
+parameter, giving exactly θbk (x) = x1 θbk,1 (x2 , . . . , xdX ) + (1 − x1 )θbk,0 (x2 , . . . , xdX ). (Intuitively,
+b
+this is similar to the combination of α
+b(x) and β(x)
+in Figure B.1, with t there playing the
+role of the binary x1 here.) The same argument can be applied to every category of the
+discrete data and to each function to be learned. Since dX is fixed, this results in only a
+p
+
+constant increase in the width of the network. Put together, we take ϵn = n− 2(p+dc ) , i.e.
+dc
+
+J ≍ n 2(p+dc ) log2 n, L ≍ log n, and we obtain the final result.
+
+A.2
+
+Influence Function and Asymptotic Normality
+
+To prove Theorem 2 we first derive the influence function, then we apply standard DML
+results to obtain the limiting distribution. Our derivation of the influence function applies
+Newey (1994). For deeper treatments of influence functions, including efficiency bounds and
+conditions for existence, see Newey (1990), Newey (1994), van der Vaart (1998, Chapter 25),
+and Ichimura and Newey (2022).
+The starting point is a parametric submodel, indexed by a parameter η. Because our
+first stage (3.3) is explicitly based on enriching the parametric structural model (3.1), our
+
+43
+
+submodels are as well-behaved as the original model and derivatives in the submodel are
+well-understood ordinary derivatives of the original structural model. For the calculation,
+distributions and other nonparametric objects are indexed by η, and thus we define θ(x; η)
+and µ⋆ (η) as
+Z
+
+⋆
+
+θ (·; η) = arg min
+
+ℓ (w, b(x)) fw (w; η)dw
+
+(A.5)
+
+b
+
+and
+Z
+
+⋆
+
+µ (η) =
+
+
+H x, θ(x; η); t̃ fx (x; η)dx,
+
+(A.6)
+
+where fw and fx are the distributions of w = (y ′ , t′ , x′ )′ and x respectively. For notational
+simplicity, we will assume throughout the derivation that such densities exist. The true data
+generating process is obtained at η = 0. When evaluating at η = 0 we will often omit the
+dependence on η, such as fx (x; η) = fx (x), θ(x; 0) = θ ⋆ (x), or E[·] for expectations with
+respect to the true distribution.
+The pathwise derivative approach proceeds, as in Newey (1994) and others, by finding a
+function ψ(w) such that
+∂µ(η)
+= E[ψ(W )S(W )],
+∂η η=0
+
+(A.7)
+
+for the (true) score S(w) = S(w; η)|η=0 .
+The first step is differentiating (A.6) with respect to the parameter η, and evaluating this
+at η = 0. The product rule and the chain rule yield
+Z
+
+
+∂µ(η)
+∂
+=
+H x, θ(x; η); t̃ fx (x; η)dx
+∂η η=0 ∂η
+η=0
+
+Z
+Z
+ ∂fx (x; η)
+∂H x, θ(x; η); t̃
+= H x, θ(x; 0); t̃
+dx +
+fx (x; 0)dx,
+∂η
+∂η
+η=0
+η=0
+Z
+Z
+
+∂f
+(x;
+η)
+x
+= H x, θ ⋆ (x); t̃
+dx + Hθ (x, θ ⋆ (x); t̃)θη (x)fx (x)dx, (A.8)
+∂η
+η=0
+where θη (x) = θη (x; 0) is the dθ -vector gradient of θ(x; η) with respect to η, evaluated at
+
+44
+
+η = 0, given by
+θη (x; 0) =
+
+∂θ(x; η)
+,
+∂η
+η=0
+
+and Hθ (x, θ ⋆ (x); t̃) is the dµ × dθ Jacobian of H with respect to θ, evaluated at η = 0, that
+is, the matrix with {h, k} element, for h = 1, . . . , dµ , k = 1, . . . , dθ , given by
+h
+
+i
+Hθ (x, θ ⋆ (x); t̃)
+
+=
+h,k
+
+∂Hh (x, b; t̃)
+,
+∂bk
+b=θ(x;0)
+
+with Hh the hth element of H and bk the k element of b. For intuition, note that element
+h = 1, . . . , dµ of the dµ -vector Hθ (x, θ ⋆ (x); t̃)θη (x) is
+dθ
+X
+∂Hh (x, b; t̃)
+∂θk (x; η)
+∂Hh
+=
+.
+∂η η=0 k=1
+∂bk
+∂η
+b=θ(x;0)
+η=0
+
+We will show that both terms of Equation (A.8) above can be written as expectations of
+products with the full score S(w), as required by (A.7). We will often use the standard facts
+that scores are mean zero and that
+
+S(y, x, t) = S(y, t | x) + S(x).
+
+(A.9)
+
+The first term of Equation (A.8) is
+Z
+
+H x, θ ⋆ (x); t̃
+
+ ∂fx (x; η)
+
+
+
+dx = E H X, θ ⋆ (x); t̃ S(X)
+∂η
+η=0
+
+
+
+= E H X, θ ⋆ (x); t̃ S(Y , X, T ) ,
+
+(A.10)
+
+where the first equality holds because the marginal score obeys S(x)fx (x) = ∂fx (x; η)/∂η|η=0
+and the second equality follows from the usual mean zero property of scores and (A.9):
+h
+i
+
+
+E H(X, θ ⋆ (x), t̃)S(Y , T | X) = E H(X, θ ⋆ (x), t̃)E [S(Y , T | X) | X] = 0.
+
+45
+
+This first term is then the standard “plug-in” portion of the influence function, that is, the
+b
+term that would appear if θ ⋆ (x) were known (or if θ(x)
+were fixed). The second term of
+Equation (A.8) will give rise to the correction factor that accounts for the nonparametric
+estimation.
+To find this correction factor, we must find θη (x) = ∂θ(x; η)/∂η|η=0 . This is a key step
+in the derivation, and crucially leverages the structure of the model ℓ and the fact that ℓ
+depends on θ(·) only through evaluation at a single point and only through X. We will use
+these facts to derive and expression for ∂θ(x; η)/∂η, which involves the appropriate scores
+and then may be substituted into (A.8) to yield the required form.
+We begin with the fact that the first order condition holds as an identity in η and
+conditional on X. That is, as an identity in η,
+
+Eη [ℓθ (W , θ(x; η))| X = x] ≡ 0,
+
+(A.11)
+
+where ℓθ is the dθ -vector gradient of ℓ with respect to θ, given by
+∂ℓ (w, b)
+.
+∂b
+b=θ(x;η)
+
+ℓθ (w, θ(x; η)) =
+
+The expectation is also indexed by η in the submodel, as the density depends on η. To be
+explicit, as an identity in η we have
+Z
+
+∂ℓ (w, b)
+fy,t|x (y, t; η | x)dydt ≡ 0.
+∂b
+b=θ(x;η)
+
+Define ℓθθ (w, θ(x; η)) as the dθ × dθ matrix of second derivatives of ℓ (w, b) with respect to
+b, evaluated at b = θ(x; η). That is, ℓθθ (w, θ(x; η)) has {k1 , k2 } element given by
+h
+
+i
+ℓθθ (w, θ(x; η))
+
+=
+k1 ,k2
+
+46
+
+∂ 2 ℓ (w, b)
+,
+∂bk1 ∂bk2 b=θ(x;η)
+
+where bk1 and bk2 are the respective elements of b. With this notation, differentiating the
+above identity with respect to η and applying the chain rule we find
+Z
+
+∂fy,t|x (y, t; η | x)
+∂ℓ (w, b(x))
+dydt
+∂b
+∂η
+b=θ(x;η)
+Z
++ ℓθθ (w, θ(x; η))θη (x; η)fy,t|x (y, t; η | x)dydt = 0,
+
+where the second term captures the derivatives of ℓθ (w, θ(x; η)) with respect to η, and recall,
+θη (x; η) is the dθ -vector gradient of θ with respect to η, and is the key ingredient.
+Evaluating this result at η = 0, we obtain
+
+E [ℓθ (W , θ ⋆ (x))S(Y , T | X)| X] + E [ ℓθθ (W , θ ⋆ (x))θη (x)| X] = 0,
+
+(A.12)
+
+where S(Y , T | X) is the conditional score and is obtained because S(y, t | x)fy,t|x (y, t |
+x) = ∂fy,t|x (y, t; η | x)/∂η η=0 . Rearranging (A.12), and using that θ is only a function of
+X, gives
+
+E [ℓθθ (W , θ ⋆ (x))| X] θη (x) = −E [ℓθ (W , θ ⋆ (x))S(Y , T | X)| X] .
+Then, because Λ(x) := E [ℓθθ (W , θ ⋆ (x))| X = x] is invertible, we have
+θη (x) = −E [ℓθθ (W , θ ⋆ (x))| X]−1 E [ℓθ (W , θ ⋆ (x))S(Y , T | X)| X]
+
+
+= −E Λ(x)−1 ℓθ (W , θ ⋆ (x))S(Y , T | X) X .
+
+Substituting this into the second term of Equation (A.8) and applying iterated expectations,
+we have
+Z
+
+h
+
+i
+Hθ (x, θ ⋆ (x); t̃)θη (x)fx (x)dx = −E Hθ (X, θ ⋆ (X); t̃)E Λ(X)−1 ℓθ (W , θ ⋆ (x))S(Y , T | X) X
+h 
+i
+−1
+⋆
+= −E E Hθ (X, θ(X); t̃)Λ(X) ℓθ (W , θ (x))S(Y , T | X) X
+47
+
+h
+i
+= −E Hθ (X, θ ⋆ (X); t̃)Λ(X)−1 ℓθ (W , θ ⋆ (x))S(Y , T | X) .
+
+Next, because the first order condition holds conditionally,
+
+h
+i
+E Hθ (X, θ ⋆ (X); t̃)Λ(X)−1 ℓθ (W , θ ⋆ (x))S(X)
+h
+i
+⋆
+−1
+⋆
+= E Hθ (X, θ (X); t̃)Λ(X) E [ℓθ (W , θ (x)) | X] S(X) .
+
+Therefore, continuing from the previous display and applying (A.9), the second term of
+Equation (A.8) is of the required form:
+h
+i
+−E Hθ (X, θ ⋆ (X); t̃)Λ(X)−1 ℓθ (W , θ ⋆ (x))S(Y , T , X)
+
+(A.13)
+
+Combining Equations (A.10) and (A.13) with (A.8), we find that
+
+
+
+∂µ(η)
+= E H X, θ ⋆ (x); t̃ S(Y , X, T )
+∂η η=0
+h
+i
+⋆
+−1
+⋆
+− E Hθ (X, θ (X); t̃)Λ(X) ℓθ (W , θ (x))S(Y , T , X) . (A.14)
+
+Thus we have verified Equation (A.7) with
+
+
+ψ(w) = H x, θ ⋆ (x); t̃ − Hθ (x, θ ⋆ (X); t̃)Λ(x)−1 ℓθ (w, θ ⋆ (x)).
+
+(A.15)
+
+This is not an influence function as it lacks the appropriate centering, but of course
+E[µ⋆ S(W )] = µ⋆ E[S(W )] = 0, and thus we can freely center this ψ(t) and still obey
+(A.7).
+
+A.2.1
+
+Asymptotic Normality
+
+The asumptotic Normality of Theorem 2 follows from Theorems 3.1 and 3.2 of Chernozhukov
+et al. (2018a) upon verifying Assumptions 3.1 and 3.2 therein. Assumption 3.1(a) holds for
+48
+
+ψ(y, t, x, θ, Λ) − µ⋆ given in Equation (3.6): the first term of ψ has mean µ⋆ by definition
+in (3.4) while the second is (conditionally) mean zero as assumed in Assumption 3, with
+Λ(x)−1 uniformly bounded. Assumption 3.1(b), linearity, holds by definition of (3.4) and the
+form of the score in Equation 3.6. Assumption 3.1(c) holds by Assumption 3, in particular
+the assumed smoothness and the nonsingularity of Λ(x). Assumption 3.1(d), Neyman
+orthogonality, is verified directly by the calculation of the influence function. Assumption
+3.1(e) holds trivially as the matrix J0 therein is the identity. Assumption 3.2, parts (b) and
+(d) follow directly from the moment conditions imposed. Conditions (a) and (c) follow from
+Equations (3.7) and (3.8) of Chernozhukov et al. (2018a) and the assumed convergence of
+the first stage estimates.
+
+Appendix B
+
+Generalized Linear Models
+
+To help illustrate our results, and because it is a leading use case, this section specializes to
+modeling the conditional mean with a linear index. This model will also help us link to prior
+work, both in nonparametrics and semiparametrics.
+The parametric structural model in this case is determined by the conditional mean
+restriction on a scalar outcome Y given a vector of explanatory variables T . Assume that
+
+E[Y | T = t] = G(α⋆ + β ⋆ ′ t),
+
+(B.1)
+
+for an inverse link function G(u) : R → R. The full model may come with assumptions about
+variances and other parts of the data generating process. Standard examples include linear
+and logistic regression. Slope coefficients β ⋆ in such models, along with marginal effects in
+nonlinear models, are among the most commonly studied objects in empirical research.
+To enrich this model with ML, we change the intercept and slope to the parameter
+
+49
+
+functions θ ⋆ (x) = (α⋆ (x), β ⋆ (x)′ )′ and assume that
+
+E[Y | T = t, X = x] = G(α⋆ (x) + β ⋆ (x)′ t).
+
+(B.2)
+
+This formulation maintains the structural relationship between T and Y but allows for rich
+heterogeneity in X. In contrast to our structured approach, the naive ML approach would
+treat X and T as equally informative about Y , and assume that for an unknown η(t, x) to
+be estimated
+E[Y | T = t, X = x] = G(η(x, t)),
+
+(B.3)
+
+or often simply E[Y | T = t, X = x] = η(x, t), without even the structure of the inverse link.
+Remark B.1 (Origins of Model (B.2)). Models of the form (B.2) are common in the literature,
+referred to as a “varying coefficient” model (Cleveland, Grosse, and Shyu, 1991; Hastie and
+Tibshirani, 1993), “functional coefficient” model (Chen and Tsay, 1993), or “smooth coefficient”
+model (Li et al., 2002), and falls into the class of “extended linear models” as in Stone et al.
+(1997). O’Hagan (1978) may be the earliest treatment. Our results apply to all these cases as
+well as other similar models including generalized additive models or further restrictions such
+as partially linear models. See also Remarks B.2 and B.3 and other discussion in Appendix
+♣
+
+C.
+
+Deep learning architectures to estimate these two models are shown in Figure B.1. The
+loss function is the same in both cases. Panel (a) is the standard ML approach as available
+in standard software. All information in (X ′ , T ′ ) is fed into the hidden layers. Panel (b)
+specializes Figure 1 to force the expressivity to learn the slope and intercept parameter
+functions in order to reduce the loss. The figure illustrates how easy it is to implement the
+structural approach, with only an extra line or two of code. As an aside, Figure B.1 also
+illustrates how our method (and theory) applies to generalized additive models, where the
+different components of θ ⋆ are known to rely on different subsets of X: we simply sever the
+50
+
+Hidden
+layers
+
+Inputs
+
+Inputs
+
+Prediction
+
+Hidden
+layers
+
+Parameter Model
+layer
+layer
+
+x1
+
+α
+b(x)
+
+x1
+ηb(x, t)
+
+xd
+
+t
+
+yb = G(·)
+xd
+b
+β(x)
+
+t
+
+(a) Standard prediction architecture
+
+yb = G(·)
+
+(b) Structured deep learning
+
+Figure B.1: Comparing the standard prediction-focused architecture to learning parameter
+functions using the structured approach, matching the models of (B.3) and (B.2) respectively.
+appropriate links, so that separate networks feed into the parameter layer nodes according to
+the model.
+Interpreting β ⋆ (x) in (B.2) is the same as interpreting the original (homogeneous) slope
+β ⋆ in (B.1). In contrast, (B.3) is unstructured and uninterpretable. Here η(x, t) is truly a
+nuisance function, where “nuisance” is taken literally to mean annoying and uninteresting.
+Economically, as demonstrated in Section 2, the lack of structure makes this output not useful.
+It is difficult, if not impossible, to recover many second stage objects without structure,
+beyond (weighted) average derivatives. Further, from a statistical point of view, η(x, t) can
+only be learned at a much slower rate, governed by dX + dT , compared to learning β ⋆ (x)
+which depends only upon dX . Though generally assumed away in theory since all dimensions
+are finite, this difference matters in applications. All in all, it is better to view (B.2) as an
+enriched version of (B.1) rather than a restricted version of (B.3).
+
+B.1
+
+Deep Neural Networks for Generalized Linear Models
+
+The theoretical results for deep neural networks (this subsection) and inference (next subsection) for the special case of the model (B.2) are useful to illustrate the required assumptions
+and compare to prior work. Further, these special cases are directly useful in many applications, given the popularity of the model.
+51
+
+For first step estimation, we can verify the high level conditions using the following
+familiar, primitive assumptions.
+Assumption 4. (i) The conditional expectation G(α⋆ (x) + β ⋆ (x)′ t) enters the loss through
+a known, real-valued transformation g(·), where (i) g and G are continuously invertible and
+g/∥g∥∞ and G/∥G∥∞ belong to W p,∞ ([−1, 1]), for p ≥ 3. (ii) Assumption 1 holds with
+ℓ(y, t, θ(x)) replaced by ℓ(y, g), and the conditions therein apply to the scalar argument g.
+(iii) The eigenvalues of E[T T ′ | X = x] are bounded and bounded away from zero uniformly
+in x.
+Condition (i) ensures that the loss function is sufficiently smooth while (ii) and (iii)
+ensures the curvature through the standard positive variance condition. These conditions
+are familiar from the parametric case, where, for example, assuming that E[T T ′ ] is positive
+definite would be standard.
+Specializing Theorem 1 to this case, we have the following result.
+Corollary B.1. Let the conditions of Theorem 1 and Assumption 4 hold. Then for a DNN
+p
+
+structured according to Figure B.1, ∥b
+α − α⋆ ∥2L2 (X) = O(n− p+dc log8 (n)) and ∥βbk − β ⋆ ∥2L2 (X) =
+p
+
+b ′ t)−G(α⋆ (x)+β ⋆ (x)′ t)∥2
+O(n− p+dc log8 (n)) for k = 1, . . . , dT . Further ∥G(b
+α(x)+ β(x)
+L2 (X) =
+p
+
+O(n− p+dc log8 (n)).
+Here we give two simple results (cf the more full statement in Theorem 1). First, we show
+that we can estimate the heterogeneous intercept and slope parameters at the appropriate rate,
+depending on the (continuous) dimension of the heterogeneity. This is direct from Theorem
+1. This is required as economic constructs depend on these parameters, rather than on the
+conditional expectation function as a whole. But we also give a result for the mean function
+in the enriched model (B.2). This result may be of independent interest, as it establishes
+that structural deep learning has good statistical properties in varying coefficient models,
+additive models, and other such cases. It is also useful for comparing to the more typical
+use of inference after ML, where the (prediction) function E[Y |x, t] would be unstructured
+52
+
+and would be learnable at a rate dependent on dX + dT . For example, it is much easier
+(statistically) to estimate E[β ⋆ (X)] than the average derivatives E[∂G(η(X, T ))/∂t], even
+though both are linear summaries of the dependence of Y on T .
+Remark B.2 (Adaptivity). Specific forms of deep neural networks are known to be adaptive
+to structures like (B.2) in the sense that if the structure holds, then even if estimation
+is done under the generic (B.3), the estimator will still obtain the same rate as though
+(B.2) was imposed (Bach, 2017; Bauer and Kohler, 2019; Schmidt-Hieber, 2020). This is
+perhaps not surprising, since neural networks are based on compositions and (B.2) is based
+on a composition of simpler functions. This is still not useful for our purpose because
+θ ⋆ (x) = (α⋆ (x), β ⋆ (x))′ cannot be recovered from an adaptive procedure and used in the
+second stage. The estimator statistically adapts to the structure, but not economically.
+Economic structure is enforced on the data, not discovered from the data, as demonstrated
+in Section 2. Further, experience shows that, despite the (asymptotic) theory of adaptivity,
+finite sample performance is improved by structure.
+
+♣
+
+Remark B.3 (CATE Estimation). A large recent strand of machine learning literature
+studies the conditional average treatment effect (CATE) function, which corresponds to
+β ⋆ (x) in (B.2) with identity G(u) and a scalar, binary T (so that (B.2) is without loss
+of generality, i.e. equivalent to (B.3)). Farrell, Liang, and Misra (2021) study this case.
+Under certain conditions β ⋆ (x), being the difference between two prediction functions, can
+be recovered faster than the typical nonparametric bound of Stone (1982), which is itself
+faster than Corollary B.1. Generally, this is possible when β(x) is somehow “simpler” than
+its components, such as being smoother or lower dimensional. See, for example, Shalit,
+Johansson, and Sontag (2017) and Nie and Wager (2021) for early important work, Kennedy
+(2023) for fast rates and much other discussion, Foster and Syrgkanis (2023) for global
+bounds including sharp risk bounds, and finally Kennedy et al. (2024) for quantifying the
+minimax bound precisely. Some of these methods rely on orthogonal scores, and so it would
+53
+
+be interesting to see if our score and neural networks could be adapted to provide similar
+rate improvements in other economic contexts. Athey, Tibshirani, and Wager (2019) is also
+♣
+
+related here, though adaptivity is not discussed therein.
+
+B.2
+
+Influence Function for Generalized Linear Models
+
+Specializing our influence function to case of (B.2) helps connect with past work. To save
+notation, define T1 = (1, T ′ )′ , G0 (x, t) = G(α⋆ (x) + β ⋆ (x)′ t), and Ġ0 (x, t) = dG(u)/du at
+u = α⋆ (x)+β ⋆ (x)′ t. If we take the standard approach where ℓθ (y, t, θ(x)) = T1 (G0 (x, t)−y),
+the influence function is
+
+
+ψ(y, t, x, θ, Λ) = H x, θ(x); t̃ + Hθ (x, θ(x); t̃)−1 T1 (y − G0 (x, t)),
+
+(B.4)
+
+with Λ(x) = E[Ġ0 (x, T )T1 T1′ | X = x]. Further, if dT = dµ = 1, so that β ⋆ = (α⋆ , β ⋆ )′ , this
+can be written
+ψ(y, t, x, θ, Λ) = H x, θ(x); t̃
++
+
+
+
+
+Hα (x) (λ2 (x) − λ1 (x)t) + Hβ (x) (λ0 (x)t − λ1 (x)) 
+y
+−
+G
+(x,
+t)
+,
+0
+λ2 (x)λ0 (x) − λ1 (x)2
+(B.5)
+
+where λk (x) = E[Ġ0 (x, T )T k |X = x], k = {0, 1, 2}, Hα (x) = ∂H(x, θ(x); t̃)/∂α, and
+Hβ (x) = ∂H(x, θ(x); t̃)/∂β. In nonlinear models the need for three-way sample splitting is
+clear: the regressand of Λ(x) = E[Ġ0 (x, T )T1 T1′ | X = x] depends on the unknown θ ⋆ (x)
+through Ġ0 (x, T ), which must be estimated in a first step. For linear models, three splits are
+not necessary.
+This result recovers several known influence functions. For linear models, it matches
+Hahn (1998) for binary treatments and Graham and de Xavier Pinto (2022) for continuous.
+For mean square projections in general, see Newey (1994). For semiparametric regression,
+where β ⋆ is assumed constant, our result gives valid inference but does not match the efficient
+54
+
+influence function (Mammen and van de Geer, 1997) because we do not impose the constancy.
+We can also effortlessly obtain new results. For example, in Section 4 we conduct
+inference on the fully flexible average marginal effects in a logistic regression, where µ⋆ =
+E[Ġ(α⋆ (X) + β ⋆ (X)′ T )β ⋆ (X)]. In this case the function H and its derivatives are available
+in closed form, and the derivatives of the loss are well known, but again, this is not necessary.
+We also use (B.4) for a function H that is not available in closed form (Spall, 1986; Jorgensen,
+1993).
+
+B.3
+
+Proof of Corollary B.1
+
+For this derivation, define T1 = (1, T ′ )′ and recall that θ ⋆ = (α⋆ , β ⋆ ′ )′ (and similarly
+for realizations, estimators, etc). First, consider identification. Since G is invertible and
+conditional expectations are always identified, the quantity G−1 (E[Y | X = x, T = t])
+is identified. Suppose that θ ⋆ (x) is not identified. Then there exists θ1 (x) and θ2 (x)
+such that G−1 (E[Y | X = x, T = t]) = θ1 (x)′ T1 = θ2 (x)′ T1 a.e. or equivalently that for
+θ∗ (x) = θ1 (x) − θ2 (x), θ∗ (x)′ T1 = 0. But θ∗ (x)′ T1 = 0 a.e. implies that
+h
+i
+2
+0 = E (θ∗ (x)′ T1 ) | X = x = θ∗ (x)′ E[T1 T1′ |X]θ∗ (x),
+
+but because the middle matrix is positive definite, this means that θ∗ (x) is zero. For linear
+G, this argument is given in Huang and Shen (2004) and elsewhere.
+The estimation bounds follow immediately from Theorem 1, given the conditions of
+Assumption 4. The fact that E[T1 T1′ | X] is (uniformly) positive yields
+
+
+′
+
+
+′
+⋆
+b
+b
+= EX θ(X)
+− θ (X) E[T1 T1 | X] θ(X)
+− θ (X)
+
+′ 
+
+⋆
+⋆
+b
+b
+≥ CEX θ(X) − θ (X)
+θ(X) − θ (X) .
+⋆
+
+This verifies the curvature condition on the loss function. The continuity condition holds
+
+55
+
+because the loss is smooth in g and the linear index can be recovered from g(G(θ(x)′ T1 )).
+The structure of the network ensures that the network and the smoothness of the loss imply
+that the approximation and bounds immediately apply to the function g(G(θ(x)′ T1 )), and
+the smoothness of these functions mean that the linear index θ(x)′ T1 can be recovered.
+
+Appendix C
+
+Examples and Discussion
+
+In this section we discuss a few special cases of our methodology to build intuition and
+connect to prior work, particularly other work on semiparametric inference. These examples
+help place our work in the literature, illustrate how familiar models can be enriched with
+deep learning, and show how the identification assumptions required on parametric models
+carry over.
+
+C.1
+
+Average Effect of a Binary Treatment
+
+Perhaps the most well known and commonly used influence function is for the average effect of
+a binary treatment in observational data. The history of this influence function is illustrative:
+it was characterized precisely first for the purposes of efficiency considerations (Hahn, 1998),
+later used to show that certain plug-in estimators could be efficient (Hirano, Imbens, and
+Ridder, 2003; Imbens, Newey, and Ridder, 2007) under strong assumptions, then recently
+used to obtain valid (and in this case efficient) inference under weaker first-stage conditions
+(Cattaneo, 2010; Farrell, 2015). This influence function matches the doubly robust estimator
+(Robins, Rotnitzky, and Zhao, 1994, 1995) and has been used in other contexts to obtain
+sharper results, see Remarks B.3 and 5.3.
+Here we have a scalar outcome and T = T = {0, 1} is the scalar binary treatment indicator.
+Let Y (t) be the potential outcome under treatment T = t and assume that the observed
+outcome Y = T Y (1) + (1 − T )Y (0) along with unconfoundedness. The parameter of interest is
+µ⋆ = E[Y (1)−Y (0)]. In a randomized experiment without additional covariates, one estimates
+
+56
+
+µ⋆ with a difference in means, which is equivalent to running a regression of the observed
+outcome Y on the dummy variable T . The enriched structural version is then (B.2), with
+G(u) = u, so that E[Y | x, t] = α⋆ (x) + β ⋆ (x)t. In this notation, β ⋆ (x) = E[Y (1) − Y (0) | x]
+is the conditional average treatment effect (CATE) function.
+The average treatment effect µ⋆ = E[β ⋆ (X)] is defined via H(x, θ ⋆ ; t̃) = β ⋆ . Equation
+(B.5) matches Hahn (1998), because in this case Hα = 0, Hβ = 1, λ0 = 1, and λ1 (x) =
+λ2 (x) = P[T = 1|X = x] := p(x), the propensity score, and so by adding and subtracting
+p(x) and using the fact that (1 − t)t = 0, we have
+Ḣ1 (x)(λ2 (x) − λ1 (x)t) + Ḣ2 (x)(λ0 (x)t − λ1 (x))
+(y − G(θ(x)′ t))
+2
+λ2 (x)λ0 (x) − λ1 (x)
+(t − p(x))(y − α(x) − β(x)t)
+= β(x) +
+p(x) − p(x)2
+[(1 − p(x))t − p(x)(1 − t)](y − α(x) − β(x)t))
+= β(x) +
+p(x)(1 − p(x))
+(1 − p(x))t(y − α(x) − β(x)t)) p(x)(1 − t)(y − α(x) − β(x)t))
+−
+= β(x) +
+p(x)(1 − p(x))
+p(x)(1 − p(x))
+t(y − α(x) − β(x)t)) (1 − t)(y − α(x)))
+−
+.
+= β(x) +
+p(x)
+(1 − p(x))
+
+ψ(w, θ, Λ) = β(x) +
+
+In this example, the standard overlap assumption, that the propensity score is bounded
+away from zero and one, ensures that Λ(x)−1 is well behaved: the determinant of Λ(x) =
+p(x)(1 − p(x)), the initial denominator above.
+It is straightforward to extend this example in a number of directions. Additional mean
+parameters could be added to cover average treatment effects for specific treatment groups or
+multi-valued treatments (see Cattaneo (2010) and Cattaneo and Farrell (2011) for inference
+using classical nonparametrics (series) and Farrell (2015) for machine learning (group lasso)
+results).
+Beyond means, the framework makes it easy to consider the variance of Y (1) versus that
+of Y (0), to assess riskiness of treatments over the population, by taking a quasi-likelihood
+approach, i.e., letting ℓ(y, t, θ(x)) include the variance instead of simply fitting least squares.
+
+57
+
+The conditions for convexity of this loss are well-known from likelihood theory and can be
+directly used here.
+
+C.2
+
+Partially Linear Models
+
+Partially linear models are a common case for semiparametric inference, dating to the seminal
+work of Robinson (1988). Here (B.2) holds, but with β ⋆ (x) = β ⋆ constant. Restricting the
+slope to be constant rules out all treatment effect heterogeneity and is a strong assumption
+that should be used with caution.
+For simplicity, consider the case with a scalar treatment variable. If β ⋆ is the parameter
+of interest, (B.5) shows that ψ(w, θ ⋆ , Λ) − β ⋆ is
+
+
+λ1 (x)2
+λ2 (x) −
+λ0 (x)
+
+−1 
+
+λ1 (x)
+t−
+λ0 (x)
+
+
+
+
+y − G(α⋆ (x) + β ⋆ t) .
+
+We must assume that λ2 (x)λ0 (x) ̸= λ1 (x)2 , which for identity G requires positive
+conditional variance of T . In nonlinear models the conditional moments will be weighted by
+Ġ if we have used the appropriate loss. In some cases the nonsingularity will follow from
+other regularity conditions, such as for the logistic link, where Ġ = G(1 − G) and the Hessian
+is invertible under bounded covariates and we use the log-likelihood.
+Partially linear models have featured prominently in the recent literature on high dimensional and ML settings, particularly with idenity link. The pioneering work of Belloni,
+Chernozhukov, and Hansen (2014) established valid inference after lasso selection in this
+context. Chernozhukov et al. (2018a) use it as the leading example of their generic results, and
+present several different Neyman orthogonal scores that could be used, none of which agree
+with ours due to the fact that we do not impose constant slope. Cattaneo, Jansson, and Newey
+(2018) study high dimensional linear models, including many-terms series settings, establish
+a more refined distributional approximation, and study standard error (in)validity. For the
+case of nonlinear link function, Carroll et al. (1997) and Mammen and van de Geer (1997)
+
+58
+
+are closest to our work, while Belloni, Chernozhukov, and Wei (2016) study high-dimensional
+sparse models. Not imposing the constant slope means we do not attain the efficiency bound
+(Mammen and van de Geer, 1997) in general, but only under restrictions on the variance,
+such as Y being homoskedastic in T in the linear case.
+However, it is trivial to impose a constant slope by changing the architecture in Figure
+B.1 so that only α(x) is flexible. Establishing that such a slope estimate is root-n consistent
+is beyond the scope here, but appears natural as the functional approximation holds without
+essential change. Deriving the statistical properties of this estimate would be interesting
+future work.
+Finally, our results could be used to study other components of the partially linear setting.
+For example, in both empirical finance Cattaneo et al. (2020) and applied microeconomics
+Cattaneo et al. (2024b) the function α(x) is of direct interest and we could conduct inference
+on the average.
+
+C.3
+
+Continuous Treatment Variables
+
+Wooldridge (2004) and Graham and de Xavier Pinto (2022) consider the linear model case
+and discuss conditions for a causal interpretation of E[β ⋆ (X)]. Our result in (B.4) matches
+the locally efficient influence function of Graham and de Xavier Pinto (2022). Hirshberg and
+Wager (2019) use a different approach to recover the average effect, but briefly discuss double
+robustness. Chernozhukov et al. (2019) use the model with the goal of policy targeting.
+Our method could be used to enrich other structural models in this context. As a first
+example, consider the so-called Berry logit (Berry, 1994) model for demand. Here the outcome
+is the market share distribution across firms. The researcher observes {Yjm } which represent
+a collection of j = 0 . . . J market shares across m = 1 . . . M markets. The objective is then to
+model these as a function of firm (marketing) decisions Tjm (see e.g. Nevo (2001)). We can
+introduce heterogeneity across markets by allowing for the marketing effects to be moderated
+by consumer characteristics xm , so that we can write a collection of (J − 1) equations as
+59
+
+follows
+
+E log
+
+
+
+Yjm
+Y0m
+
+
+
+
+
+X = xm , Tjm = tjm = αj⋆ (xm ) + β ⋆ (xm )′ (tjm − t0m ).
+
+Stacking these equations and the corresponding data allows us to construct an estimator for
+α0j (xm ) and β ⋆ (xm ). We could extend this to include instruments (Okui et al., 2012).
+Second, consider the Cobb-Douglas production function with heterogeneous parameters,
+⋆
+
+⋆
+
+which is given by Y = CK θ1 (x) Lθ2 (x) . The standard approach is to take logs and assume
+
+E [log Y | X = x, K = k, L = l] = log C + θ1⋆ (x) log k + θ2⋆ (x) log l.
+
+We can then estimate the structural parameters using our deep learning approach and conduct
+inference to decide if on average the technology exhibits increasing, constant, or decreasing
+returns to scale by computing µ⋆ = E[θ1⋆ (x) + θ2⋆ (x)]. The Cobb-Douglas specification has
+also been used in demand settings and marketing mix models and the framework described
+above would be readily applicable there as well.
+
+C.4
+
+Fractional Outcomes
+
+The case of nonlinear (B.2) (nonidentity G(u)) is less well studied. The empirical application
+in Sections 2 and 4 uses a logistic link. To give another example, consider a fractional outcome
+model where Y is continuous but restricted to lie in [0, 1]. Following the seminal treatment of
+Papke and Wooldridge (1996), we take a quasi-likelihood approach, using logistic distribution
+with mean given by Equation (B.2): E[Y | T = t, X = x] = G(α⋆ (x) + β ⋆ (x)′ t). Papke and
+Wooldridge (1996) explicitly advocate the use of structure to ensure that the outcomes remain
+on the unit interval and argue that this specification is valid even at the endpoints and is
+more practically relevant then transformations of the dependent variable.
+In the application of Papke and Wooldridge (1996), the data is at the firm level, the
+outcome is 401(k) participation, and the policy variable is the firm’s rate of contribution
+60
+
+matching. The quantities of interest are the marginal effect of the match rate on participation
+and the degree to which this marginal effect exhibits diminishing patterns. Our framework
+makes it trivial to enrich this model with heterogeneity across firms and then conduct inference
+on average marginal effects or the average change in the marginal effect, given by
+
+
+
+∂E[Y | X, t]
+AME t̃ = E
+∂t
+t=t̃
+
+and
+
+ 2
+
+
+∂ E[Y | X, t]
+ACME t̃ = E
+.
+∂t2
+t=t̃
+
+Because of the structure of the model, these are easily recovered in the form of µ⋆ , by taking
+HAME (x, θ; t̃) = β ⋆ G0 (x, t)(1 − G0 (x, t)) and HACME (x, θ; t̃) = β ⋆ 2 G0 (x, t)(1 − G0 (x, t))(1 −
+2G0 (x, t)), respectively.
+It is useful to contrast our model with the unstructured, naive ML approach, as in (B.3).
+We impose structure on the nature of the effect of T on Y . For unrestricted effects of
+continuous treatments using influence functions, see Kennedy et al. (2017) and Colangelo
+and Lee (2023). The unrestricted model may increase the generality of the results but can
+make inference and interpretation more difficult. A common parameter of interest in such
+cases is the average derivative (Powell, Stock, and Stoker, 1989; Newey and Stoker, 1993).
+This represents the average of a linear approximation of an unstructured relationship of
+T to Y . Our approach is perhaps more direct and transparent: if a linear summary is of
+interest in the end, we directly enrich the linear approximation, rather than recover it from
+a more complex object. This contrast can also be seen in the fractional outcome models,
+where recovering the second derivative of a complex G(b
+η (x, t)) could be challenging but our
+approach is transparent and simple.
+
+C.4.1
+
+Application – American Community Survey
+
+To illustrate this idea, we revisit the American Community Survey data studied by Cattaneo
+et al. (2024a).6 This is a simple, and narrow, empirical exercise, intended only as an example.
+We will apply our method to the setting of Figure 4(a) in Cattaneo et al. (2024a). The
+6
+
+Replication files are available at https://github.com/maxhfarrell/FLM2.
+
+61
+
+data is at the zip code tabulation area level and has n = 27, 985 samples. The outcome
+Y is the percentage of individuals without health insurance and the treatment variable T ,
+which is of course not randomized, is a binary indicator for low and high population density
+states, defined as those with population densities below or above 100 people per square mile,
+respectively. Density is defined as the average population per square mile, and the data is
+available from the Census Bureau. The heterogeneity variable X is per capita income.
+Cattaneo et al. (2024a) are concerned with nonparametric properties and inference of the
+functions G(α⋆ (x)) and G(α⋆ (x) + β ⋆ (x)), in the notation of (B.2). Here we will conduct
+semiparametric inference on the average effect of density:
+
+µ⋆ = E[G(α⋆ (X) + β ⋆ (X)) − G(α⋆ (X))].
+
+With X being scalar and continuous and nearly 30,000 observations, this is a fairly simple
+nonparametric problem. We estimate α⋆ (x) and β ⋆ (x) using structured neural networks, as
+in Figure B.1 (or Figure 1 more generally) using two hidden layers with 20 nodes each. For
+Λ(x) we use same network, but unstructured as this is regression. We additionally implement
+short stacking of Ahrens et al. (2025) using neural nets, random forests, and linear regression,
+as an example. We use 50-fold cross fitting with three-way splitting and two-way splitting
+b
+b
+(where α
+b(x), β(x),
+and Λ(x)
+are fit on the same data), but also no splitting at all.
+The results are shown in Figure C.1 and Table C.1. Figure C.1 shows the first stage: the
+b
+estimated G(b
+α(x)) and G(b
+α(x) + β(x))
+using neural networks (solid lines) and binscatter
+regressions (dots). This estimation is done using the full sample. The shaded regions are
+robust bias corrected confidence bands for the binscatter regressions. The binscatter results
+are obtained using binsreg R package (Cattaneo et al., 2025) and are identical to Figure
+4(a) of Cattaneo et al. (2024a). We see that the neural networks and binscatter regressions
+are similar estimates of the unknown functions.
+Table C.1 shows the semiparametric inference results. The point estimates are quite
+
+62
+
+Figure C.1: Fractional Outcome Model with Binary Treatment – First Stage. This
+figure uses the ACS data of Cattaneo et al. (2024a) to compare areas in low density states
+(blue) and high density states (orange). Low density states are defined as those with average
+population per square mile below 100. The dots and shaded region are the point estimates
+and robust bias corrected 95% confidence bands from the original paper. The solid lines show
+structured neural network estimates.
+consistent across the different approaches. The standard errors vary, and we see much smaller
+standard errors without cross fitting. This may be because cross fitting introduces extra
+variation (across the samples) which might be reduced with repeated splitting and median
+aggregation. Note that the short-stacking standard errors are also valid for the row above, i.e.,
+without short stacking. Further, under strong enough assumptions that the plug-in estimate
+is asymptotically normal, the row below will yield valid standard errors, though this may
+be unrealistic in this setting. The bottom two rows, using three-way splitting, are the only
+results that are fully theoretically justified, however, as discussed above, the other may be as
+well.
+
+63
+
+Table C.1: Fractional Outcome Model with Binary Treatment – Semiparametric
+Inference. This table shows point estimates and standard errors for semiparametric inference
+on µ⋆ = E[G(α⋆ (X) + β ⋆ (X)) − G(α⋆ (X))], comparing uninsuredness rates between low and
+high density states, with heterogeneity in per capita income. Low density states are defined
+as those with average population per square mile below 100.
+Method
+Plug-in
+No cross fitting
+2-way cross fitting
+. . . w/ short stacking
+3-way cross fitting
+. . . w/ short stacking
+
+C.5
+
+Point Estimate Standard Error
+0.019
+—
+0.020
+0.0005
+0.014
+0.0044
+0.017
+0.0042
+0.026
+0.0043
+0.021
+0.0036
+
+Tobit
+
+The type I Tobit model is well-studied in the parametric case, and so it serves as a useful
+example to illustrate how existing knowledge can be used to interpret the assumptions
+required in the enriched case.
+The observed outcome is Y = max(0, Y ∗ ), where in the parametric, homogeneous case
+Y ∗ is Gaussian given T = t with mean α⋆ + β ⋆ ′ t and variance σ 2 . The enriched version has
+mean α⋆ (x) + β ⋆ (x)′ t and variance σ 2 (x) (in practice it can help to fit σ 2 (x) = exp{σ̃(x)}).
+As usual, we work with the transformed parameters θ ⋆ (x) = (θ1⋆ (x)′ , θ2⋆ (x))′ , with θ1⋆ (x) =
+(α⋆ (x), β ⋆ (x)′ )′ /σ(x) and θ2⋆ (x) = σ −1 (x). See Amemiya (1985) and Wooldridge (2010) for
+textbook treatments.
+The gradient and Hessian are cumbersome but known. These can be used both for
+understanding the assumptions required but also, if desired, in the computation. Let
+
+10 = 1{Y ∗ ≤ 0} and 11 = 1{Y ∗ > 0}. Let ϕ and Φ denote the Gaussian density and
+distribution functions. With T1 = (1, t′ )′ , the gradient (score) terms are
+ℓθ1 (w, θ(x)) = 10
+
+
+
+ϕ(θ1 (x)′ T1 )T1
+′
+′
+−
+1
+θ
+(x)y
+−
+θ
+(x)
+T
+1
+2
+1
+1 T1
+1 − Φ(θ1 (x)′ T1 )
+
+and
+ℓθ2 (w, θ(x)) = −11 θ2 (x)−1 + 11 (θ2 (x)y − θ1 (x)′ T1 )y.
+64
+
+The second derivatives are
+ℓθ1 θ1 (w, θ(x)) = −10
+
+ϕ(θ1 (x)′ T1 )(θ1 (x)′ T1 )T1 T1′
+ϕ(θ1 (x)′ T1 )2 T1 T1 T1′
++
+1
++ 11 T1 T1′ ,
+0
+′
+′
+2
+1 − Φ(θ1 (x) T1 )
+[1 − Φ(θ1 (x) T1 )]
+
+ℓθ2 θ2 (w, θ(x)) = −11 θ2 (x)−2 + 11 y 2 ,
+
+and
+
+ℓθ1 θ2 (w, θ(x)) = 11 yT1 .
+
+That the gradients are conditionally mean zero can be directly verified. The matrix Λ(x)−1
+exists because θ1 (x)′ T1 − ϕ(θ1 (x)′ T1 )/[1 − Φ(θ1 (x)′ T1 )] > 0, using exactly the logic from
+parametric models (Donald, 1990; Olsen, 1978; Amemiya, 1985). The remaining assumptions
+required would be standard for nonparametrics/ML, such as smoothness and boundedness.
+
+C.6
+
+Instrumental Variables
+
+For multiple first stage objects, the influence function correction terms are generally additive
+(Newey, 1994). A good example is when T is endogenous and instrumental variables are
+available. Suppose there is single endogenous variable T and a single instrument Z and
+the researcher is applying two stage least squares. We enrich this to allow for fully flexible
+observed heterogeneity in the effects of the instrument and the endogenous variable, arriving
+at the two-equation model
+
+Y = θ1⋆ (X) + θ2⋆ (X)T + V,
+
+(C.1)
+
+T = ζ1⋆ (X) + ζ2⋆ (X)Z + U,
+
+(C.2)
+
+where E[V | X, Z] = E[U | X, Z] = 0. For estimation, and moreover, derivation of an
+orthogonal score, we simply plug (C.2) into (C.1) to obtain the reduced form equation
+Y = α⋆ (X) + β ⋆ (X)Z + Ṽ ,
+(C.3)
+⋆
+
+α (x) = θ1⋆ (x) + θ2⋆ (x)ζ1⋆ (x),
+
+⋆
+
+β (x) = θ2⋆ (x)ζ2⋆ (x),
+
+65
+
+Ṽ
+
+= θ2⋆ (X)U + V.
+
+This approach directly generalizes two-stage least squares to handle high-dimensional, complex
+heterogeneity, but notice that the linearity structure is maintained. To estimate the first
+stage parameter functions we simply apply (3.3) where the loss is the sum of two squared
+losses and the architecture in Figure B.1 is used twice. The leading case for inference would
+be the average partial effect µ⋆ = E[θ2⋆ (X)] = E[β ⋆ (X)/ζ2⋆ (X)]. We again see the familiarity
+of the assumptions required: we need strong instruments, which here means we need ζ2⋆ (X)
+to be nowhere zero. This is a strong assumption, and may not be tenable in applications.
+A constant slope can be assumed to make this assumption more plausible, at the cost of
+restricting heterogeneity. Any other function H(X, α⋆ , β ⋆ , ζ1⋆ , ζ2⋆ ; t̃) could be used.
+The influence function will be of the standard form in this case, with essentially two copies
+of the linear case above. Define θ ⋆ = (α⋆ , β ⋆ , ζ1⋆ , ζ2⋆ )′ , w = (y, t, z), t1 = (1, t)′ , z1 = (1, z)′
+and I2 the 2 × 2 identity matrix. Then
+
+
+y − α⋆ (x) − β �

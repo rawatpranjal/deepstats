@@ -1,0 +1,3277 @@
+Deep Learning for Individual Heterogeneity ∗
+
+arXiv:2010.14694v3 [econ.EM] 25 Apr 2025
+
+Max H. Farrell†
+
+Tengyuan Liang‡
+
+Sanjog Misra§
+
+April 28, 2025
+
+Abstract
+This paper integrates deep neural networks (DNNs) into structural economic models
+to increase flexibility and capture rich heterogeneity while preserving interpretability.
+Economic structure and machine learning are complements in empirical modeling, not
+substitutes: DNNs provide the capacity to learn complex, non-linear heterogeneity
+patterns, while the structural model ensures the estimates remain interpretable and
+suitable for decision making and policy analysis. We start with a standard parametric
+structural model and then enrich its parameters into fully flexible functions of observables,
+which are estimated using a particular DNN architecture whose structure reflects the
+economic model. We illustrate our framework by studying demand estimation in
+consumer choice. We show that by enriching a standard demand model we can capture
+rich heterogeneity, and further, exploit this heterogeneity to create a personalized pricing
+strategy. This type of optimization is not possible without economic structure, but
+cannot be heterogeneous without machine learning. Finally, we provide theoretical
+justification of each step in our proposed methodology. We first establish non-asymptotic
+bounds and convergence rates of our structural deep learning approach. Next, a novel
+and quite general influence function calculation allows for feasible inference via double
+machine learning in a wide variety of contexts. These results may be of interest in many
+other contexts, as they generalize prior work.
+
+Keywords: Deep Learning, Structural Modeling, Heterogeneity, Machine Learning,
+Neural Networks, Influence Functions, Neyman Orthogonality, Semiparametric Inference,
+Double Machine Learning.
+
+∗
+
+We thank Whitney K. Newey for helpful comments and suggestions, as well as participants at several
+seminars. Janani Sekar and Kirill Skobelev provided outstanding research assistance.
+†
+Department of Economics, UC Santa Barbara
+‡
+Booth School of Business, University of Chicago
+§
+Booth School of Business, University of Chicago
+
+1
+
+Introduction
+
+Structural economic models are designed to obey theoretical and domain-specific restrictions
+emanating from the discipline. As a consequence, when taken to data, estimates and inferences
+from structural models are (economically) interpretable and directly useful for decisions,
+counterfactuals, and policy making. Crucially, in many economic decision problems, the
+structure of the model and the discipline it imposes afford meaningful interpolation and
+extrapolation which, in turn, facilitates the construction of counterfactuals and ultimately
+optimization.
+Structural models are, however, potentially incomplete. Theory often does not specify
+every aspect of the framework we need to conduct empirical analysis. One critical element,
+and our focus in this paper, is the specification is heterogeneity. Even in cases where the
+presence of heterogeneity is implied by economic reasoning, the form and type is often
+unknown. As such, researchers must choose, or search for, a specification for heterogeneity
+that respects the structural assumptions of the model, as well as the practical considerations
+imposed by the data.
+Often, the choice of the manner in which heterogeneity is modeled reflects the underlying
+objectives of the researcher. There are scenarios where one wishes to merely “control” for
+heterogeneity, since the key constructs of interest are not directly tied to it. In these cases,
+heterogeneity is treated as a nuisance parameter (or function). More recently, however, there
+has been a push to “exploit” heterogeneity by constructing individualized or personalized
+policies. Here, heterogeneity itself becomes a key quantity of interest. In these cases, we also
+will need to predict heterogeneity (for a new observation), and, as such, usual control-type
+methods (e.g. fixed effects) become less relevant. Targeting and personalization must be
+done on the basis of observable characteristics.
+We argue that both the discipline of economic structure and the flexibility of machine learning (ML) tools are essential for heterogeneity-dependent constructs such as personalization
+policies, targeting, and counterfactuals. Both have their strengths and weaknesses, but, by
+combining them appropriately, one can use the strengths of each to remedy the shortcomings
+of the other. On one hand, theory and structure make optimization feasible and reliable,
+but do not dictate heterogeneity patterns. On the other hand, ML cannot learn economic
+structure with finite data (as argued and demonstrated below). Therefore, ML cannot take
+the place of economic theory and constraints, but flexibly learning patterns and heterogeneity
+is precisely the strength of modern ML. Thus, while ML cannot replace structural modeling,
+it can be useful to augment and enrich structure. We argue that economic structure and
+machine learning are complements in empirical modeling, not substitutes.
+
+1
+
+We show how to embed machine learning, in the form of modern deep neural networks
+(DNNs), into economic modeling. Our approach begins with a structural model imposed by
+the researcher. The model relates the outcomes yi to the covariates of interest ti (treatments
+or policy-relevant variables) and depends on parameters of interest θ, which are to be
+estimated from the data. We suppose this structural model is captured by a loss function
+ℓ(yi , ti , θ). The structural model encodes restrictions and constraints on the data generating
+process and the parameters θ have direct economic interpretations. From an econometric
+point of view, this is a standard parametric estimation and inference problem.
+We then enrich the model by changing the parameters θ into parameter functions θ(x),
+which are fully flexible functions of a vector of observed characteristics xi . The new model
+is then ℓ(yi , ti , θ(xi )) (see Figure 1 for a visual depiction of our framework). This change
+adds flexibility while maintaining all the structure and meaning of the original model. The
+incompleteness of theory is reflected in the flexibility of treating θ(xi ) as a fully unknown
+function. This is exactly where the strength of machine learning is exploited, and how ML
+complements economic structure. Either one alone is insufficient: structure without machine
+learning would lose the richness and fail to capture important patterns in the data, while
+naively applying machine learning without structure would lose the interpretability and the
+utility in policy/decision making. As an aside, we note that this framework does nest some
+prior approaches to controlling for heterogeneity, but that is not our focus here.
+The structural model allows for optimization, but the ML-enriched structure allows for
+individual-level optimization (i.e. for each unique x). This is useful for decision making
+and policy analysis at the individual level, answering “who gets what” questions regarding
+targeting and “what who gets” questions of personalization. The former is useful, for example,
+in deciding to which type of individuals we allocate a scarce resource or treatment, while the
+latter focuses on the assignment of different treatments to each individual.
+We introduce a novel yet simple structural deep learning approach to estimate the
+parameter functions. The key to this approach is the architecture is depicted in Figure 1.
+Neural networks allow the structure of the model to be directly encoded in the estimation
+through the network architecture. The expressive power of deep neural networks comes
+from the hidden layers. In standard approaches this flexibility is used to learn regression
+functions or form predictions, which determine both the target and the loss functions. In
+our approach, the hidden layers are directed through a parameter layer so that the power of
+ML is used entirely for learning the parameter functions. These then enter the model layer
+according to the structural model in order to optimize the loss. The required change to the
+architecture is intuitive and simple to implement. (See Figure B.1 for a direct comparison
+to regression.) The neural network optimizes the parameter functions to minimize the
+2
+
+Inputs
+
+Hidden
+layers
+
+Parameter Model
+layer
+layer
+θb1 (x)
+
+x1
+
+y
+
+ℓ
+xdX
+
+b
+ℓ y, t, θ(x)
+
+
+
+t
+θbdθ (x)
+
+Figure 1: Structural deep learning. A schematic depiction of the deep neural network
+architecture for estimating the parameter functions θ(x) in the structural economic model
+ℓ(Y , T , θ(X)) defined in Eqn. (3.5).
+same structural loss, not prediction loss. This formalizes exactly how machine learning and
+structure are complementary. The ML enriches the economic model, filling in gaps left by
+theory. Simultaneously the economics aids the implementation of ML to estimate structural
+objects with economic meaning and interpretation. Our method allows for learning any
+economically interesting parameter, such as coefficients, variances, elasticities, et cetera, all
+as rich, heterogeneous functions.
+To further build intuition, consider optimization of the network in Figure 1. Neural
+network estimation relies on using gradients to find optima, proceeding by back propagation
+through the network. Our idea is simply to structure the final layers of this network, as
+shown in Figure 1, optimizing the loss through the parameter functions, instead of optimizing
+prediction directly, but the computation is the same. This intuition also goes the other
+direction: parametric structural estimation of ℓ(Y , T , θ) would be optimized in exactly the
+same way, but the gradients would stop at the parameter layer. Our idea simply extends this
+through additional layers to add heterogeneity.
+We theoretically justify this part of the methodology by proving nonasymptotic bounds,
+and implied convergence rates, for the structured deep neural networks (Theorem 1). This
+result generalizes Farrell, Liang, and Misra (2021). These rates depend only on the dimension
+of the heterogeneity xi , because the relationship of ti to yi is not learned from the data. Our
+bounds apply to many settings of interest, requiring only mild conditions on the loss function
+ℓ(·) and standard smoothness requirements, and thus may be of interest outside structural
+modeling.
+3
+
+We obtain valid inference by applying the the double machine learning methodology of
+Chernozhukov et al. (2018a), where the requisite orthogonal score is obtained from a novel
+and general influence function calculation (Theorem 2). Our insight here exploits the fact
+that we explicitly enrich a parametric model to obtain a two-step semiparametric setting,
+and in this case we show that ordinary derivatives can continue to characterize the influence
+function, just as in the parametric case. The influence function is thus known for a very
+wide class of models and parameters, and need not be newly derived in each case. Further,
+the only thing required is the value of these derivatives at the data points, not as functions
+in general. These may be known in advance or, importantly for practice, obtained using
+automatic differentiation engine built into neural network estimation without any human
+derivations needed. Collectively, this means we can deliver the influence function, and thus
+obtain valid inference via double machine learning, in more contexts than previously possible.
+This hopefully lessens the barriers to obtaining post-ML inference in practice.
+We illustrate our methods and results by revisiting and extending the analysis of Bertrand
+et al. (2010). The data is from a large scale field experiment run on behalf of a financial
+institution in South Africa. Consumers were sent marketing material for short terms loans
+where a number of features of the advertising content and the interest rate offered were
+randomized. As in the original paper, we employ a binary choice model, one of the workhorse
+models in applied economics, but we enrich the model to capture heterogeneity. We then
+model demand as a function of prices and marketing efforts, and once the demand function
+is estimated, we compute optimal prices as a function of characteristics (third degree price
+discrimination) and conduct inference on quantities such as counterfactual profits. This
+involves applying double machine learning ideas to objects not available in closed form (the
+solution to a fixed point problem), which illustrates the generality of our inference method.
+The rest of the paper is organized as follows. We next review some related literature.
+Section 2 then shows a simple, motivating example demonstrating why neither structural
+models nor machine learning individually suffice. Our framework for structured deep learning
+and subsequent inference is described in Section 3. We then apply these ideas in Section 4.
+Section 5 summarizes the theoretical results and Section 6 concludes. The Appendix gives all
+proofs, further discussion of related contexts, and thorough discussion of the important and
+intuitive special case of generalized linear models in order to illustrate the ideas and connect
+to other results.
+
+4
+
+1.1
+
+Related Literature
+
+Our work touches on several areas of economics, econometrics, and statistics, to which we
+cannot hope to do justice in a few paragraphs. We will give an overview here, with some
+further discussion is given throughout the paper.
+First, at a broad level, our work is related to the recent interest in integrating ML into
+economic research. A large part, if not all, of this work has used ML to learn regression
+functions or make predictions, even if these feature in other economic contexts. ML is often
+a substitute for nonparametric regression, and succeeds where classical methods fail due to
+complexities or limitations of the data. Outside of pure prediction, causal inference is often
+the end goal, but our work, being motivated by structure, extends to a breath of economic
+contexts. For recent reviews in this space, with differing focuses, see Varian (2014), Bajari
+et al. (2015), Mullainathan and Spiess (2017), and Athey and Imbens (2019).
+Although it is not our focus per se, our work is related to literature on heterogeneous
+treatment effects (Athey and Imbens, 2016; Chernozhukov et al., 2018b) and through it to
+the topics of personalization and targeting (Dubé and Misra, 2023; Agrawal et al., 2022;
+Hitsch, Misra, and Zhang, 2024). Our embedding of deep neural networks into structural
+models affords the estimation of heterogeneous parameter functions across a broad array of
+applications and the potential to generate personalized policies. We demonstrate its use in
+the context of personalized interest rates in our application section.
+On the theoretical front, the structured deep learning approach we propose, and the
+accompanying nonasymptotic bounds, connect our work to the recent literature studying
+the statistical properties of ML methods. Our theoretical results build directly upon and
+generalize Farrell, Liang, and Misra (2021). Conceptually, Athey, Tibshirani, and Wager
+(2019) and Foster and Syrgkanis (2023) may be the most closely related, as both focus
+on quantities other than prediction functions, use models beyond regression, and utilize
+orthogonal scores as key ingredients. The contexts and results are different, as we focus on
+deep learning and semiparametric inference. Athey, Tibshirani, and Wager (2019) study
+random forests and nonparametric inference, while Foster and Syrgkanis (2023) are concerned
+with risk bounds under weak conditions.
+The use of influence functions explicitly with the goal of obtaining valid inference under
+weaker conditions is not new, whether for classical nonparametrics (Cattaneo, 2010) or
+machine learning (Farrell, 2015). Our work contributes most directly to the recent literature
+applying the double machine learning (DML) method of Chernozhukov et al. (2018a). DML
+combines sample splitting with an orthogonal score, which an influence function provides.
+Many applications of DML stick to contexts with well-known influence functions or handderive a new score. Our contribution here is the derivation of a generic influence function
+5
+
+that covers a broad class of models and can be computed automatically. We share this goal
+with the “auto-DML” method (see Remark 3.4 below); our approach is different and has
+relative strengths and weaknesses.
+
+2
+
+The Importance of Structure
+
+Most modern applications of personalized policy design require the ability to recover heterogeneous responses to some treatment(s) from data, and the facility to use those in an
+optimization framework to obtain improvements in the counterfactual. While the former can
+be done via use of the ML toolkit, the latter requires that the estimated response functions
+obey certain economic curvature and shape restrictions. As such, our choices are to either
+learn these constraints from data or impose them via structure. We demonstrate, with a
+simple example, that learning economic structure from finite date can be impossible but that
+structure is invaluable for decision making problems. To make the point clear we ignore
+heterogeneity and rely on the reader to extrapolate to the fact that the lessons here become
+even more important when recovering heterogeneity or personalization, because this creates
+greater demands on data. Our key point is that, structure imposes appropriate economic
+restrictions and constraints, and consequently data is used more efficiently to learn the
+heterogeneity.
+The value of structure in economic modeling is well understood. Indeed, the half-century
+old Lucas Critique is a (major) example of the value of structural thinking. With the power
+of ML, there is a renewed temptation to learn everything from data alone. This view has
+its origins in the machine learning literature, which is focused on prediction, but has seeped
+into other contexts. Zadrozny (2004) writes, in the context of classification, that the ML
+community is “interested in the predictive performance of the model and not in making
+conclusions about the underlying mechanisms that generate the data.” So successful is
+machine learning, and deep learning in particular, at prediction tasks, that it can be tempting
+to assume that any problem can be tackled with accurate enough predictions. In the modern
+age of large language models and generative AI, this approach is even more appealing. But in
+contrast with those contexts, where prediction is sufficient, economic decision making cannot
+proceed without the “underlying mechanisms”, that is, without structure and economics. The
+danger in naively applying ML in decision making is that economic assumptions and structure
+are replaced with the statistical and computational assumptions and structure of estimators.
+To illustrate, we will use the data of Bertrand et al. (2010), which described and analyzed
+more fully in Section 4. This context is ideal because, by focusing on a subset of the
+data, we find that this is simultaneously a straightforward demand estimation problem and
+6
+
+(a) Random Forests
+
+(b) Neural Networks
+
+(c) Structural Logit
+
+(d) Extrapolating to [0,20]%
+
+(e) Extrapolating to [0,200]%
+
+(f) Implied Revenue Functions
+
+Figure 2: Structural modeling and machine learning for demand functions. Panels
+(a), (b), and (c) show estimated demand functions using random forests, neural networks,
+and a structural binary choice model, respectively, using the data of Bertrand et al. (2010).
+Panels (d) and (e) show the extrapolated demand functions and (f) the implied revenue
+functions.
+straightforward prediction task, making both structural modeling and machine learning
+well-motivated. The context is demand for a short-term loan given its interest rate, and our
+goal is to estimate demand as a function of price and then derive the optimal interest rate
+offer. For 40,507 individuals we observe the binary outcome yi ∈ {0, 1} indicating a loan
+application decision and the policy relevant variable ti = ri giving the interest rate offered.
+The good being “purchased” is the loan and its price is captured by the interest rate. The
+interest rate ti = ri is randomized, so there are no endogeneity concerns, and is furthermore
+continuous, taking on 46 unique values. With 40,507 observations on two variables, this is a
+tailor-made classification task, and the naive ML view would hold that if conversion for any
+interest rate offered can be predicted accurately, then demand function can be recovered, and
+finally the interest rate can be optimized. However, as we will see, neglecting the “underlying
+mechanisms that generate the data” will lead to a failure. If the unstructured approach fails
+in this context, adding heterogeneity is only more difficult.
+
+7
+
+Figure 2 shows three different approaches to estimating the demand function in this data.
+In each case, the dots show the empirical application rate (average purchasing decision) at
+each offered interest rate. First we consider two ML approaches which treat this as purely a
+predication/classification task, and are thus based on the model
+P[Y = 1 | R = r] = η(r)
+
+(2.1)
+
+for an unknown function η(r) to be nonparametrically estimated. Panel (a) shows two random
+forest estimates using the ranger package in R. The dotted orange line uses the default
+settings. This appears to be undersmoothed and thus the blue dashed line forces a smoother
+fit using an ad-hoc restriction on the tree depth. It is easy to (by eye) reject the default
+random forest as an unreasonable estimate of the demand function, although it should be
+noted that even this judgment requires economic theory, not statistical/ML criteria: nothing
+in machine learning says the curve should be smooth or downward-sloping. Panel (b) shows
+two neural network fits. The dotted orange line uses three hidden layers with 20, 50, and 20
+nodes, respectively, for a flexible fit. Note that despite the richness, the fit does not appear to
+be overly complex. The blue dashed line uses two layers with 10 nodes each for a smoother
+fit (matching Section 4). Finally, panel (c) replaces (2.1) with the basic workhorse structural
+model in industrial organization, namely a linear randomly utility model with a logistic errors,
+so that
+1
+,
+(2.2)
+P[Y = 1 | R = r] = G (θ1⋆ + θ2⋆ r) :=
+1 + exp (− [θ1⋆ + θ2⋆ r])
+where G(u) is the logit function and θ1⋆ and θ2⋆ are the intercept and slope, respectively.
+The smoothed-out forest and both neural networks produce curves that could reasonably
+be demand functions. However, as we continue with the pricing problem, it becomes clear
+how different are these fits. Panels (d) and (e) show the extrapolated estimated demand
+functions of the smoothed forest, the (10,10) neural network, and the binary choice model to
+interest rates of zero to 20% (panel (d)) and zero to 200% (panel (e)). Panel (f) then shows
+the implied revenue for each demand function estimate. While this does not include costs,
+it is clear what each estimate implies for an optimal price (see Section 4 for more realistic
+profit optimization).
+The forest fit is perhaps the most striking. Demand is completely flat for any higher
+interest rate, and therefore revenue grows without bound, and so the optimal price is infinite.
+This is both mechanical and a general phenomenon: a forest is an average of trees, which
+are piecewise constant, and therefore all extrapolation is based on a flat line, no matter the
+context or data. The neural network closely resembles the binary choice model on the support
+of the data, but when we extrapolate we see that the invisible complexities of the network
+8
+
+yield very different demand and revenue curves. In contrast to both of these, the structural
+model gives well-behaved demand and revenue curves and yields a reasonable optimal price.
+To conclude this example, several remarks are in order. (i) Students of all fields, including
+econometrics, statistics, and machine learning, are taught never to extrapolate a statistical
+fit outside the support of the data, and here we see why in dramatic fashion. Note that the
+same logic applies to interpolation. However, our goal of price optimization requires interand extra-polation, which by definition is based on assumptions and not upon the data. (ii)
+One can dismiss this simple example with the argument that no reasonable decision maker
+sets an infinite price or that the demand/revenue functions look obviously “wrong”, but again,
+these conclusions come from using economic structure to inform the ML and data, not the
+other way around. (iii) The lessons in this example are unrelated to statistical uncertainty.
+Different data would yield different fits, but the issues would persist, or perhaps manifest
+differently (except the forest, which always yields infinite prices, and thus has zero statistical
+uncertainty). (iv) Finally, it is worth noting that structural reasoning is commonly used in
+machine learning to improve prediction tasks. The structure of image recognition tasks is
+directly encoded into convolutional neural networks. The transformer architecture (Vaswani
+et al., 2017) is behind the recent success of large language models. In sum, structure at its
+core means constraints and restrictions, and this example shows that statistical structure
+and assumptions may not be appropriate or sufficient for economic decision making.
+
+3
+
+Embedding Deep Learning in Structural Models
+
+3.1
+
+Enriched Structural Model
+
+We now turn to our approach to enrich structural models with machine learning. We describe
+our structured deep neural network architecture, which bakes the model into the ML, and
+how second-step inference can be done using double machine learning. The prior section
+shows that ML is not suitable for learning structure, which is by definition the opposite of
+flexibility. Our goal here is to use ML for what it is good at, recovering complex heterogeneity,
+while retaining all the advantages of the structural model.
+The starting point is a standard parametric structural model, described by
+θ ⋆ = arg min E [ℓ(Y , T , θ)] ,
+
+(3.1)
+
+θ∈Θ
+
+where the loss function ℓ(y, t, θ) encodes the researcher’s economic restrictions on how the
+outcomes Y ∈ RdY relate to the variables of interest T ∈ RdT , depending on parameters
+
+9
+
+θ ∈ Θ ⊂ Rdθ .1 The “treatment” T variables can be randomized or not and can be continuous,
+discrete, or mixed; the model can be causal or not. In the first step the structural parameters
+θ are estimated from the data by solving the empirical analogue of (3.1) over the appropriate
+parameter space Θ.
+In a second step, inference is conducted on an object of the form
+E[H(X, θ, t̃)],
+
+(3.2)
+
+for a known function H, that depends on the parameters, covariates, and possibly some
+value of interest t̃ for the policy relevant variables. The function H can be the parameters
+themselves, quantities such as marginal effects, elasticities, measures of surplus, and can
+encompass optimization and other such operations. For example, t̃ can be an optimal price,
+as in our empirical application in Section 4. Technically t̃ can be subsumed into the definition
+of H, but it is expositionally useful to make explicit.
+Other than restricting to per-observation losses and smooth functions (so that derivatives
+exist), the combination of Equations (3.1) and (3.2) encompass a wide variety of parametric
+models, including many M- and Z- estimation problems, such regression models, quasi/pseudolikelihoods, or generalized estimating equations and accompanying second step objects like
+marginal effects, average elasticities, and other economic quantities (Newey and McFadden,
+1994; Ackerberg et al., 2007).
+The positives of structural modeling are widely appreciated, and demonstrated above. The
+model incorporates theory-based restrictions and constraints. This means that the estimated
+parameters, or transformations thereof, are interpretable and directly useful useful in policy
+analysis, decision making, and the formation of counterfactuals. The two-step nature of
+the problem reflects exactly these types of analyses, where second step counterfactuals are
+obtained after estimating primitives of the model in the first stage. It also means that the
+data is used more efficiently, since structure implies restrictions, which will be crucial when
+embedding machine learning or nonparametrics.
+The major drawback of Eqn. (3.1) is rigidity: it does not allow for any heterogeneity in the
+relationship between Y and T . We want to allow for heterogeneity in a way that is flexible but
+maintains the economic structure. This could be for robustness, as results will be biased and
+subsequent decisions or analyses will be erroneous if heterogeneity exists but is neglected. This
+type of concern has been the focus of much recent research, particularly in program evaluation
+(Chernozhukov et al., 2018b; Wager and Athey, 2018; De Chaisemartin and d’Haultfoeuille,
+1
+
+Notation. Vectors and matrices will be written in boldface. Capital letters are used for population random
+variables; lower case for realizations. The expectation operator with respect to the true data generating process
+is denoted E[·]. True values use a superscript ⋆. The L2 norm for a function g(x) is ∥g∥2 = E[g(X)2 ]1/2 .
+
+10
+
+2023). Further, as mentioned earlier, capturing and exploiting heterogeneity is key in modern
+targeting and personalization contexts, which is also an active area of research.
+Our approach recasts the parameters θ as parameter functions θ(X) that are fully flexible
+in observed covariates X ∈ RdX . That is, we assume the true first stage structural model is
+
+
+θ ⋆ (·) = arg min E ℓ Y , T , θ(X) ,
+
+(3.3)
+
+θ∈F
+
+for a function class F, which obeys standard restrictions (Assumption 2 below). Equation (3.3)
+is a specific, though quite general, formulation of nonparametric M-estimation (Gallant and
+Nychka, 1987). Crucially all the economic structure is maintained: whatever the interpretation
+of the parameter θ, the same holds for θ ⋆ (x) for individuals of “type” X = x. These are
+not “nuisance” functions. The view, particularly common in the realm of inference after ML,
+is that first step functions are literally a nuisance, i.e. something annoying that must be
+dealt with, but are not interesting. We object to this view: in many applications the learned
+heterogeneity is actually the most interesting part, and because the θ ⋆ (x) are interpretable
+functions in our framework, using them is straightforward.
+The second step parameter of interest is correspondingly enriched, to be
+
+
+µ⋆ = E H X, θ ⋆ (X), t̃ .
+
+(3.4)
+
+To keep exposition simple we focus on the case of averages, i.e. where the parameter of interest
+is available in closed form. Replacing this step with parametric GMM is straightforward but
+notationally more cumbersome (see Remark 3.1). Our results may be useful for nonparametric
+inference as well (Remark 3.2). Equations (3.3) and (3.4) together define a broad class of
+two-step semiparametric settings, matching the generality of (3.1) and (3.2). Appendix C
+shows some examples, both familiar and new. Finally, note that µ⋆ is defined using θ ⋆ (X),
+but in some decision making cases this may not be appropriate, as discussed in Remark 4.1.
+
+3.2
+
+Structural Deep Learning
+
+To estimate the parameter function θ ⋆ (x) we solve the empirical analogue of (3.3) where
+minimization is over a class of structural deep neural networks, i.e. those with architecture
+shown in Figure 1 as discussed above. We define
+n
+1X
+b
+ℓ(yi , ti , θ(xi )),
+θ(·) = arg min
+θ∈Fdnn n i=1
+
+11
+
+(3.5)
+
+where Fdnn is the class of deep neural networks that encodes not only the overall architecture
+but also tuning parameter choices of the width and depth of the network and the shape
+parameter given by the activation function. We focus on the standard fully connected
+feedforward neural network with ReLU activation for the hidden layers, but the same idea
+applies to other cases. To save space, we will not review deep learning basics here. Recent
+textbook treatments include: Goodfellow, Bengio, and Courville (2016) and James et al.
+(2021) for introductions and examples, Roberts, Yaida, and Hanin (2022) for theory, and
+Keydana (2023) for implementation. Theorem 1 in Section 5 gives the convergence of these
+b
+θ(·).
+Our structural deep learning approach can be applied to any model/loss ℓ(y, t, θ(x)) and
+is easy to implement. Only a few lines of code need be changed relative standard neural
+network implementations to enforce the structural model and force the power of the network
+to learn the parameter functions rather than optimize the loss directly. This “structural
+compatibility” is one argument in favor of using deep neural networks for this modeling.
+There are several further reasons why neural networks are well suited to this task. (1) Perhaps
+most obviously, deep learning is a state of the art ML method and brings with it all the
+advantages: expressive power, the capacity for high dimensionality and flexible interactions,
+and moreover, the ability to use novel data such as images or text, which could be included
+in the definition of X. (2) From a practical point of view, neural networks can handle
+discrete covariates seamlessly without affecting the convergence rate nor the implementation.
+While in theory including discrete covariates does not impact the convergence rate for many
+nonparametric estimators, obtaining these estimates in practice typically requires special care
+and custom methods (Racine and Li, 2004; Ma, Racine, and Yang, 2015). (3) Deep learning is
+built on automatic differentiation, which allows us to obtain the necessary influence function
+computationally for free for any µ⋆ from (3.4) based on any first step (3.3) (see Section 3.3)
+making double machine learning conceptually straightforward to apply in any problem.
+Of course, DNNs are not the only method that could be used to recover the parameter
+functions, nor do we claim any formal optimality property. The economic model holds globally,
+and we wish to match this in estimation, as it is important to learn counterfactual quantities
+in the second step, but other methods have the same property, including global series methods
+such as splines or polynomials and modern basis-function style methods including ridge
+regression and lasso.2 All these estimators impose the structural model globally and in a
+computationally simple way. This may be one reason why series methods were often used
+2
+The term “global” is slightly ambiguous, because methods like splines or partitioning are global smoothers
+and are structurally compatible, but use only data local to the evaluation point, more like a traditional kernel
+(Cattaneo and Farrell, 2013; Cattaneo, Farrell, and Feng, 2020).
+
+12
+
+in classic nonparametric M estimation (see Gallant and Nychka (1987) for pioneering early
+work and Chen (2007) for further theory). Also Chen (2007) views neural networks as sieves
+for generic nonparametric M estimation, as do we. But these methods lack advantages (1),
+(2), and (3) from the prior paragraph. Classical methods often do not work for modern
+applications with more than several covariates. Selection methods require pre-specification of
+bases, including interaction effects.
+Although it is not always as straightforward, it is possible to use “local” methods to learn
+the value of the parameter functions at a point, i.e. θ ⋆ (x) for some x, and much recent work
+has been done in this area. Fan and Zhang (2008) discuss kernels and local polynomials
+while Zeileis, Hothorn, and Hornik (2008), Athey, Tibshirani, and Wager (2019), Nekipelov,
+Novosad, and Ryan (2019), and Chatla and Shmueli (2020) use trees and random forests; all
+share our goal of learning non-prediction function. Athey, Tibshirani, and Wager (2019) and
+Foster and Syrgkanis (2023) are perhaps the most recent closest antecedents to our work,
+as both move ML away from prediction and both use orthogonal scores as a key ingredient.
+Athey, Tibshirani, and Wager (2019) study random forests in a similar class of problems
+to (3.3). Random forests also handle higher dimensional problems and flexible interactions,
+sharing advantage (1) above, and by their nature share advantage (2). As such, the forests of
+Athey, Tibshirani, and Wager (2019) are probably the closest substitute for neural networks
+in our setting. The goal in that paper is inference on the nonparametric object θ ⋆ (x) at a
+point X = x, which is different than our two-step problem. Influence functions based on
+ordinary derivatives are used there, though in the estimation step to aid with tree splitting,
+rather than for inference per se, as we do below. Foster and Syrgkanis (2023) are focused
+on risk minimization, as opposed to inference, but consider a similar class of models and
+use orthogonal scores to obtain improved properties. Their estimation target more closely
+resembles our two step problem, though a key innovation in their case is performing this in
+one step, rather than estimating the primitives and then studying different counterfactual
+questions. Their first and second step parameters can also be more general objects than ours
+in some ways.
+Finally, other recent work has considered the combination of deep learning with structural
+models. Examples in different contexts include Norets (2012), Igami (2020), Chen, Didisheim,
+and Scheidegger (2021), Kaji, Manresa, and Pouliot (2023), and Wei and Jiang (2025). Often,
+the goal is estimation of a parametric structural model and deep learning methods are applied
+to learn the mapping of data to parameters, which is quite different from our use of neural
+networks to enrich parameters for heterogeneity and personalization.
+
+13
+
+3.3
+
+Inference
+
+For second step inference on µ⋆ = E[H(X, θ ⋆ (X), t̃)], we apply and contribute to the
+recent semiparametric inference literature and in particular the now-common double machine
+learning (DML) method of Chernozhukov et al. (2018a). DML is a generic method for
+obtaining semiparametric inference that combines two ingredients: sample splitting and
+a Neyman orthogonal score. Asymptotic Normality then follows under weak conditions
+on first step estimators, which is particularly important for ML-based first steps, because
+relatively little is known of their mathematical and statistical properties. Typically, L2
+convergence rates are sufficient (along with mild regularity conditions). To save space, we
+defer to Chernozhukov et al. (2018a), Newey and Robins (2018), and Chernozhukov et al.
+(2022a) for complete discussion of the method and further references. As usual with DML, our
+results apply to any first-step estimator that has fast enough rates. However, an automatic
+differentiation engine may be convenient for computing the influence function when it is not
+known from prior work.
+While sample splitting is straightforward both conceptually and in applications, orthogonal
+scores are not, and this is where our contribution lies. The key characterization of a Neyman
+orthogonal score is that is has a zero derivative with respect to the first stage parameters
+(see Section 5), which translates to less sensitivity to first step error. Though more general
+conceptually, Neyman orthogonal scores often come from influence functions where this
+zero derivative property is ensured. Knowing the influence function, or orthogonal score, is
+required for using DML, and this is often a hurdle in applications. For this reason many
+papers stick to known examples (e.g., average treatment effects or partially linear models),
+list references where scores are derived, or hand-derive new scores (typical examples are
+Belloni, Chernozhukov, and Hansen (2014), Farrell (2015), and Chernozhukov et al. (2022a)).
+We contribute to this inference method by showing that an influence function for µ⋆ is
+automatically available for any combination of ℓ(·) and H(·) in Equations (3.3) and (3.4)
+provided their ordinary derivatives exist. We give the form of this influence function and
+discuss how it can be automatically computed in applications, even when it cannot be
+derived precisely or written down. This makes it easy to deploy in practice, because ℓ(·)
+and H(·) are defined by the researcher, and the rest can proceed automatically, requiring
+only nonparametric regression. A key insight into applicability is that the orthogonal score
+need not be known as a function per se, we only require that its value be computable at
+each observation. Our goal and results here are closest to the series of work on “auto-DML”
+(Remark 3.4).
+To state the influence function result, and thus estimation and inference for µ⋆ , we define
+relevant derivatives, which may be known or found with automatic differentiation. Let
+14
+
+Hθ (x, ·; t̃) be the dµ × dθ Jacobian of H with respect to θ. Let ℓθ (y, t, ·) be the gradient of
+ℓ with respect to θ and ℓθθ (y, t, ·) be the matrix of second derivatives. These are ordinary
+derivatives, not functional derivatives, and are thus computable automatically, even if they are
+evaluated at the value of the function θ ⋆ (x).3 Then an influence function that applies to any
+combination of enriched model (3.3) and parameter of interest (3.4) is ψ(y, t, x, θ, Λ) − µ⋆ ,
+with
+
+ψ(y, t, θ, Λ) = H x, θ(x); t̃ − Hθ (x, θ(x); t̃)Λ(x)−1 ℓθ (y, t, θ(x)),
+(3.6)
+where Λ(x) = E[ℓθθ (y, t, θ(x)) | X = x] the population conditional Hessian of ℓ, all
+evaluated at θ = θ(x) and is the “other” nonparametric object that generally arises in the
+correction term. The (inverse) propensity score is perhaps the most familiar example, and
+our requirements on Λ(x) mirror that case exactly. Theorem 2 below justifies this result and
+discusses it further. Influence functions are being used in a wide variety of contexts, and our
+derivation may be of independent interest (Remark 5.3).
+To build intuition, it is useful to note that our result has precisely the same form as
+its parametric counterpart, but appropriately generalized. For the parametric two step
+
+inference problem of (3.1) and (3.2), the influence function is known to be H x, θ; t̃ −
+Hθ (x, θ; t̃)Λ−1 ℓθ (y, t, θ), where Λ = E[ℓθθ (y, t, θ)] (Newey and McFadden, 1994). Equation
+(3.6) is the same, and equally general, but enriched and hence conditional on X = x. This
+tight connection helps with implementation, because if the original structural model is
+understood by the researcher, so is the enriched version. For example, identification in the
+parametric case typically requires Λ−1 to exist, and in the enriched version this must hold
+for all “types” x. This is often a matter of assuming a positive conditional variance, rather
+than marginal variance. Appendix C gives some examples and special cases.
+b and standard errors follows standard ideas of DML (CherObtaining the estimate µ
+nozhukov et al., 2018a). The only wrinkle is that Λ(x) generally depends on θ(x), and so
+3
+
+To be precise, ℓθ (y, t, θ(x)) is the dθ -vector of first derivatives with respect to the parameter, evaluated
+at the number θ(x), as in
+
+∂ℓ y, t, b
+ℓθ (y, t, θ(x)) =
+.
+∂b
+b=θ(x)
+
+The Jacobian Hθ (x, ·; t̃) is similar. Then ℓθθ (y, t, θ(x)) is the dθ × dθ matrix of second derivatives, with
+{k1 , k2 } element given by
+h
+i
+∂ 2 ℓ (y, t, b)
+ℓθθ (y, t, θ(x))
+=
+,
+∂bk1 ∂bk2 b=θ(x)
+k1 ,k2
+where bk1 and bk2 are the respective elements of the place-holder b. The use of standard differentiation
+in these contexts has been used in some prior work, though to our knowledge not paired with automatic
+differentiation to obtain feasible inference in such a broad set of models. One can obtain the influence function
+using functional derivatives and then evaluate these at the true function θ ⋆ (·), but our point is that one only
+needs the ordinary derivative evaluated at the number θ ⋆ (x) (or the data points more specifically).
+
+15
+
+three-way splitting is technically required. Note that throughout, particularly when paired
+with automatic differentiation, note that we do not need to known the functions Hθ (x, θ(x); t̃),
+b
+b i ); t̃), ℓθ (yi , ti , θ(x
+b i )),
+ℓθ (y, t, θ(x)), and ℓθθ (y, t, θ(x));
+it suffices to know the values Hθ (xi , θ(x
+b i )), which are readily available.
+and ℓθθ (yi , ti , θ(x
+DML is now quite standard, so we keep the description brief. The data are divided into
+K disjoint subsets, denoted Ik , of equal size. Then
+K
+
+1 X
+bk ,
+b=
+µ
+µ
+K k=1
+
+bk =
+µ
+
+1 X
+b k (xi )),
+ψ(yi , ti , θbk (xi ), Λ
+|Ik | i∈I
+
+(3.7)
+
+k
+
+b k (xi ) are obtained using observations in I c . If Λ(x) depends
+where |Ik | and θbk (xi ) and Λ
+k
+c
+b
+b
+on θ(x), then Ik is divided in two and θk (xi ) and Λk (xi ) are obtained on separate samples.
+This further splitting is required in theory in general (see Remark 3.3 and Appendix B
+for common exceptions) but in practice may make no difference. Also, short stacking may
+yield improved performance (Ahrens et al., 2025). From the optimization of (3.5), we can
+b i )) automatically. In other words, ℓθθ (yi , ti , θ(x
+b i )) is simply
+obtain the values ℓθθ (yi , ti , θ(x
+b i ). This is identical
+a column of data which we nonparametrically regress on xi to obtain Λ(x
+to the more standard practice of obtaining the functional derivatives, characterizing the
+nonparametric object that is Λ(x), and then estimating it: we are not doing a numerical
+approximation. Numerical differentiation can be even simpler and faster, however. The same
+ideas apply to all other (potentially) unknown functions. Finally, the asymptotic variance
+Ψ = V[ψ(Y , T , X, θ ⋆ , Λ)] can be consistently estimated by
+K
+2
+1 X 1 X
+b
+b
+b
+b
+Ψ=
+ψ(yi , ti , θk (xi ), Λk (xi )) − µk .
+K k=1 |Ik | i∈I
+
+(3.8)
+
+k
+
+Theorem 2 validates this procedure. In theory, the size of each subset is proportional to n
+and thus sample splitting does not impact convergence rates or precision, but in practice this
+can be a poor approximation. For classical kernel estimators, Velez (2024) proves that larger
+K yields better results in an asymptotic framework with K → ∞. For machine learning
+methods, this can be computationally costly, but we find in applications that large K is more
+stable. With small K, the different θbk (x) can be quite different. Finally, sample splitting
+is not always needed, as shown by Farrell, Liang, and Misra (2021) for post-DNN average
+treatment effects (under essentially the same assumptions as here). It would be useful to
+extend that argument to more general models; see Chen, Syrgkanis, and Austern (2022) for
+relevant theory.
+
+16
+
+Remark 3.1 (Two Step GMM). Our first-step correction can also be used in GMM settings.
+The second step may be a set of moment conditions E[H̃(X, θ ⋆ (X), µ⋆ , t̃)] = 0 for some H̃.
+The correction factor then takes the form ϕ(y, t, x, Λ, θ) = H̃θ (x, θ(x), µ⋆ , t̃)Λ(x)−1 ℓθ (y, t, θ(x)).
+Following Chernozhukov et al. (2022a), adding this correction to the original moments yields
+the orthogonal moment conditions E[H̃(X, θ ⋆ (X), µ⋆ , t̃) − ϕ(y, t, x, Λ, θ)] = 0. Chernozhukov et al. (2022a), extending Chernozhukov et al. (2018a), show that the advantages of
+DML carry over to GMM based on these moments. Our methodology applies here, including
+the use of automatic differentiation if needed. Asymptotic normality will follow by applying
+Chernozhukov et al. (2022a) instead of Chernozhukov et al. (2018a).
+♣
+
+Remark 3.2. Semenova and Chernozhukov (2021) and Colangelo and Lee (2023) use
+orthogonal scores for two-step nonparametric inference (following ML) and we conjecture
+that the same could be done in the enriched structural models considered here. This would
+be valuable for future research. See also Remark B.3.
+♣
+
+Remark 3.3 (Notes on Λ(x)). The function Λ(x) is a nuisance in the truest sense: it is
+required only because we use influence functions as a tool to obtain valid inference. In our
+case, Λ(x) is always low-dimensional and consists only of regressions, not conditional density
+functions. In some cases obtaining Λ(x) is simplified. If T is randomly assigned, or more
+generally independent of X, then Λ(x) can often be computed or estimated more simply,
+though it may remain a function of x. Even if not randomly assigned, if T is known to be
+assigned based on a subvector of X, such as in targeting problems, this can be imposed on
+the estimation. Inverse functions are standard in semiparametric inference, and in practice
+this piece is often the most difficult. The challenge is generally model- and data- specific,
+unrelated to the choice of nonparametric/ML method. Often some form of regularization is
+used. The most widely known is trimming the propensity score, which has received rigorous
+study (Ma and Wang, 2020). Extending this to our setting would be useful.
+♣
+
+Remark 3.4 (Auto-DML). The recent work on “auto-DML” shares our goal of applying the
+DML method without having to derive a new orthogonal score each time. This recent work
+(Chernozhukov, Newey, and Singh, 2022a,b; Chernozhukov et al., 2022a,b, 2023, 2024a,b)
+shows that the correction term of the influence function satisfies certain moment conditions
+which can then be taken to data to obtain feasible inference. In the context of (3.6), this
+amounts to estimating the quantity Hθ (x, θ(x); t̃)Λ(x)−1 . There are different versions of this
+method, but broadly speaking it is as general and widely applicable as ours. Our approach
+17
+
+can be applied to many second stage parameters, since the first step correction need only be
+estimated once. We do require that θ ⋆ (x) enter the second stage only through its evaluation
+at a data point. Both methods require a second nonparametric estimation of a nuisance
+function. The auto-DML method estimates the inverse directly, which might yield more
+stable performance than estimating Λ(x) and then inverting. On the other hand, examining
+b
+Λ(x)
+is often a key step in the analysis and helps diagnose identification, such as examining
+estimated propensity scores to evaluate the overlap assumption.
+♣
+
+4
+
+Application: Advertising and Personalized Interest
+Rates
+
+4.1
+
+Empirical Context
+
+In this section we use our framework to replicate and extend Bertrand et al. (2010). The data
+is from a large scale field experiment run on behalf of a financial institution in South Africa.
+Consumers were sent marketing material for short terms loans where a number of features of
+the advertising content and the interest rate offered were randomized (full details are left
+to that paper). For the purposes of our analysis we will focus on the interest rate offered
+as the treatment variable, and denote the scalar T = R. We will treat the characteristics
+of the advertising assigned to customers as covariates (Xa ) rather than treatments. These
+assigned ad characteristics will be used along with a set of customer demographics (Xd ) in
+our analysis. We collectively refer to these as X = {Xd , Xa } and use them to calibrate
+our measures of heterogeneity in the analysis below. The key outcome variable (Y ) is the
+indicator for whether or not the consumer applied for the loan. We use a binary choice model,
+one of the workhorse models in applied economics. Other relevant variables available in the
+data include an indicator of loan default (D) and the loan amount (L). While the full data
+set has N = 53, 194 individual observations, for the purposes of our illustration we will limit
+ourself to high-risk customers that form the bulk of the data. As such, N = 40, 507. Of these,
+only 2,371 have Y = 1, which makes estimation more difficult.
+In what follows, we conduct a series of analysis. First, we estimate a binary choice model
+of loan application allowing for heterogeneity in the parameter vector via our structured
+DNNs. We use these to compute the marginal effect of interest rate. We then use the results
+of the model (with some additional assumptions) to construct optimal personalized interest
+rate offers and compute the expected profits from implementing the personalization scheme.
+
+18
+
+4.2
+
+Model and Implementation
+
+Our setup adapts the framework outlined in Bertrand et al. (2010) and assumes that consumers
+have a utility
+u = θ1⋆ (xd , xa ) + θ2⋆ (xd )r + ε,
+where θ ⋆ (x) = (θ1⋆ (xd , xa ), θ2⋆ (xd ))′ are the vector of parameter functions and, (in our earlier
+notation) T = R. We further assume that ε is Logistic distributed, which gives the standard
+Logit probabilities of response. Let r1 = (1, r)′ . Then the response is assumed to be
+P[Y = 1 | X = x, R = r] = G (θ ⋆ (x)′ r1 ) =
+
+1
+1 + exp (− [θ1⋆ (xd , xa ) + θ2⋆ (xd )r])
+
+,
+
+(4.1)
+
+where G(u) is the logit function. This is exactly the enriched version of structural model
+(2.2) used in Section 2.
+Using these probabilities we can construct the log-likelihood as
+y log (P[Y = 1 | X = x, R = r]) + (1 − y) log (P[Y = 1 | X = x, R = r]) ,
+which is a heterogeneity enriched version of the standard workhorse binary choice model.
+The negative of this log-likelihood serves as the loss (3.3) for our problem. One can easily
+verify the high-level assumptions in this setting, particularly given that the binary choice
+model is widely studied and well understood. For example, it is straightforward to show that
+Λ(x) = E[G (θ ⋆ (x)′ R1 ) (1 − G (θ ⋆ (x)′ R1 ))R1 R1′ | X = x], where R1 = (1, R)′ , and will be
+invertible under standard and commonly used economic assumptions. More discussion is
+given in Appendix B.
+We implement Figure 1 to maximize the likelihood with a simple network with two hidden
+layers of 10 nodes each. The simplicity of the network architecture is driven by the fact
+many dimensions of X = {Xd , Xa } are binary, so there is less functional approximation
+required, and that we have a smallish dataset (N = 40, 507). We use the Torch interface in R
+(Keydana (2023)) to construct the computational graph and optimize the likelihood using
+the ADAM optimizer. For inference purposes we use 50-fold cross fitting, using all but one
+b
+b4
+fold to estimate θ(x)
+and the remaining fold to obtain µ.
+
+4.3
+
+Parameters of Interest and Associated Results
+
+b
+We will use our estimated θ(x)
+and novel influence function to explore two derived quantities,
+⋆
+i.e. two different µ of (3.4). First, we examine the marginal effect of the the focal treatment
+4
+
+Replication files are available at https://github.com/maxhfarrell/FLM2.
+
+19
+
+3.0
+1.5
+0.0
+
+0.5
+
+1.0
+
+Density
+
+2.0
+
+2.5
+
+Plug−in Mean
+Adjusted Mean
+
+−1.5
+
+−1.0
+
+−0.5
+
+0.0
+
+Marginal Effect of Interest Rate
+
+Figure 3: Marginal Effect of Advertising Content
+(interest rate offer). We note that our Logit specifications is slightly different from Bertrand
+et al. (2010), who use a Probit specification. Second, we turn to a more ambitious goal of
+personalization and profit maximization, making more full use of the power of the framework.
+Additional examples include (i) the price elasticity at a price (here, interest rate) r̃, which
+sets H = (1 − G (θ1 + θ2 r̃))θ2 r̃; (ii) a measure of willingness to pay obtained by taking
+H = θ2 /θ1 ; and (iii) expected consumer welfare, H = − log(1 + exp(θ1 + θ2 r̃))/θ2 . These are
+standard second-step objects of interest in choice models, and can be immediately used in
+our framework by evaluating each using the parameter functions θ(x). Importantly, without
+our explicit use of a structural model, characterizing these quantities and obtaining inference
+would be difficult.
+4.3.1
+
+Marginal Effects
+
+With our structure, the average marginal effect (AME) of any treatment can be written in
+closed form. Let r̃ be a given value of the interest rate (the treatment) and r̃1 = (1, r̃)′ . Then
+the parameter of interest is
+"
+
+#
+∂G(θ ′ r1 )
+AME(r̃) = E
+= E [G(θ ⋆ (X)′ r̃1 ) (1 − G(θ ⋆ (X)′ r̃1 )) θ2⋆ (X)] .
+∂r
+⋆
+′
+θ (X) r̃1
+We set r̃ to the sample average (0.084) for simplicity. From the data we obtain the point
+[
+estimate AME(0.084)
+= −0.269 using (3.7), with corresponding 95% confidence interval
+(−0.399, −0.139) obtained from (3.8). The original analysis in Bertrand et al. (2010) found a
+20
+
+marginal effect of −0.29 (see Table III therein). Further, since we use a subset of the data,
+we refit a simple probit model on the subset and obtain a marginal effect of −0.2505. Both
+these estimates fall within our confidence interval, which we interpret as the original findings
+being robust to heterogeneity for this parameter.
+We plot the distribution of the conditional average marginal effects along with their means
+and confidence intervals in Figure 3. The lightest grey shows a kernel-smoothed density
+estimate. The shaded region is our 95% confidence interval, while the darkest shading shows
+the confidence interval one would obtain ignoring first step estimation (not using the influence
+function adjustment). The plot shows considerable heterogeneity uncovered by the DNNs.
+This shows that although the estimate of the average is robust to heterogeneity, there is
+considerable potential for personalization.
+4.3.2
+
+Optimal Personalized Offers
+
+We now demonstrate how the estimated heterogeneity can be translated into personalized
+offers and the simplicity with which one can conduct inference on quantities of interest.
+We examine the mean of personalized interest rate offers and the expected profits from
+personalization. Note that it poses no issue that the corresponding H functions are not
+available in closed form.
+To construct profits we have to make some assumptions about the decision process of
+the firm and construct some auxiliary measures. First we will create a simple, parametric
+model for loan default probability. Given the rarity of defaults, the sample size is too small
+to uncover meaningful heterogeneity, and therefore we assume that the probability of default
+D = 1 given an interest rate R = r is also logistic:
+P[D = 1 | R = r] =
+
+1
+.
+1 + exp (− [δ1⋆ + δ2⋆ r])
+
+We estimate the parameters (δ1⋆ , δ2⋆ ) from data and, for convenience in this illustration, take
+these parameters as given.5
+To write the firm’s expected profit for a given consumer, let L be the loan amount, M
+be the loan term (= 4), and assume the outside option of the money being loaned is to
+obtain a rate of return r0 , we se set to 0.01 in the analysis. Since we focus on optimizing
+the interest rate for fixed values of the parameters, let P[Y = 1 | X = x, R = r] = P (r) and
+5
+
+With richer data, one could apply the estimation and inference framework using a bivariate outcome
+of application and default, Y = (Y, D)′ and enrich (δ1⋆ , δ2⋆ ) to include heterogeneity. Accounting for the
+estimation of δ1⋆ (x) and δ2⋆ (x) would be then automatic. With only 280 defaults observed, 0.7% of observations,
+this is not possible.
+
+21
+
+P[D = 1 | R = r] = D(r). Then profits are
+
+
+
+
+
+Π(r) = L P (r) M (1 − D(r))r − D(r) + (1 − P (r))M r0
+.
+{z
+}
+|
+|
+{z
+} Outside
+option if no loan
+
+(4.2)
+
+Expected profit given loan
+
+Some discussion of this profit function is warranted. The profit function has two components first the part where given a loan being initiated we have expected revenues. This expectation
+is computed by taking into account the revenue stream under non-default as well as the
+possibility of loss based on default (assuming no recovery of funds). The second component
+reflects the opportunity cost of the loan. We do not intend for this profit to be a perfect
+representation of reality but simply to illustrate the manner in which our methods can be
+applied realistic structural settings.
+To find the optimal interest rate, we obtain the first order condition as per the usual
+optimization machinery. This yields
+h
+
+i
+dΠ
+0=
+= L Ṗ (r) (M (1 − D(r))r − D(r) − M r0 ) + P (r) M (1 − D(r)) − M rḊ(r) − Ḋ(r) ,
+dr
+where Ṗ and Ḋ represent derivatives with respect to their scalar arguments. This profit
+function is smooth in r but there exists the possibility that it is not uni-modal. Based on
+simulations we verified that, for parameters where Ṗ < 0 and Ḋ > 0 (as would be expected
+in this context) and for r ∈ [0, rmax = 0.25] the profit function is uni-modal and a unique r∗
+obtains. To explore this we define a representation of the fixed point problem as
+r=r+
+
+dΠ(r)
+.
+dr
+
+(4.3)
+
+This is an implicit function which will show a unique fixed point ropt if right hand side is
+decreasing in r. Figure 4 presents a visual representation of Equation (4.3). Each light grey
+curve corresponds to a distinct consumer profile xi and its intersection with the y = x line
+represents the fixed point ropt (the scale of the axes is different so y = x is not at 45o ). The
+density then represents the kernel density of the optimal personalized offers ropt (xi ) across
+consumers. We note that while the fixed points are only shown for a subset of customers (to
+avoid clutter) the density is computed across the entire sample.
+The reader should note that even though ropt is not available in closed form it remains a
+smooth function of the parameters θ, which is all that is required for our method to apply.
+We can therefore provide inference for any statistic of the form (3.4). As a simple example,
+Figure 4 shows estimation and inference for µ⋆ = E[ropt (θ ⋆ (X))], the average of optimal
+offers. We obtain a point estimate of 14.12%, with a 95% confidence interval [12.0%, 16.23%].
+22
+
+Density (plugin)
+
+0.2
+0.0
+
+0
+
+−0.4
+
+10
+
+25
+
+−0.2
+
+Interest Rate (RHS)
+
+0.4
+
+Plug−in Mean
+Adjusted Mean
+
+0.05
+
+0.10
+
+0.15
+
+0.20
+
+0.25
+
+Interest Rate (LHS)
+
+Figure 4: Optimal Personalized Interest Rate Offers
+This is shown in the figure, along with the plug-in interval as before.
+Next we study expected profits from setting the optimal personalized interest rate, i.e.,
+E[Π(ropt (θ ⋆ (X)))]. From (4.2), this is expressed as
+
+
+µ⋆ = E L [G(ropt (θ ⋆ (X))) (M (1 − D(ropt (θ ⋆ (X))))r − D(ropt (θ ⋆ (X)))) + (1 − G(ropt (θ ⋆ (X))))M r0 ] .
+We can apply our framework directly to this estimand, despite the complications (again, this
+is a smooth function H but not expressible in closed form), using automatic or numerical
+differentiation. We can also appeal to the envelope theorem, which ensures that ∂Π/∂r r=ropt =
+0. As such, the influence function for expected profits can be constructed in closed form
+(conditional on ropt , not θ). All three approaches yield nearly identical results.
+We standardize the results (for plotting) and interpret the expected profit construct as the
+net expected income from offering a $1 loan at a personalized interest rate to each potential
+customer. We find that µ
+b = $0.0497 with a 95% confidence interval of [$0.0459, $0.0535].
+Figure 5 depicts the density of profits across customers along with the estimate and
+confidence interval for the mean. Several features are notable here. First, we note that the
+estimate µ
+b, which includes the influence function adjustment, is outside the naive confidence
+interval based on the plug-in estimator. Statistically, this indicates that the bias correction
+from the influence function adjustment is large relative to the variance, that is, first stage noise
+b
+from θ(x)
+shifts the asymptotic distribution substantially, demonstrating the importance
+of double machine learning. The same phenomenon was shown in a partially linear model
+in Chernozhukov et al. (2018a) and also appears in nonparametric bias correction contexts
+23
+
+40
+0
+
+20
+
+Density
+
+60
+
+80
+
+Plug−in Mean
+Adjusted Mean
+
+0.04
+
+0.05
+
+0.06
+
+0.07
+
+0.08
+
+Expected Profits
+
+Figure 5: Expected Profits from Personalized Interest Rate Offers
+(Cattaneo et al., 2024a). See Remark 4.1 for related discussion.
+It is worth noting that the discrepancy between the estimates arise primarily on account
+of the curvature of the profit function. The gradient of the profit function is steep around
+the estimated parameter and perturbations therein result in large changes in the influence
+component. The shape of the profit density is driven by a complex interaction of various
+components - the distribution of marginal effects of interest rate (Figure 3), coupled with
+default propensities, the optimal prices, and the formulation of profits. Even with such
+complexity, the profits (and prices) are well behaved and economically meaningful. We
+caution the reader again that our application is an illustration and ignores a number of other
+factors that might have bearing on the firm’s and consumers’ decision problems.
+In sum, this application showcases the simplicity with which (parametric) structural
+economic models can be enriched to incorporate nonparametric heterogeneity via deep
+neural networks, and how the results can be used directly for economic decision making and
+policy analysis based on personalization. While a full-fledged application would incorporate
+additional features and economic nuances, this proof of concept nonetheless showcases quite
+a difficult estimation and inference problem.
+Remark 4.1 (Implementation Uncertainty). Throughout the application we use DML,
+building on our novel influence function, to provide valid inference for second step parameters.
+However, in some real-world decision making contexts, this may be inappropriate. Consider
+
+
+expected profits. Above, we studied µ⋆ = E Π(ropt (θ ⋆ (X))) . For the firm, this corresponds
+to the profits they can expect from implementing true optimal personalization, based on
+24
+
+θ ⋆ (x). We therefore require our novel influence function to account for the estimation error in
+b
+the first stage, i.e., the fact that we use θ(x)
+instead of θ ⋆ (x). However, from the firm’s point
+b
+of view, if they choose to implement the strategy ropt (θ(x)),
+it is more natural to consider
+
+
+b
+b
+θ(x) as fixed and set the parameter of interest accordingly as µ̃ = E Π(ropt (θ(X)))
+, because
+this corresponds to the profits they can expect from what they would actually implement. In
+this case, DML and the influence function correction are not necessary, and the plug-in can
+be used directly.
+♣
+
+5
+
+Theoretical Results
+
+5.1
+
+Bounds for Structural Deep Learning
+
+We first provide theoretical guarantees for the structural deep neural networks of Section
+3.2. Our theory generalizes Farrell, Liang, and Misra (2021) to the structural setting. We
+impose two assumptions. For the loss function, we require Lipschitz continuity in general
+and, near the truth, sufficient curvature. Neither are restrictive and both are common in the
+nonparametric M estimation literature (cf Chen (2007) and others, where further references
+and use of other norms are discussed). These conditions are for estimation of θ ⋆ (x); further
+assumptions will be required for inference.
+Assumption 1. Suppose that θ ⋆ (x) are nonparametrically identified in (3.3), uniformly
+bounded, and that there are constants c1 , c2 , and Cℓ that are bounded and bounded away from
+zero, such that for arbitrary θ(x) and θ̃(x), the loss obeys |ℓ(y, t, θ(x)) − ℓ(y, t, θ̃(x))| ≤
+Cℓ ∥θ(x) − θ̃(x)∥2 and
+
+
+
+
+c1 E ∥θ(X) − θ ⋆ (X)∥22 ≤ E[ℓ(Y , T , θ(X))]−E[ℓ(Y , T , θ ⋆ (X))] ≤ c2 E ∥θ(X) − θ ⋆ (X)∥22 .
+These requirements will often be implied by restrictions on the gradient and Hession of
+the loss, or on the matrix Λ(x). Such restrictions are natural in our setting, since they are
+commonly applied to parametric structural models; the same conditions readily transfer to
+the enriched setting. Differentiability is not required here and thus our results can be used
+in nonsmooth cases (for example Tambwekar et al. (2022) and Padilla, Tansey, and Chen
+(2022) apply the theory of Farrell, Liang, and Misra (2021) to quantile regression and the
+same extension could be done here), however, differentiability will be required for inference
+later and may help in verification of these conditions.
+The data generating process is assumed to obey the following conditions. Let W =
+(Y ′ , T ′ , X ′ )′ be the population random variables. Denote by Xc the continuously distributed
+25
+
+elements of X, with dc = dim(Xc ), and take the rest to be binary random variables, without
+loss of generality.
+Assumption 2. (i) The elements of W are bounded random variables. (ii) Xc has compact,
+connected support, taken to be [−1, 1]dc . (iii) As functions of xc , θk⋆ (x) ∈ W p,∞ ([−1, 1]dc ), for
+k = 1, . . . , dθ , where for positive integers p and q, define the Hölder ball W p,∞ ([−1, 1]q ) of
+functions h : Rq → R with smoothness p ∈ N+ as
+(
+W p,∞ ([−1, 1]q ) :=
+
+)
+
+h : max ess sup |Dr h(v)| ≤ 1 ,
+r,|r|≤p v∈[−1,1]q
+
+where r = (r1 , . . . , rq ), |r| = r1 +. . .+rq and Dr h is the weak derivative. (iv) maxk≤dθ supx |θk⋆ (x)| <
+M , for some positive M .
+These are typical assumptions for nonparametric estimation and are similar to Farrell,
+Liang, and Misra (2021). Part (iii) of this assumption restricts to smooth functions, which
+are known to be approximable by deep neural networks (Yarotsky, 2017, 2018; Hanin, 2017).
+We now state the main result for structural deep learning. We specialize this theorem to
+the standard implementation using deep and wide multi-layer perceptrons (fully connected,
+feedforward neural networks) and set the width and depth specifically for the fastest rate.
+Equation (A.4) in Appendix A shows a more general bound that is agnostic about the type
+of approximation, and hence the type of network. This can be used to obtain faster rates or
+cover fixed-width, very deep networks (see Section 2.3 of Farrell, Liang, and Misra (2021) for
+discussion).
+Theorem 1. Let wi , i = 1, . . . , n, be a random sample that obeys Assumptions 1 and 2.
+Define θb as the estimator found by solving (3.5), where the class Fdnn is a feedforward, fully
+connected network with ReLU activation structured according to Figure 1, with parameter
+functions bounded by 2M , width J ≍ n(dc )/2(p+dc ) log2 n, and depth L ≍ log n. Then
+∥θbk − θk⋆ ∥2L2 (X) ≤ C ·
+and
+
+
+En
+
+θbk − θk⋆
+
+2 
+
+
+
+log log n
+c log n +
+n
+
+p
+− p+d
+
+n
+
+8
+
+
+
+
+
+p
+log log n
+− p+d
+8
+c
+≤C· n
+,
+log n +
+n
+dc
+
+for n large enough, with probability 1 − exp{−n p+dc log8 n}, for k = 1, . . . , dθ , where the
+constant C may depend on the dim(W ), dθ , and other fixed quantities in Assumptions 1 and
+2.
+26
+
+The result of Theorem 1 speaks directly to the nonparametric M estimation literature.
+This theorem takes deep learning away from prediction and toward learning economically
+meaningful parameters. It shows that deep nets enjoy the same properties of other nonparametric/ML methods, but with the advantages of structure. A theoretical drawback is that for
+a given smoothness level, this rate is not optimal. Obtaining the optimal rate, or studying
+different norms, would be a useful extension. The bounds are sharp enough for inference and
+reflects the excellent empirical performance.
+
+5.2
+
+Influence Function and DML
+
+We now turn to our influence function result. Influence functions have a long history in
+econometrics. Newey (1994) remains the seminal treatment. We defer to that work and
+Ichimura and Newey (2022) for background and the theory of influence functions, including
+regularity conditions for their existence. Our goal is not to contribute to the theory of influence
+functions per se, but rather to use the tools of this theory to obtain the methodological
+result of a broadly applicable influence function, to enable two-step semiparametric inference
+under weak conditions. Our main result is a calculation made possible by applying the ideas
+in these works, chiefly Newey (1994). That is, we view the influence function as a tool for
+obtaining feasible inference, rather than an object of interest in its own right (such as for
+studying efficiency). This viewpoint is implicit in recent work on inference after ML (e.g.,
+Belloni, Chernozhukov, and Hansen, 2014; Farrell, 2015; Chernozhukov et al., 2018a) but it
+is worthwhile to make it explicit to better understand how this mode of thinking allows us to
+cover such a wide range of applications and apply automatic differentiation.
+The assumption we impose next is mostly standard and ensures sufficient regularity for our
+influence function to be calculated and for asymptotic Normality of the resulting estimator.
+One conceptual point is that further assumptions will be needed for a causal interpretation,
+such as unconfoundedness or conditional exogeneity.
+Assumption 3. The following conditions hold on the distribution of W , uniformly in the
+given conditioning elements. (i) Equation (3.3) holds and identifies θ ⋆ (x), where ℓ(w, θ) is
+thrice continuously differentiable with respect to θ. (ii) E[ℓθ (Y , t, θ(x)) | X = x, T = t] = 0.
+(iii) Λ(x) is invertible with bounded inverse. (iv) The parameter µ⋆ of Equation (3.4) is
+identified and pathwise differentiable and H is thrice continuously differentiable in θ. (v)
+H(X, θ(X); t̃) and ℓθ (Y , T , θ(X)) possess q > 4 finite absolute moments and positive
+variances.
+The most important assumptions here are that the first order condition of (3.3) holds,
+θ ⋆ (x) is identified, and that µ⋆ is pathwise differentiable. The latter keeps focus on regular
+27
+
+semiparametric contexts. The former follows our idea to take a well-defined parametric
+model, for which such identification would hold, and enrich the model with machine learning.
+Conditional mean restrictions are a particularly popular case (see Appendix B). Condition
+(iii) will often be implied by other conditions on the model, such as in the case of logistic
+regression if P[Y = 1 | X = x, T = t] is bounded away from zero and one (which in turn may
+be implied by conditions on X, T , and the functions θ ⋆ , such as boundedness). Or, in the
+context of treatment effects we need the standard overlap condition. Some version of the
+condition of positive variance, or invertibility of Λ(x), is quite standard in semiparametric
+problems.
+The following result justifies our inference method. Other than the novel influence function,
+it is an application of existing DML theory (Chernozhukov et al., 2018a). Let 0d be the
+d-long zero vector and Id be the d-square identity matrix.
+Theorem 2. Let wi , i = 1, . . . , n, be a random sample that obeys Assumption 3. Assume
+b k1 ,k2 − [Λ]k1 ,k2 ∥L (X) = oP (n−1/4 ) for all k1 , k2 ∈
+∥θbk1 − θk⋆1 ∥L2 (X) = oP (n−1/4 ) and ∥[Λ]
+2
+b
+{1, . . . , dθ }, and that Λ(xi ) is uniformly invertible. Then (i) (3.6) gives a Neyman orthogonal
+b of (3.7) and (3.8) obey
+b and Ψ
+score and (ii) the DML-based µ
+p
+√
+1 X −1/2
+b −1/2 (µ
+b − µ⋆ ) = p
+Ψ
+ψ(wi , θ ⋆ (xi ), Λ(xi ))/ n + op (1) →d N (0dµ , Idµ ).
+|C|Ψ
+|C| i∈C
+Here we impose the standard rate conditions on the first step estimators, allowing for valid
+inference after using any sufficiently accurate nonparametric/ML method. Deep learning
+remains a preferred choice in structural modeling, as discussed above. The assumptions used
+here intended to be simple and familiar, but are not minimal. The rate condition on Λ(x) can
+be weakened as shown by Chernozhukov et al. (2022a). Cattaneo, Jansson, and Ma (2019)
+show that in some problems computationally intensive procedures can be used to weaken
+first step assumptions. Further, our distributional approximation is first-order invariant to
+the first step estimator, as is typical, and this can be a poor finite sample approximation.
+More refined approximations, which account for the first step explicitly, have been obtained
+in simple cases (Cattaneo, Crump, and Jansson, 2014; Cattaneo, Jansson, and Newey, 2018;
+Cattaneo et al., 2024c) but it is not clear if the same can be done here. Lastly, we note that
+similar debiasing correction terms appear for inference in high-dimensional models (Belloni,
+Chernozhukov, and Hansen, 2014; Javanmard and Montanari, 2014; Zhang and Zhang, 2014)
+and for loss functions directly (Foster and Syrgkanis, 2023).
+Remark 5.1 (Efficiency). In many cases, our influence function matches the efficient one.
+When the original model is based on a likelihood or exponential family, and (3.3) and (3.4)
+28
+
+contain all information, we conjecture that efficiency is always obtained following Remark
+4.1 of Mammen and van de Geer (1997). In general, however, our estimator result is not
+guaranteed to be efficient. For example, in partially linear models we only obtain efficiency
+under homoskedasticity assumptions (Appendix C).
+♣
+
+Remark 5.2 (High Dimensional Parametric Approach). An alternative approach in two-step
+b i ) as a parametric model (where the weights and biases of
+inference would be to consider θ(x
+the deep net are the parameters) and apply parametric two-step estimation. This is shown
+to be a valid approximation to the semiparametric case in some contexts by Ackerberg,
+Chen, and Hahn (2012). Applying this idea to deep learning may be valid, but is practically
+infeasible as the number of parameters is too large and the estimator too complex. For
+example, the equivalent of Λ(x) would be a square matrix of dimension equal to the number
+of parameters in the deep net, which can be extremely large. Computing and inverting such
+a matrix may be impossible.
+♣
+
+Remark 5.3 (Other Uses of Influence Functions). Influence functions have appeared in many
+different contexts in statistics recently and our results can potentially be used to extend these
+methods to new contexts. Here we list a few examples. (i) Athey and Wager (2021) study
+policy optimization and show that using an orthogonal score yields faster reminder rates in
+terms of welfare just as for inference. Our score could be used to bring their insight into new
+areas. (ii) Koh and Liang (2017) use influence functions to try to understand “black-box” ML
+methods. Extending this to economic contexts would be valuable in applied research and
+policy evaluation. (iii) Robins et al. (2008) use higher-order influence functions to obtain
+refined semiparametric inference. We conjecture that using automatic differentiation could
+be used to obtain higher order inference just as with our first order results. (iv) Firpo,
+Fortin, and Lemieux (2009) rely on influence functions for distributional statistics, and could
+potentially be generalized to other models.
+♣
+
+6
+
+Conclusion
+
+Structural modeling is a workhorse of empirical economic research. We have shown how
+to enrich these models with deep learning to capture rich heterogeneity, filling in the gaps
+left by economic theory. This method combines the strength of structural modeling and the
+strength of machine learning. We established convergence rates for structured deep learning
+and valid inference using a novel influence function calculation. Our method represents a
+29
+
+step toward easier and more rigorous use of machine learning in economic research, but is
+far from complete. Shape restrictions are on major form of structure arising from economic
+theory (see Chetverikov, Santos, and Shaikh (2018) for a recent review). Extending our
+methods to include impose shape constraints is an important step for future research. From an
+implementation point of view, there is also a lot of ground to cover for deep neural networks,
+including penalization and regularization, tuning parameter choices, and robust computation.
+
+7
+
+References
+
+Ackerberg, Daniel, C Lanier Benkard, Steven Berry, and Ariel Pakes. 2007. “Econometric tools
+for analyzing market outcomes.” In Handbook of Econometrics, Handbook of Econometrics,
+vol. 6A, edited by J.J. Heckman and E.E. Leamer, chap. 63. Elsevier. (Cited on page 10.)
+Ackerberg, Daniel, Xiaohong Chen, and Jinyong Hahn. 2012. “A practical asymptotic variance
+estimator for two-step semiparametric estimators.” Review of Economics and Statistics
+94 (2):481–498. (Cited on page 29.)
+Agrawal, Keshav, Susan Athey, Ayush Kanodia, and Emil Palikot. 2022. “Personalized
+Recommendations in EdTech: Evidence from a Randomized Controlled Trial.” URL
+https://arxiv.org/abs/2208.13940. (Cited on page 5.)
+Ahrens, Achim, Christian B. Hansen, Mark E. Schaffer, and Thomas Wiemann. 2025. “Model
+Averaging and Double Machine Learning.” Journal of Applied Econometrics 40 (3):249–269.
+URL https://onlinelibrary.wiley.com/doi/abs/10.1002/jae.3103. (Cited on pages
+16 and 62.)
+Amemiya, Takeshi. 1985. Advanced Econometrics. Harvard University Press. (Cited on pages
+64 and 65.)
+Athey, Susan and Guido Imbens. 2016. “Recursive partitioning for heterogeneous causal
+effects.” Proceedings of the National Academy of Sciences 113 (27):7353–7360. (Cited on
+page 5.)
+Athey, Susan and Guido W Imbens. 2019. “Machine learning methods that economists should
+know about.” Annual Review of Economics 11:685–725. (Cited on page 5.)
+Athey, Susan, Julie Tibshirani, and Stefan Wager. 2019. “Generalized random forests.” The
+Annals of Statistics 47 (2):1148–1178. (Cited on pages 5, 13, and 54.)
+Athey, Susan and Stefan Wager. 2021. “Policy learning with observational data.” Econometrica
+89 (1):133–161. (Cited on page 29.)
+Bach, Francis. 2017. “Breaking the curse of dimensionality with convex neural networks.”
+The Journal of Machine Learning Research 18 (1):629–681. (Cited on page 53.)
+30
+
+Bajari, Patrick, Denis Nekipelov, Stephen P Ryan, and Miaoyu Yang. 2015. “Machine learning
+methods for demand estimation.” American Economic Review, Papers & Proceedings
+105 (5):481–485. (Cited on page 5.)
+Bartlett, Peter L, Olivier Bousquet, and Shahar Mendelson. 2005. “Local rademacher
+complexities.” The Annals of Statistics 33 (4):1497–1537. (Cited on page 41.)
+Bartlett, Peter L., Nick Harvey, Christopher Liaw, and Abbas Mehrabian. 2017. “Nearly-tight
+VC-dimension bounds for piecewise linear neural networks.” In Proceedings of the 22nd
+Annual Conference on Learning Theory (COLT 2017). (Cited on page 42.)
+Bauer, Benedikt and Michael Kohler. 2019. “On deep learning as a remedy for the curse of
+dimensionality in nonparametric regression.” Annals of Statistics 47 (4):2261–2285. (Cited
+on page 53.)
+Belloni, Alexandre, Victor Chernozhukov, and Christian Hansen. 2014. “Inference on Treatment Effects after Selection Amongst High-Dimensional Controls.” Review of Economic
+Studies 81:608–650. (Cited on pages 14, 27, 28, and 58.)
+Belloni, Alexandre, Victor Chernozhukov, and Ying Wei. 2016. “Post-selection inference for
+generalized linear models with many controls.” Journal of Business & Economic Statistics
+34 (4):606–619. (Cited on page 59.)
+Berry, Steven T. 1994. “Estimating discrete-choice models of product differentiation.” The
+RAND Journal of Economics 25 (2):242–262. (Cited on page 59.)
+Bertrand, Marianne, Dean Karlan, Sendhil Mullainathan, Eldar Shafir, and Jonathan Zinman.
+2010. “What’s advertising content worth? Evidence from a consumer credit marketing field
+experiment.” The Quarterly Journal of Economics 125 (1):263–306. (Cited on pages 4, 6, 7,
+18, 19, and 20.)
+Carroll, Raymond J, Jianqing Fan, Irene Gijbels, and Matt P Wand. 1997. “Generalized
+partially linear single-index models.” Journal of the American Statistical Association
+92 (438):477–489. (Cited on page 58.)
+Cattaneo, Matias D. 2010. “Efficient Semiparametric Estimation of Multi-valued Treatment
+Effects under Ignorability.” Journal of Econometrics 155 (2):138–154. (Cited on pages 5, 56,
+and 57.)
+Cattaneo, Matias D., Richard K. Crump, Max H. Farrell, and Yingjie Feng. 2024a. “Nonlinear
+Binscatter Methods.” arXiv preprint arXiv:2407.15276 . (Cited on pages 24, 61, 62, and 63.)
+———. 2024b. “On Binscatter.” American Economic Review 114 (5):1488–1514. (Cited on
+page 59.)
+Cattaneo, Matias D, Richard K Crump, Max H Farrell, and Yingjie Feng. 2025. “Binscatter
+regressions.” The Stata Journal 25 (1):3–50. (Cited on page 62.)
+
+31
+
+Cattaneo, Matias D., Richard K. Crump, Max H. Farrell, and Ernst Schaumburg. 2020.
+“Characteristic-Sorted Portfolios: Estimation and Inference.” Review of Economics and
+Statistics 101 (3):531–551. (Cited on page 59.)
+Cattaneo, Matias D., Richard K. Crump, and Michael Jansson. 2014. “Small Bandwidth
+Asymptotics for Density-Weighted Average Derivatives.” Econometric Theory 30:176–200.
+(Cited on page 28.)
+Cattaneo, Matias D. and Max H. Farrell. 2011. “Efficient Estimation of the Dose Response
+Function under Ignorability using Subclassification on the Covariates.” In Advances in
+Econometrics: Missing Data Methods, vol. 27A, edited by David Drukker. Emerald Group
+Publishing Limited, 93–127. (Cited on page 57.)
+———. 2013. “Optimal Convergence Rates, Bahadur Representation, and Asymptotic
+Normality of Partitioning Estimators.” Journal of Econometrics 174:127–143. (Cited on
+page 12.)
+Cattaneo, Matias D., Max H. Farrell, and Yingjie Feng. 2020. “Large Sample Properties of
+Partitioning-based Series Estimators.” Annals of Statistics 48 (3):1718–1741. (Cited on
+page 12.)
+Cattaneo, Matias D, Max H Farrell, Michael Jansson, and Ricardo Masini. 2024c. “Higher-order
+Refinements of Small Bandwidth Asymptotics for Density-Weighted Average Derivative
+Estimators.” arXiv preprint arXiv:2301.00277 . (Cited on page 28.)
+Cattaneo, Matias D., Michael Jansson, and Xinwei Ma. 2019. “Two-step Estimation and
+Inference with Possibly Many Included Covariates.” Review of Economic Studies 86 (3):1095–
+1122. (Cited on page 28.)
+Cattaneo, Matias D., Michael Jansson, and Whitney K. Newey. 2018. “Inference in Linear
+Regression Models with Many Covariates and Heteroskedasticity.” Journal of the American
+Statistical Association 113 (523):1350–1361. (Cited on pages 28 and 58.)
+Chatla, Suneel Babu and Galit Shmueli. 2020. “A Tree-Based Semi-Varying Coefficient Model
+for the COM-Poisson Distribution.” Journal of Computational and Graphical Statistics
+29 (4):827–846. (Cited on page 13.)
+Chen, Hui, Antoine Didisheim, and Simon Scheidegger. 2021. “Deep Structural Estimation:
+With an Application to Option Pricing.” arXiv preprint:2102.09209 . (Cited on page 13.)
+Chen, Qizhao, Vasilis Syrgkanis, and Morgane Austern. 2022. “Debiased machine learning
+without sample-splitting for stable estimators.” Advances in Neural Information Processing
+Systems 35:3096–3109. (Cited on page 16.)
+Chen, Rong and Ruey Tsay. 1993. “Functional-coefficient autoregressive models.” Journal of
+the American Statistical Association 88 (421):298–308. (Cited on page 50.)
+
+32
+
+Chen, Xiaohong. 2007. “Large Sample Sieve Estimation of Semi-Nonparametric Models.” In
+Handbook of Econometrics, Handbook of Econometrics, vol. 6B, edited by J.J. Heckman
+and E.E. Leamer, chap. 76. Elsevier. (Cited on pages 13 and 25.)
+Chernozhukov, Victor, Denis Chetverikov, Mert Demirer, Esther Duflo, Christian Hansen,
+Whitney Newey, and James Robins. 2018a. “Double/debiased machine learning for treatment
+and structural parameters.” The Econometrics Journal 21 (1):C1–C68. (Cited on pages 4,
+5, 14, 15, 17, 23, 27, 28, 48, 49, 58, and 66.)
+Chernozhukov, Victor, Mert Demirer, Esther Duflo, and Ivan Fernandez-Val. 2018b. “Generic
+Machine Learning Inference on Heterogenous Treatment Effects in Randomized Experiments.” arXiv preprint arXiv:1712.04802 . (Cited on pages 5 and 10.)
+Chernozhukov, Victor, Mert Demirer, Greg Lewis, and Vasilis Syrgkanis. 2019. “SemiParametric Efficient Policy Learning with Continuous Actions.” In Advances in Neural
+Information Processing Systems 32, edited by H. Wallach, H. Larochelle, A. Beygelzimer,
+F. d’Alché Buc, E. Fox, and R. Garnett. 15065–15075. (Cited on page 59.)
+Chernozhukov, Victor, Juan Carlos Escanciano, Hidehiko Ichimura, Whitney K Newey, and
+James M. Robins. 2022a. “Locally Robust Semiparametric Estimation.” Econometrica
+90 (4):1501–1535. (Cited on pages 14, 17, and 28.)
+Chernozhukov, Victor, Whitney Newey, Vıctor M Quintas-Martınez, and Vasilis Syrgkanis.
+2022b. “Riesznet and forestriesz: Automatic debiased machine learning with neural nets
+and random forests.” In International Conference on Machine Learning. PMLR, 3901–3914.
+(Cited on page 17.)
+Chernozhukov, Victor, Whitney K. Newey, Victor Quintas-Martinez, and Vasilis Syrgkanis.
+2024a. “Automatic Debiased Machine Learning via Riesz Regression.” arXiv:2104.14737 .
+(Cited on page 17.)
+Chernozhukov, Victor, Whitney K Newey, and Rahul Singh. 2022a. “Automatic debiased
+machine learning of causal and structural effects.” Econometrica 90 (3):967–1027. (Cited
+on page 17.)
+———. 2022b. “Debiased machine learning of global and local parameters using regularized
+Riesz representers.” The Econometrics Journal 25 (3):576–601. (Cited on page 17.)
+Chernozhukov, Victor, Whitney K. Newey, Rahul Singh, and Vasilis Syrgkanis. 2023. “Automatic Debiased Machine Learning for Dynamic Treatment Effects and General Nested
+Functionals.” arXiv preprint arXiv:2203.13887 . (Cited on page 17.)
+———. 2024b.
+“Adversarial Estimation of Riesz Representers.”
+arXiv:2101.00009 . (Cited on page 17.)
+
+arXiv preprint
+
+Chetverikov, Denis, Andres Santos, and Azeem M. Shaikh. 2018. “The Econometrics of Shape
+Restrictions.” Annual Review of Economics 10 (1):31–63. (Cited on page 30.)
+
+33
+
+Cleveland, William S, Eric Grosse, and William M Shyu. 1991. “Local regression models.” In
+Statistical models in S, edited by J. M. Chambers and T. Hastie. Pacific Grove: Wadsworth
+and Brooks/Cole, 309–376. (Cited on page 50.)
+Colangelo, Kyle and Ying-Ying Lee. 2023. “Double Debiased Machine Learning Nonparametric
+Inference with Continuous Treatments.” arXiv:2004.03036 . (Cited on pages 17 and 61.)
+De Chaisemartin, Clément and Xavier d’Haultfoeuille. 2023. “Two-way fixed effects and
+differences-in-differences with heterogeneous treatment effects: A survey.” The Econometrics
+Journal 26 (3):C1–C30. (Cited on page 10.)
+Donald, Stephen Geoffrey. 1990. Estimation of heteroskedastic limited dependent variable
+models. Ph.D. thesis, University of British Columbia. URL https://open.library.ubc.
+ca/collections/ubctheses/831/items/1.0103893. (Cited on page 65.)
+Dubé, Jean-Pierre and Sanjog Misra. 2023. “Personalized pricing and consumer welfare.”
+Journal of Political Economy 131 (1):131–189. (Cited on page 5.)
+Fan, Jianqing and Wenyang Zhang. 2008. “Statistical methods with varying coefficient models.”
+Statistics and Its Interface 1 (1):179–195. (Cited on page 13.)
+Farrell, Max H. 2015. “Robust Inference on Average Treatment Effects with Possibly More
+Covariates than Observations.” arXiv:1309.4686, Journal of Econometrics 189:1–23. (Cited
+on pages 5, 14, 27, 56, and 57.)
+Farrell, Max H., Tengyuan Liang, and Sanjog Misra. 2021. “Deep Neural Networks for
+Estimation and Inference.” arXiv:1809.09953, Econometrica 89 (1):181–213. (Cited on
+pages 3, 5, 16, 25, 26, 40, 41, 42, 43, and 53.)
+Firpo, Sergio, Nicole M Fortin, and Thomas Lemieux. 2009. “Unconditional quantile regressions.” Econometrica 77 (3):953–973. (Cited on page 29.)
+Foster, Dylan J and Vasilis Syrgkanis. 2023. “Orthogonal statistical learning.” The Annals of
+Statistics 51 (3):879–908. (Cited on pages 5, 13, 28, and 53.)
+Gallant, A Ronald and Douglas W Nychka. 1987. “Semi-nonparametric maximum likelihood
+estimation.” Econometrica 55 (2):363–390. (Cited on pages 11 and 13.)
+Goodfellow, Ian, Yoshua Bengio, and Aaron Courville. 2016. Deep learning. Cambridge: MIT
+Press. (Cited on page 12.)
+Graham, Bryan S and Cristine Campos de Xavier Pinto. 2022. “Semiparametrically efficient
+estimation of the average linear regression function.” Journal of Econometrics 226 (1):115–
+138. (Cited on pages 54 and 59.)
+Hahn, Jinyong. 1998. “On the Role of the Propensity Score in Efficient Semiparametric
+Estimation of Average Treatment Effects.” Econometrica 66 (2):315–331. (Cited on pages
+54, 56, and 57.)
+
+34
+
+Hanin, Boris. 2017. “Universal function approximation by deep neural nets with bounded
+width and relu activations.” arXiv preprint arXiv:1708.02691 . (Cited on page 26.)
+Hastie, Trevor and Robert Tibshirani. 1993. “Varying-Coefficient Models.” Journal of the
+Royal Statistical Society, Series B 55 (4):757–796. (Cited on page 50.)
+Hirano, Keisuke, Guido W. Imbens, and Geert Ridder. 2003. “Efficient Estimation of Average
+Treatment Effects using the Estimated Propensity Score.” Econometrica 71 (4):1161–1189.
+(Cited on page 56.)
+Hirshberg, David A. and Stefan Wager. 2019. “Augmented Minimax Linear Estimation.”
+arXiv:1712.00038 . (Cited on page 59.)
+Hitsch, Günter J, Sanjog Misra, and Walter W Zhang. 2024. “Heterogeneous Treatment
+Effects and Optimal Targeting Policy Evaluation.” Quantitative Marketing and Economics
+22 (2):115–168. (Cited on page 5.)
+Huang, Jianhua Z and Haipeng Shen. 2004. “Functional coefficient regression models for
+non-linear time series: a polynomial spline approach.” Scandinavian Journal of Statistics
+31 (4):515–534. (Cited on page 55.)
+Ichimura, Hidehiko and Whitney K Newey. 2022. “The influence function of semiparametric
+estimators.” Quantitative Economics 13 (1):29–61. (Cited on pages 27 and 43.)
+Igami, Mitsuru. 2020. “Artificial intelligence as structural estimation: Deep Blue, Bonanza,
+and AlphaGo.” The Econometrics Journal 23 (3):S1–S24. (Cited on page 13.)
+Imbens, Guido W., Whitney K. Newey, and Geert Ridder. 2007. “Mean-Squared-Error
+Calculations for Average Treatment Effects.” working paper . (Cited on page 56.)
+James, Gareth, Daniela Witten, Trevor Hastie, and Robert Tibshirani. 2021. An introduction
+to statistical learning, vol. 112. Springer, 2 ed. (Cited on page 12.)
+Javanmard, Adel and Andrea Montanari. 2014. “Confidence intervals and hypothesis testing for
+high-dimensional regression.” The Journal of Machine Learning Research 15 (1):2869–2909.
+(Cited on page 28.)
+Jorgensen, Murray A. 1993. “Influence functions for iteratively defined statistics.” Biometrika
+80:253–253. (Cited on page 55.)
+Kaji, Tetsuya, Elena Manresa, and Guillaume Pouliot. 2023. “An Adversarial Approach to
+Structural Estimation.” Econometrica 91 (6):2041–2063. URL https://onlinelibrary.
+wiley.com/doi/abs/10.3982/ECTA18707. (Cited on page 13.)
+Kennedy, Edward H. 2023. “Towards optimal doubly robust estimation of heterogeneous
+causal effects.” Electronic Journal of Statistics 17 (2):3008–3049. (Cited on page 53.)
+Kennedy, Edward H, Sivaraman Balakrishnan, James M Robins, and Larry Wasserman.
+2024. “Minimax rates for heterogeneous causal effect estimation.” The Annals of Statistics
+52 (2):793–816. (Cited on page 53.)
+35
+
+Kennedy, Edward H, Zongming Ma, Matthew D McHugh, and Dylan S Small. 2017. “Nonparametric methods for doubly robust estimation of continuous treatment effects.” Journal
+of the Royal Statistical Society. Series B, Statistical Methodology 79 (4):1229. (Cited on
+page 61.)
+Keydana, Sigrid. 2023. Deep Learning and Scientific Computing with R Torch. Chapman
+and Hall/CRC. (Cited on pages 12 and 19.)
+Koh, Pang Wei and Percy Liang. 2017. “Understanding Black-Box Predictions via Influence
+Functions.” In International conference on machine learning. PMLR, 1885–1894. (Cited on
+page 29.)
+Li, Qi, Cliff J Huang, Dong Li, and Tsu-Tan Fu. 2002. “Semiparametric smooth coefficient
+models.” Journal of Business & Economic Statistics 20 (3):412–422. (Cited on page 50.)
+Ma, Shujie, Jeffrey S Racine, and Lijian Yang. 2015. “Spline regression in the presence of
+categorical predictors.” Journal of Applied Econometrics 30 (5):705–717. (Cited on page 12.)
+Ma, Xinwei and Jingshen Wang. 2020. “Robust inference using inverse probability weighting.”
+Journal of the American Statistical Association 115 (532):1851–1860. (Cited on page 17.)
+Mammen, Enno and Sara van de Geer. 1997. “Penalized quasi-likelihod estimation in partially
+linear models.” Annals of Statistics 25 (3):1014–1035. (Cited on pages 29, 55, 58, and 59.)
+Maurer, Andreas. 2016. “A Vector-Contraction Inequality for Rademacher Complexities.” In
+Algorithmic Learning Theory, edited by Ronald Ortner, Hans Ulrich Simon, and Sandra
+Zilles. Cham: Springer International Publishing, 3–17. (Cited on page 41.)
+Mullainathan, Sendhil and Jann Spiess. 2017. “Machine Learning: An Applied Econometric
+Approach.” Journal of Economic Perspectives 31 (2):87–106. (Cited on page 5.)
+Nekipelov, Denis, Paul Novosad, and Stephen P. Ryan. 2019. “Moment Forests.” working
+paper . (Cited on page 13.)
+Nevo, Aviv. 2001. “Measuring Market Power in the Ready-to-Eat Cereal Industry.” Econometrica 69 (2):307–342. (Cited on page 59.)
+Newey, Whitney K. 1990. “Semiparametric efficiency bounds.” Journal of Applied Econometrics 5 (2):99–135. (Cited on page 43.)
+Newey, Whitney K. 1994. “The Asymptotic Variance of Semiparametric Estimators.” Econometrica 62 (6):1349–1382. (Cited on pages 27, 43, 44, 54, and 65.)
+Newey, Whitney K. and Daniel L. McFadden. 1994. “Large sample estimation and hypothesis
+testing.” In Handbook of Econometrics, Handbook of Econometrics, vol. 4, edited by R. F.
+Engle and D. McFadden, chap. 36. Elsevier, 2111–2245. (Cited on pages 10 and 15.)
+Newey, Whitney K and James M Robins. 2018. “Cross-fitting and fast remainder rates for
+semiparametric estimation.” arXiv preprint arXiv:1801.09138 . (Cited on page 14.)
+36
+
+Newey, Whitney K and Thomas M Stoker. 1993. “Efficiency of weighted average derivative
+estimators and index models.” Econometrica 61 (5):1199–1223. (Cited on page 61.)
+Nie, Xinkun and Stefan Wager. 2021. “Quasi-oracle estimation of heterogeneous treatment
+effects.” Biometrika 108 (2):299–319. (Cited on page 53.)
+Norets, Andriy. 2012. “Estimation of dynamic discrete choice models using artificial neural
+network approximations.” Econometric Reviews 31 (1):84–106. (Cited on page 13.)
+O’Hagan, Anthony. 1978. “Curve fitting and optimal design for prediction.” Journal of the
+Royal Statistical Society: Series B 40 (1):1–24. (Cited on page 50.)
+Okui, Ryo, Dylan S. Small, Zhiqiang Tan, and James M. Robins. 2012. “Doubly Robust
+Instrumental Variable Regression.” Statistica Sinica 22 (1):173–205. (Cited on page 60.)
+Olsen, Randall J. 1978. “Note on the uniqueness of the maximum likelihood estimator for
+the Tobit model.” Econometrica 46 (5):1211–1215. (Cited on page 65.)
+Padilla, Oscar Hernan Madrid, Wesley Tansey, and Yanzhen Chen. 2022. “Quantile regression
+with ReLU networks: Estimators and minimax rates.” Journal of Machine Learning
+Research 23 (247):1–42. (Cited on page 25.)
+Papke, Leslie E and Jeffrey M Wooldridge. 1996. “Econometric methods for fractional response
+variables with an application to 401 (k) plan participation rates.” Journal of Applied
+Econometrics 11 (6):619–632. (Cited on page 60.)
+Powell, James L., James H. Stock, and Thomas M. Stoker. 1989. “Semiparametric Estimation
+of Index Coefficients.” Econometrica 57 (6):1403–1430. (Cited on page 61.)
+Racine, Jeff and Qi Li. 2004. “Nonparametric estimation of regression functions with both
+categorical and continuous data.” Journal of Econometrics 119 (1):99–130. (Cited on
+page 12.)
+Roberts, Daniel A, Sho Yaida, and Boris Hanin. 2022. The principles of deep learning theory.
+Cambridge, MA, USA: Cambridge University Press. (Cited on page 12.)
+Robins, James, Lingling Li, Eric Tchetgen, and Aad van der Vaart. 2008. “Higher order
+influence functions and minimax estimation of nonlinear functionals.” In Probability and
+Statistics: Essays in Honor of David A. Freedman, vol. 2, edited by Deborah Nolan and
+Terry Speed. Beachwood, Ohio, USA: Institute of Mathematical Statistics. (Cited on
+page 29.)
+Robins, James M., Andrea Rotnitzky, and Lue Ping Zhao. 1994. “Estimation of Regression
+Coefficients When Some Regressors Are Not Always Observed.” Journal of the American
+Statistical Association 89 (427):846–866. (Cited on page 56.)
+———. 1995. “Analysis of Semiparametric Regression Models for Repeated Outcomes in the
+Presence of Missing Data.” Journal of the American Statistical Association 90 (429):846–866.
+(Cited on page 56.)
+37
+
+Robinson, Peter M. 1988. “Root-n-consistent Semiparametric Regression.” Econometrica
+56 (4):931–954. (Cited on page 58.)
+Schmidt-Hieber, Johannes. 2020. “Nonparametric regression using deep neural networks with
+ReLU activation function.” The Annals of Statistics 48 (4):1875–1897. (Cited on page 53.)
+Semenova, Vira and Victor Chernozhukov. 2021. “Debiased machine learning of conditional
+average treatment effects and other causal functions.” The Econometrics Journal 24 (2):264–
+289. (Cited on page 17.)
+Shalit, Uri, Fredrik D. Johansson, and David Sontag. 2017. “Estimating individual treatment
+effect: generalization bounds and algorithms.” In Proceedings of the 34th International
+Conference on Machine Learning, Proceedings of Machine Learning Research, vol. 70, edited
+by Doina Precup and Yee Whye Teh. PMLR, 3076–3085. (Cited on page 53.)
+Spall, James C. 1986. “An approximation for analyzing a broad class of implicitly and explicitly
+defined estimators.” Communications in Statistics-Theory and Methods 15 (12):3747–3762.
+(Cited on page 55.)
+Stone, Charles J. 1982. “Optimal global rates of convergence for nonparametric regression.”
+The annals of statistics :1040–1053. (Cited on page 53.)
+Stone, Charles J., Mark H. Hansen, Charles Kooperberg, and Young K. Truong. 1997.
+“Polynomial splines and their tensor products in extended linear modeling: 1994 Wald
+memorial lecture.” The Annals of Statistics 25 (4):1371–1470. (Cited on page 50.)
+Tambwekar, Anuj, Anirudh Maiya, Soma Dhavala, and Snehanshu Saha. 2022. “Estimation
+and Applications of Quantiles in Deep Binary Classification.” IEEE Transactions on
+Artificial Intelligence 3 (2):275–286. (Cited on page 25.)
+van der Vaart, Aad. 1998. Asymptotic Statistics. Cambridge University Press. (Cited on
+page 43.)
+Varian, Hal R. 2014. “Big Data: New Tricks for Econometrics.” Journal of Economic
+Perspectives 28 (2):3–28. URL https://www.aeaweb.org/articles?id=10.1257/jep.
+28.2.3. (Cited on page 5.)
+Vaswani, Ashish, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
+Łukasz Kaiser, and Illia Polosukhin. 2017. “Attention is all you need.” Advances in neural
+information processing systems 30. (Cited on page 9.)
+Velez, Amilcar. 2024. “On the Asymptotic Properties of Debiased Machine Learning Estimators.” arXiv preprint arXiv:2411.01864 . (Cited on page 16.)
+Wager, Stefan and Susan Athey. 2018. “Estimation and Inference of Heterogeneous Treatment Effects using Random Forests.” Journal of the American Statistical Association
+113 (523):1228–1242. (Cited on page 10.)
+
+38
+
+Wei, Yanhao and Zhenling Jiang. 2025. “Estimating parameters of structural models using
+neural networks.” Marketing Science 44 (1):102–128. (Cited on page 13.)
+Wooldridge, Jeffrey M. 2004. “Estimating average partial effects under conditional moment
+independence assumptions.” cemmap working paper CWP03/04 . (Cited on page 59.)
+———. 2010. Econometric Analysis of Cross Section and Panel Data. Cambridge: MIT
+Press, 2 ed. (Cited on page 64.)
+Yarotsky, Dmitry. 2017. “Error bounds for approximations with deep ReLU networks.” Neural
+Networks 94:103–114. (Cited on pages 26 and 43.)
+———. 2018. “Optimal approximation of continuous functions by very deep ReLU networks.”
+arXiv preprint arXiv:1802.03620 . (Cited on page 26.)
+Zadrozny, Bianca. 2004. “Learning and evaluating classifiers under sample selection bias.”
+ICML ’04. New York, NY, USA: Association for Computing Machinery, 114. URL https:
+//doi.org/10.1145/1015330.1015425. (Cited on page 6.)
+Zeileis, Achim, Torsten Hothorn, and Kurt Hornik. 2008. “Model-based recursive partitioning.”
+Journal of Computational and Graphical Statistics 17 (2):492–514. (Cited on page 13.)
+Zhang, Cun-Hui and Stephanie S. Zhang. 2014. “Confidence intervals for low dimensional
+parameters in high dimensional linear models.” Journal of the Royal Statistical Society.
+Series B 76 (1):217–242. (Cited on page 28.)
+
+39
+
+Appendix A
+A.1
+
+Proofs
+
+Bounds Structural Deep Learning – Theorem 1
+
+Here we prove Theorem 1, using the proof method of Farrell, Liang, and Misra (2021). Some
+details will be deferred to that paper.
+Define θn ∈ Fdnn as the best approximation to θ ⋆ in the class of DNNs as defined in the
+theorem statement and let ϵn denote the error of the approximation:
+θn = arg min ∥θ − θ ⋆ ∥∞ ,
+
+ϵn = ∥θn − θ ⋆ ∥∞ .
+
+θ∈Fdnn
+
+For the MLP case, under Assumption 2 this error is controlled by the width and depth, and
+we specify to this case at the end of the proof. For now we leave the error generic to allow for
+other approximation assumptions (such as other smoothness classes) and other architectures.
+By Assumption 1 and that θb optimizes ℓ over Fdnn in the data,
+h
+i
+⋆
+2
+b
+c1 E ∥θ(X) − θ (X)∥2
+b
+≤ E[ℓ(Y , T , θ(X))]
+− E[ℓ(Y , T , θ ⋆ (X))]
+b
+b
+≤ E[ℓ(Y , T , θ(X))]
+− E[ℓ(Y , T , θ ⋆ (X))] − En [ℓ(Y , T , θ(X))]
++ En [ℓ(Y , T , θn (X))]
+h
+i
+b
+= (E − En ) ℓ(Y , T , θ(X))
+− ℓ(Y , T , θ ⋆ (X)) + En [ℓ(Y , T , θn (X)) − ℓ(Y , T , θ ⋆ (X))] .
+
+Applying Farrell, Liang, and Misra (2021, Equation (A.2)) to the second term of the last line
+above, we find that with probability 1 − e−γ
+
+h
+i
+⋆
+2
+b
+c1 E ∥θ(X) − θ (X)∥2
+h
+
+i
+b
+≤ (E − En ) ℓ(Y , T , θ(X))
+− ℓ(Y , T , θ ⋆ (X)) + c2 ϵ2n + ϵn
+
+r
+
+2Cℓ2 γ 7Cℓ M γ
++
+. (A.1)
+n
+n
+
+We now apply the localization-based analysis of Farrell, Liang, and Misra (2021) to the first
+
+40
+
+⋆
+b
+term above and then collect the results. Suppose that for some r0 , E[∥θ(X)−θ
+(X)∥22 ]1/2 ≤ r0 ,
+0
+which can always be attained given the boundedness. Let Fdnn
+be the subset of Fdnn such
+0
+that θ ∈ Fdnn
+if E[∥θ(X) − θ ⋆ (X)∥22 ]1/2 ≤ r0 . Then by Theorem 2.1 in Bartlett, Bousquet,
+0
+and Mendelson (2005), for G = {g = ℓ(y, t, θ(x)) − ℓ(y, t, θ ⋆ (x)) : θ ∈ Fdnn
+}, we find that,
+
+with probability at least 1 − 2e−γ , the empirical process term of (A.1) is bounded as
+h
+i
+⋆
+b
+(E − En ) ℓ(Y , T , θ(X)) − ℓ(Y , T , θ (X)) ≤ 6Eη Rn G +
+
+r
+
+2Cℓ2 r02 γ 23 · 3M Cℓ γ
++
+, (A.2)
+n
+3
+n
+
+where
+n
+
+n
+
+1X
+1X
+ηi g(wi ) = sup
+ηi (ℓ(y, t, θ(x)) − ℓ(y, t, θ ⋆ (x))) .
+0
+n
+n
+g∈G
+θ∈Fdnn
+i=1
+i=1
+
+Rn G = sup
+
+is the empirical Rademacher complexity and Eη Rn G is its expectation holding fixed the data,
+i.e. over the i.i.d. Rademacher variables ηi . The argument given in Section A.2.2 of Farrell,
+Liang, and Misra (2021) does not apply directly to Eη Rn G because θ is vector valued. Instead,
+we replace Lemma 2 therein with Maurer (2016, Corollary 1), which in our context yields
+(below ηik ’s denote i.i.d. Rademacher random variables)
+dθ
+n
+n
+X
+√
+
+1X
+1X
+⋆
+Eη sup
+ηi (ℓ(y, t, θ(x)) − ℓ(y, t, θ (x))) ≤ 2Cℓ Eη sup
+ηik θk (xi ) − θk⋆ (xi )
+0
+0
+n i=1
+n i=1
+θ∈Fdnn
+θ∈Fdnn
+k=1
+
+≤
+
+√
+
+dθ
+X
+
+n
+
+1X
+2Cℓ
+Eη sup
+ηik θk (xi ) − θk⋆ (xi ) ,
+0
+n i=1
+θk ∈Fdnn,k
+k=1
+
+with the second inequality following because the class of DNNs Fdnn we use is decomposable
+with respect to each coordinate, and therefore we can bound one coordinate at a time.
+We then apply Section A.2.1 and Lemmas 3 and 4 of Farrell, Liang, and Misra (2021) to
+the term for each component function θk , k = 1, . . . , dθ , yielding
+
+Eη
+
+sup
+
+n
+1X
+
+0
+n i=1
+θk ∈Fdnn,k
+
+s
+
+ηik θk (xi ) − θk⋆ (xi ) ≤ 32r0
+
+41
+
+Pdim(Fdnn,k )
+n
+
+
+
+
+2eM
+3
+log
++ log n ,
+r0
+2
+
+with probability 1 − exp−γ , where Pdim(F) is the pseudo-dimension of the class F. Therefore,
+whenever r0 ≥ 1/n and n ≥ (2eM )2 ,
+n
+
+1X
+Eη sup
+ηi (ℓ(y, t, θ(x)) − ℓ(y, t, θ ⋆ (x))) ≤ Kr0
+0
+n i=1
+θ∈Fdnn
+
+r
+
+Pdim(Fdnn )
+log n,
+n
+
+for a constant K that depends on Cℓ and dθ .
+This last bound is then combined with (A.2) and put into (A.1) and we find that
+h
+i
+b
+c1 E ∥θ(X)
+− θ ⋆ (X)∥22
+r
+r
+r
+Pdim(Fdnn )
+2Cℓ2 r02 γ 23 · 3M Cℓ γ
+2Cℓ2 γ 7Cℓ M γ
+2
+≤ 6Kr0
+log n +
++
++ c2 ϵn + ϵn
++
+n
+n
+3
+n
+n
+n
+!
+r
+r
+r
+2
+2
+γ
+Pdim(Fdnn )
+2Cℓ γ
+2Cℓ γ
+log n +
++ K2
+≤ r0 6K
++ c2 ϵ2n + ϵn
+n
+n
+n
+n
+!
+r
+r
+r
+γ
+QL log(Q)
+2Cℓ2 γ
+2Cℓ2 γ
+≤ r0 K1
+log n +
++ K2 ,
+(A.3)
++ c2 ϵ2n + ϵn
+n
+n
+n
+n
+for constants K1 and K2 , where the final inequality applies Theorem 6 in Bartlett et al.
+(2017) to bound the pseudo-dimension of ReLU networks in terms of their depth L and total
+parameters Q.
+⋆
+b
+The bound of Equation (A.3), reached under the assumption that E[∥θ(X)−θ
+(X)∥22 ]1/2 ≤
+
+r0 , provides the key input into Sections A.2.3 and A.2.4 of Farrell, Liang, and Misra (2021),
+which now go through with only change to the constants to capture the dependence on dθ .
+Following those steps exactly we find that with probability 1 − e−γ1 ,
+
+
+h
+i
+QL log(Q)
+log log n + γ1
+⋆
+2
+2
+b
+E ∥θ(X) − θ (X)∥2 ≤ C
+log n +
++ ϵn
+n
+n
+
+
+h
+i
+log log n + γ1
+QL log(Q)
+⋆
+2
+′
+2
+b
+En ∥θ(X) − θ (X)∥2 ≤ C
+log n +
++ ϵn ,
+n
+n
+
+(A.4)
+
+for positive constants C and C ′ which do not depend on n but depend on the constants given
+in Assumption 1 and as well as the dimensionalities, including dθ .
+To specialize this result to the MLP case, for which the total number of parameters obeys
+42
+
+Q ≤ CJ 2 L, we use the approximation result from Theorem 1 of Yarotsky (2017), or its
+restatement in Lemma 7 of Farrell, Liang, and Misra (2021). This result tell us that for each
+θk⋆ , the following holds for width J, depth L, and approximation error ϵn :
+− dc
+
+J = J(ϵn ) ≤ Q(ϵn )L(ϵn ) ≤ C 2 ϵn p (log(1/ϵn ) + 1)2 ,
+L = L(ϵn ) ≤ C · (log(1/ϵn ) + 1).
+
+Therefore, a network that is dθ times wider can yield the same approximation for θ ⋆ .
+Importantly, only dc matters here. To see why, suppose X1 is binary. Then for two smooth,
+⋆
+⋆
+⋆
+(dX − 1)-dimensional functions θk,1
+and θk,0
+, it holds that θk⋆ (x) = x1 θk,1
+(x2 , . . . , xdX ) + (1 −
+⋆
+(x2 , . . . , xdX ). Adding a single node to each hidden layer allows the network to pass
+x1 )θk,0
+
+forward the input x1 and multiply it with two separate learned functions just prior to the
+parameter, giving exactly θbk (x) = x1 θbk,1 (x2 , . . . , xdX ) + (1 − x1 )θbk,0 (x2 , . . . , xdX ). (Intuitively,
+b
+this is similar to the combination of α
+b(x) and β(x)
+in Figure B.1, with t there playing the
+role of the binary x1 here.) The same argument can be applied to every category of the
+discrete data and to each function to be learned. Since dX is fixed, this results in only a
+p
+
+constant increase in the width of the network. Put together, we take ϵn = n− 2(p+dc ) , i.e.
+dc
+
+J ≍ n 2(p+dc ) log2 n, L ≍ log n, and we obtain the final result.
+
+A.2
+
+Influence Function and Asymptotic Normality
+
+To prove Theorem 2 we first derive the influence function, then we apply standard DML
+results to obtain the limiting distribution. Our derivation of the influence function applies
+Newey (1994). For deeper treatments of influence functions, including efficiency bounds and
+conditions for existence, see Newey (1990), Newey (1994), van der Vaart (1998, Chapter 25),
+and Ichimura and Newey (2022).
+The starting point is a parametric submodel, indexed by a parameter η. Because our
+first stage (3.3) is explicitly based on enriching the parametric structural model (3.1), our
+
+43
+
+submodels are as well-behaved as the original model and derivatives in the submodel are
+well-understood ordinary derivatives of the original structural model. For the calculation,
+distributions and other nonparametric objects are indexed by η, and thus we define θ(x; η)
+and µ⋆ (η) as
+Z
+
+⋆
+
+θ (·; η) = arg min
+
+ℓ (w, b(x)) fw (w; η)dw
+
+(A.5)
+
+b
+
+and
+Z
+
+⋆
+
+µ (η) =
+
+
+H x, θ(x; η); t̃ fx (x; η)dx,
+
+(A.6)
+
+where fw and fx are the distributions of w = (y ′ , t′ , x′ )′ and x respectively. For notational
+simplicity, we will assume throughout the derivation that such densities exist. The true data
+generating process is obtained at η = 0. When evaluating at η = 0 we will often omit the
+dependence on η, such as fx (x; η) = fx (x), θ(x; 0) = θ ⋆ (x), or E[·] for expectations with
+respect to the true distribution.
+The pathwise derivative approach proceeds, as in Newey (1994) and others, by finding a
+function ψ(w) such that
+∂µ(η)
+= E[ψ(W )S(W )],
+∂η η=0
+
+(A.7)
+
+for the (true) score S(w) = S(w; η)|η=0 .
+The first step is differentiating (A.6) with respect to the parameter η, and evaluating this
+at η = 0. The product rule and the chain rule yield
+Z
+
+
+∂µ(η)
+∂
+=
+H x, θ(x; η); t̃ fx (x; η)dx
+∂η η=0 ∂η
+η=0
+
+Z
+Z
+ ∂fx (x; η)
+∂H x, θ(x; η); t̃
+= H x, θ(x; 0); t̃
+dx +
+fx (x; 0)dx,
+∂η
+∂η
+η=0
+η=0
+Z
+Z
+
+∂f
+(x;
+η)
+x
+= H x, θ ⋆ (x); t̃
+dx + Hθ (x, θ ⋆ (x); t̃)θη (x)fx (x)dx, (A.8)
+∂η
+η=0
+where θη (x) = θη (x; 0) is the dθ -vector gradient of θ(x; η) with respect to η, evaluated at
+
+44
+
+η = 0, given by
+θη (x; 0) =
+
+∂θ(x; η)
+,
+∂η
+η=0
+
+and Hθ (x, θ ⋆ (x); t̃) is the dµ × dθ Jacobian of H with respect to θ, evaluated at η = 0, that
+is, the matrix with {h, k} element, for h = 1, . . . , dµ , k = 1, . . . , dθ , given by
+h
+
+i
+Hθ (x, θ ⋆ (x); t̃)
+
+=
+h,k
+
+∂Hh (x, b; t̃)
+,
+∂bk
+b=θ(x;0)
+
+with Hh the hth element of H and bk the k element of b. For intuition, note that element
+h = 1, . . . , dµ of the dµ -vector Hθ (x, θ ⋆ (x); t̃)θη (x) is
+dθ
+X
+∂Hh (x, b; t̃)
+∂θk (x; η)
+∂Hh
+=
+.
+∂η η=0 k=1
+∂bk
+∂η
+b=θ(x;0)
+η=0
+
+We will show that both terms of Equation (A.8) above can be written as expectations of
+products with the full score S(w), as required by (A.7). We will often use the standard facts
+that scores are mean zero and that
+
+S(y, x, t) = S(y, t | x) + S(x).
+
+(A.9)
+
+The first term of Equation (A.8) is
+Z
+
+H x, θ ⋆ (x); t̃
+
+ ∂fx (x; η)
+
+
+
+dx = E H X, θ ⋆ (x); t̃ S(X)
+∂η
+η=0
+
+
+
+= E H X, θ ⋆ (x); t̃ S(Y , X, T ) ,
+
+(A.10)
+
+where the first equality holds because the marginal score obeys S(x)fx (x) = ∂fx (x; η)/∂η|η=0
+and the second equality follows from the usual mean zero property of scores and (A.9):
+h
+i
+
+
+E H(X, θ ⋆ (x), t̃)S(Y , T | X) = E H(X, θ ⋆ (x), t̃)E [S(Y , T | X) | X] = 0.
+
+45
+
+This first term is then the standard “plug-in” portion of the influence function, that is, the
+b
+term that would appear if θ ⋆ (x) were known (or if θ(x)
+were fixed). The second term of
+Equation (A.8) will give rise to the correction factor that accounts for the nonparametric
+estimation.
+To find this correction factor, we must find θη (x) = ∂θ(x; η)/∂η|η=0 . This is a key step
+in the derivation, and crucially leverages the structure of the model ℓ and the fact that ℓ
+depends on θ(·) only through evaluation at a single point and only through X. We will use
+these facts to derive and expression for ∂θ(x; η)/∂η, which involves the appropriate scores
+and then may be substituted into (A.8) to yield the required form.
+We begin with the fact that the first order condition holds as an identity in η and
+conditional on X. That is, as an identity in η,
+
+Eη [ℓθ (W , θ(x; η))| X = x] ≡ 0,
+
+(A.11)
+
+where ℓθ is the dθ -vector gradient of ℓ with respect to θ, given by
+∂ℓ (w, b)
+.
+∂b
+b=θ(x;η)
+
+ℓθ (w, θ(x; η)) =
+
+The expectation is also indexed by η in the submodel, as the density depends on η. To be
+explicit, as an identity in η we have
+Z
+
+∂ℓ (w, b)
+fy,t|x (y, t; η | x)dydt ≡ 0.
+∂b
+b=θ(x;η)
+
+Define ℓθθ (w, θ(x; η)) as the dθ × dθ matrix of second derivatives of ℓ (w, b) with respect to
+b, evaluated at b = θ(x; η). That is, ℓθθ (w, θ(x; η)) has {k1 , k2 } element given by
+h
+
+i
+ℓθθ (w, θ(x; η))
+
+=
+k1 ,k2
+
+46
+
+∂ 2 ℓ (w, b)
+,
+∂bk1 ∂bk2 b=θ(x;η)
+
+where bk1 and bk2 are the respective elements of b. With this notation, differentiating the
+above identity with respect to η and applying the chain rule we find
+Z
+
+∂fy,t|x (y, t; η | x)
+∂ℓ (w, b(x))
+dydt
+∂b
+∂η
+b=θ(x;η)
+Z
++ ℓθθ (w, θ(x; η))θη (x; η)fy,t|x (y, t; η | x)dydt = 0,
+
+where the second term captures the derivatives of ℓθ (w, θ(x; η)) with respect to η, and recall,
+θη (x; η) is the dθ -vector gradient of θ with respect to η, and is the key ingredient.
+Evaluating this result at η = 0, we obtain
+
+E [ℓθ (W , θ ⋆ (x))S(Y , T | X)| X] + E [ ℓθθ (W , θ ⋆ (x))θη (x)| X] = 0,
+
+(A.12)
+
+where S(Y , T | X) is the conditional score and is obtained because S(y, t | x)fy,t|x (y, t |
+x) = ∂fy,t|x (y, t; η | x)/∂η η=0 . Rearranging (A.12), and using that θ is only a function of
+X, gives
+
+E [ℓθθ (W , θ ⋆ (x))| X] θη (x) = −E [ℓθ (W , θ ⋆ (x))S(Y , T | X)| X] .
+Then, because Λ(x) := E [ℓθθ (W , θ ⋆ (x))| X = x] is invertible, we have
+θη (x) = −E [ℓθθ (W , θ ⋆ (x))| X]−1 E [ℓθ (W , θ ⋆ (x))S(Y , T | X)| X]
+
+
+= −E Λ(x)−1 ℓθ (W , θ ⋆ (x))S(Y , T | X) X .
+
+Substituting this into the second term of Equation (A.8) and applying iterated expectations,
+we have
+Z
+
+h
+
+i
+Hθ (x, θ ⋆ (x); t̃)θη (x)fx (x)dx = −E Hθ (X, θ ⋆ (X); t̃)E Λ(X)−1 ℓθ (W , θ ⋆ (x))S(Y , T | X) X
+h 
+i
+−1
+⋆
+= −E E Hθ (X, θ(X); t̃)Λ(X) ℓθ (W , θ (x))S(Y , T | X) X
+47
+
+h
+i
+= −E Hθ (X, θ ⋆ (X); t̃)Λ(X)−1 ℓθ (W , θ ⋆ (x))S(Y , T | X) .
+
+Next, because the first order condition holds conditionally,
+
+h
+i
+E Hθ (X, θ ⋆ (X); t̃)Λ(X)−1 ℓθ (W , θ ⋆ (x))S(X)
+h
+i
+⋆
+−1
+⋆
+= E Hθ (X, θ (X); t̃)Λ(X) E [ℓθ (W , θ (x)) | X] S(X) .
+
+Therefore, continuing from the previous display and applying (A.9), the second term of
+Equation (A.8) is of the required form:
+h
+i
+−E Hθ (X, θ ⋆ (X); t̃)Λ(X)−1 ℓθ (W , θ ⋆ (x))S(Y , T , X)
+
+(A.13)
+
+Combining Equations (A.10) and (A.13) with (A.8), we find that
+
+
+
+∂µ(η)
+= E H X, θ ⋆ (x); t̃ S(Y , X, T )
+∂η η=0
+h
+i
+⋆
+−1
+⋆
+− E Hθ (X, θ (X); t̃)Λ(X) ℓθ (W , θ (x))S(Y , T , X) . (A.14)
+
+Thus we have verified Equation (A.7) with
+
+
+ψ(w) = H x, θ ⋆ (x); t̃ − Hθ (x, θ ⋆ (X); t̃)Λ(x)−1 ℓθ (w, θ ⋆ (x)).
+
+(A.15)
+
+This is not an influence function as it lacks the appropriate centering, but of course
+E[µ⋆ S(W )] = µ⋆ E[S(W )] = 0, and thus we can freely center this ψ(t) and still obey
+(A.7).
+
+A.2.1
+
+Asymptotic Normality
+
+The asumptotic Normality of Theorem 2 follows from Theorems 3.1 and 3.2 of Chernozhukov
+et al. (2018a) upon verifying Assumptions 3.1 and 3.2 therein. Assumption 3.1(a) holds for
+48
+
+ψ(y, t, x, θ, Λ) − µ⋆ given in Equation (3.6): the first term of ψ has mean µ⋆ by definition
+in (3.4) while the second is (conditionally) mean zero as assumed in Assumption 3, with
+Λ(x)−1 uniformly bounded. Assumption 3.1(b), linearity, holds by definition of (3.4) and the
+form of the score in Equation 3.6. Assumption 3.1(c) holds by Assumption 3, in particular
+the assumed smoothness and the nonsingularity of Λ(x). Assumption 3.1(d), Neyman
+orthogonality, is verified directly by the calculation of the influence function. Assumption
+3.1(e) holds trivially as the matrix J0 therein is the identity. Assumption 3.2, parts (b) and
+(d) follow directly from the moment conditions imposed. Conditions (a) and (c) follow from
+Equations (3.7) and (3.8) of Chernozhukov et al. (2018a) and the assumed convergence of
+the first stage estimates.
+
+Appendix B
+
+Generalized Linear Models
+
+To help illustrate our results, and because it is a leading use case, this section specializes to
+modeling the conditional mean with a linear index. This model will also help us link to prior
+work, both in nonparametrics and semiparametrics.
+The parametric structural model in this case is determined by the conditional mean
+restriction on a scalar outcome Y given a vector of explanatory variables T . Assume that
+
+E[Y | T = t] = G(α⋆ + β ⋆ ′ t),
+
+(B.1)
+
+for an inverse link function G(u) : R → R. The full model may come with assumptions about
+variances and other parts of the data generating process. Standard examples include linear
+and logistic regression. Slope coefficients β ⋆ in such models, along with marginal effects in
+nonlinear models, are among the most commonly studied objects in empirical research.
+To enrich this model with ML, we change the intercept and slope to the parameter
+
+49
+
+functions θ ⋆ (x) = (α⋆ (x), β ⋆ (x)′ )′ and assume that
+
+E[Y | T = t, X = x] = G(α⋆ (x) + β ⋆ (x)′ t).
+
+(B.2)
+
+This formulation maintains the structural relationship between T and Y but allows for rich
+heterogeneity in X. In contrast to our structured approach, the naive ML approach would
+treat X and T as equally informative about Y , and assume that for an unknown η(t, x) to
+be estimated
+E[Y | T = t, X = x] = G(η(x, t)),
+
+(B.3)
+
+or often simply E[Y | T = t, X = x] = η(x, t), without even the structure of the inverse link.
+Remark B.1 (Origins of Model (B.2)). Models of the form (B.2) are common in the literature,
+referred to as a “varying coefficient” model (Cleveland, Grosse, and Shyu, 1991; Hastie and
+Tibshirani, 1993), “functional coefficient” model (Chen and Tsay, 1993), or “smooth coefficient”
+model (Li et al., 2002), and falls into the class of “extended linear models” as in Stone et al.
+(1997). O’Hagan (1978) may be the earliest treatment. Our results apply to all these cases as
+well as other similar models including generalized additive models or further restrictions such
+as partially linear models. See also Remarks B.2 and B.3 and other discussion in Appendix
+♣
+
+C.
+
+Deep learning architectures to estimate these two models are shown in Figure B.1. The
+loss function is the same in both cases. Panel (a) is the standard ML approach as available
+in standard software. All information in (X ′ , T ′ ) is fed into the hidden layers. Panel (b)
+specializes Figure 1 to force the expressivity to learn the slope and intercept parameter
+functions in order to reduce the loss. The figure illustrates how easy it is to implement the
+structural approach, with only an extra line or two of code. As an aside, Figure B.1 also
+illustrates how our method (and theory) applies to generalized additive models, where the
+different components of θ ⋆ are known to rely on different subsets of X: we simply sever the
+50
+
+Hidden
+layers
+
+Inputs
+
+Inputs
+
+Prediction
+
+Hidden
+layers
+
+Parameter Model
+layer
+layer
+
+x1
+
+α
+b(x)
+
+x1
+ηb(x, t)
+
+xd
+
+t
+
+yb = G(·)
+xd
+b
+β(x)
+
+t
+
+(a) Standard prediction architecture
+
+yb = G(·)
+
+(b) Structured deep learning
+
+Figure B.1: Comparing the standard prediction-focused architecture to learning parameter
+functions using the structured approach, matching the models of (B.3) and (B.2) respectively.
+appropriate links, so that separate networks feed into the parameter layer nodes according to
+the model.
+Interpreting β ⋆ (x) in (B.2) is the same as interpreting the original (homogeneous) slope
+β ⋆ in (B.1). In contrast, (B.3) is unstructured and uninterpretable. Here η(x, t) is truly a
+nuisance function, where “nuisance” is taken literally to mean annoying and uninteresting.
+Economically, as demonstrated in Section 2, the lack of structure makes this output not useful.
+It is difficult, if not impossible, to recover many second stage objects without structure,
+beyond (weighted) average derivatives. Further, from a statistical point of view, η(x, t) can
+only be learned at a much slower rate, governed by dX + dT , compared to learning β ⋆ (x)
+which depends only upon dX . Though generally assumed away in theory since all dimensions
+are finite, this difference matters in applications. All in all, it is better to view (B.2) as an
+enriched version of (B.1) rather than a restricted version of (B.3).
+
+B.1
+
+Deep Neural Networks for Generalized Linear Models
+
+The theoretical results for deep neural networks (this subsection) and inference (next subsection) for the special case of the model (B.2) are useful to illustrate the required assumptions
+and compare to prior work. Further, these special cases are directly useful in many applications, given the popularity of the model.
+51
+
+For first step estimation, we can verify the high level conditions using the following
+familiar, primitive assumptions.
+Assumption 4. (i) The conditional expectation G(α⋆ (x) + β ⋆ (x)′ t) enters the loss through
+a known, real-valued transformation g(·), where (i) g and G are continuously invertible and
+g/∥g∥∞ and G/∥G∥∞ belong to W p,∞ ([−1, 1]), for p ≥ 3. (ii) Assumption 1 holds with
+ℓ(y, t, θ(x)) replaced by ℓ(y, g), and the conditions therein apply to the scalar argument g.
+(iii) The eigenvalues of E[T T ′ | X = x] are bounded and bounded away from zero uniformly
+in x.
+Condition (i) ensures that the loss function is sufficiently smooth while (ii) and (iii)
+ensures the curvature through the standard positive variance condition. These conditions
+are familiar from the parametric case, where, for example, assuming that E[T T ′ ] is positive
+definite would be standard.
+Specializing Theorem 1 to this case, we have the following result.
+Corollary B.1. Let the conditions of Theorem 1 and Assumption 4 hold. Then for a DNN
+p
+
+structured according to Figure B.1, ∥b
+α − α⋆ ∥2L2 (X) = O(n− p+dc log8 (n)) and ∥βbk − β ⋆ ∥2L2 (X) =
+p
+
+b ′ t)−G(α⋆ (x)+β ⋆ (x)′ t)∥2
+O(n− p+dc log8 (n)) for k = 1, . . . , dT . Further ∥G(b
+α(x)+ β(x)
+L2 (X) =
+p
+
+O(n− p+dc log8 (n)).
+Here we give two simple results (cf the more full statement in Theorem 1). First, we show
+that we can estimate the heterogeneous intercept and slope parameters at the appropriate rate,
+depending on the (continuous) dimension of the heterogeneity. This is direct from Theorem
+1. This is required as economic constructs depend on these parameters, rather than on the
+conditional expectation function as a whole. But we also give a result for the mean function
+in the enriched model (B.2). This result may be of independent interest, as it establishes
+that structural deep learning has good statistical properties in varying coefficient models,
+additive models, and other such cases. It is also useful for comparing to the more typical
+use of inference after ML, where the (prediction) function E[Y |x, t] would be unstructured
+52
+
+and would be learnable at a rate dependent on dX + dT . For example, it is much easier
+(statistically) to estimate E[β ⋆ (X)] than the average derivatives E[∂G(η(X, T ))/∂t], even
+though both are linear summaries of the dependence of Y on T .
+Remark B.2 (Adaptivity). Specific forms of deep neural networks are known to be adaptive
+to structures like (B.2) in the sense that if the structure holds, then even if estimation
+is done under the generic (B.3), the estimator will still obtain the same rate as though
+(B.2) was imposed (Bach, 2017; Bauer and Kohler, 2019; Schmidt-Hieber, 2020). This is
+perhaps not surprising, since neural networks are based on compositions and (B.2) is based
+on a composition of simpler functions. This is still not useful for our purpose because
+θ ⋆ (x) = (α⋆ (x), β ⋆ (x))′ cannot be recovered from an adaptive procedure and used in the
+second stage. The estimator statistically adapts to the structure, but not economically.
+Economic structure is enforced on the data, not discovered from the data, as demonstrated
+in Section 2. Further, experience shows that, despite the (asymptotic) theory of adaptivity,
+finite sample performance is improved by structure.
+
+♣
+
+Remark B.3 (CATE Estimation). A large recent strand of machine learning literature
+studies the conditional average treatment effect (CATE) function, which corresponds to
+β ⋆ (x) in (B.2) with identity G(u) and a scalar, binary T (so that (B.2) is without loss
+of generality, i.e. equivalent to (B.3)). Farrell, Liang, and Misra (2021) study this case.
+Under certain conditions β ⋆ (x), being the difference between two prediction functions, can
+be recovered faster than the typical nonparametric bound of Stone (1982), which is itself
+faster than Corollary B.1. Generally, this is possible when β(x) is somehow “simpler” than
+its components, such as being smoother or lower dimensional. See, for example, Shalit,
+Johansson, and Sontag (2017) and Nie and Wager (2021) for early important work, Kennedy
+(2023) for fast rates and much other discussion, Foster and Syrgkanis (2023) for global
+bounds including sharp risk bounds, and finally Kennedy et al. (2024) for quantifying the
+minimax bound precisely. Some of these methods rely on orthogonal scores, and so it would
+53
+
+be interesting to see if our score and neural networks could be adapted to provide similar
+rate improvements in other economic contexts. Athey, Tibshirani, and Wager (2019) is also
+♣
+
+related here, though adaptivity is not discussed therein.
+
+B.2
+
+Influence Function for Generalized Linear Models
+
+Specializing our influence function to case of (B.2) helps connect with past work. To save
+notation, define T1 = (1, T ′ )′ , G0 (x, t) = G(α⋆ (x) + β ⋆ (x)′ t), and Ġ0 (x, t) = dG(u)/du at
+u = α⋆ (x)+β ⋆ (x)′ t. If we take the standard approach where ℓθ (y, t, θ(x)) = T1 (G0 (x, t)−y),
+the influence function is
+
+
+ψ(y, t, x, θ, Λ) = H x, θ(x); t̃ + Hθ (x, θ(x); t̃)−1 T1 (y − G0 (x, t)),
+
+(B.4)
+
+with Λ(x) = E[Ġ0 (x, T )T1 T1′ | X = x]. Further, if dT = dµ = 1, so that β ⋆ = (α⋆ , β ⋆ )′ , this
+can be written
+ψ(y, t, x, θ, Λ) = H x, θ(x); t̃
++
+
+
+
+
+Hα (x) (λ2 (x) − λ1 (x)t) + Hβ (x) (λ0 (x)t − λ1 (x)) 
+y
+−
+G
+(x,
+t)
+,
+0
+λ2 (x)λ0 (x) − λ1 (x)2
+(B.5)
+
+where λk (x) = E[Ġ0 (x, T )T k |X = x], k = {0, 1, 2}, Hα (x) = ∂H(x, θ(x); t̃)/∂α, and
+Hβ (x) = ∂H(x, θ(x); t̃)/∂β. In nonlinear models the need for three-way sample splitting is
+clear: the regressand of Λ(x) = E[Ġ0 (x, T )T1 T1′ | X = x] depends on the unknown θ ⋆ (x)
+through Ġ0 (x, T ), which must be estimated in a first step. For linear models, three splits are
+not necessary.
+This result recovers several known influence functions. For linear models, it matches
+Hahn (1998) for binary treatments and Graham and de Xavier Pinto (2022) for continuous.
+For mean square projections in general, see Newey (1994). For semiparametric regression,
+where β ⋆ is assumed constant, our result gives valid inference but does not match the efficient
+54
+
+influence function (Mammen and van de Geer, 1997) because we do not impose the constancy.
+We can also effortlessly obtain new results. For example, in Section 4 we conduct
+inference on the fully flexible average marginal effects in a logistic regression, where µ⋆ =
+E[Ġ(α⋆ (X) + β ⋆ (X)′ T )β ⋆ (X)]. In this case the function H and its derivatives are available
+in closed form, and the derivatives of the loss are well known, but again, this is not necessary.
+We also use (B.4) for a function H that is not available in closed form (Spall, 1986; Jorgensen,
+1993).
+
+B.3
+
+Proof of Corollary B.1
+
+For this derivation, define T1 = (1, T ′ )′ and recall that θ ⋆ = (α⋆ , β ⋆ ′ )′ (and similarly
+for realizations, estimators, etc). First, consider identification. Since G is invertible and
+conditional expectations are always identified, the quantity G−1 (E[Y | X = x, T = t])
+is identified. Suppose that θ ⋆ (x) is not identified. Then there exists θ1 (x) and θ2 (x)
+such that G−1 (E[Y | X = x, T = t]) = θ1 (x)′ T1 = θ2 (x)′ T1 a.e. or equivalently that for
+θ∗ (x) = θ1 (x) − θ2 (x), θ∗ (x)′ T1 = 0. But θ∗ (x)′ T1 = 0 a.e. implies that
+h
+i
+2
+0 = E (θ∗ (x)′ T1 ) | X = x = θ∗ (x)′ E[T1 T1′ |X]θ∗ (x),
+
+but because the middle matrix is positive definite, this means that θ∗ (x) is zero. For linear
+G, this argument is given in Huang and Shen (2004) and elsewhere.
+The estimation bounds follow immediately from Theorem 1, given the conditions of
+Assumption 4. The fact that E[T1 T1′ | X] is (uniformly) positive yields
+
+
+′
+
+
+′
+⋆
+b
+b
+= EX θ(X)
+− θ (X) E[T1 T1 | X] θ(X)
+− θ (X)
+
+′ 
+
+⋆
+⋆
+b
+b
+≥ CEX θ(X) − θ (X)
+θ(X) − θ (X) .
+⋆
+
+This verifies the curvature condition on the loss function. The continuity condition holds
+
+55
+
+because the loss is smooth in g and the linear index can be recovered from g(G(θ(x)′ T1 )).
+The structure of the network ensures that the network and the smoothness of the loss imply
+that the approximation and bounds immediately apply to the function g(G(θ(x)′ T1 )), and
+the smoothness of these functions mean that the linear index θ(x)′ T1 can be recovered.
+
+Appendix C
+
+Examples and Discussion
+
+In this section we discuss a few special cases of our methodology to build intuition and
+connect to prior work, particularly other work on semiparametric inference. These examples
+help place our work in the literature, illustrate how familiar models can be enriched with
+deep learning, and show how the identification assumptions required on parametric models
+carry over.
+
+C.1
+
+Average Effect of a Binary Treatment
+
+Perhaps the most well known and commonly used influence function is for the average effect of
+a binary treatment in observational data. The history of this influence function is illustrative:
+it was characterized precisely first for the purposes of efficiency considerations (Hahn, 1998),
+later used to show that certain plug-in estimators could be efficient (Hirano, Imbens, and
+Ridder, 2003; Imbens, Newey, and Ridder, 2007) under strong assumptions, then recently
+used to obtain valid (and in this case efficient) inference under weaker first-stage conditions
+(Cattaneo, 2010; Farrell, 2015). This influence function matches the doubly robust estimator
+(Robins, Rotnitzky, and Zhao, 1994, 1995) and has been used in other contexts to obtain
+sharper results, see Remarks B.3 and 5.3.
+Here we have a scalar outcome and T = T = {0, 1} is the scalar binary treatment indicator.
+Let Y (t) be the potential outcome under treatment T = t and assume that the observed
+outcome Y = T Y (1) + (1 − T )Y (0) along with unconfoundedness. The parameter of interest is
+µ⋆ = E[Y (1)−Y (0)]. In a randomized experiment without additional covariates, one estimates
+
+56
+
+µ⋆ with a difference in means, which is equivalent to running a regression of the observed
+outcome Y on the dummy variable T . The enriched structural version is then (B.2), with
+G(u) = u, so that E[Y | x, t] = α⋆ (x) + β ⋆ (x)t. In this notation, β ⋆ (x) = E[Y (1) − Y (0) | x]
+is the conditional average treatment effect (CATE) function.
+The average treatment effect µ⋆ = E[β ⋆ (X)] is defined via H(x, θ ⋆ ; t̃) = β ⋆ . Equation
+(B.5) matches Hahn (1998), because in this case Hα = 0, Hβ = 1, λ0 = 1, and λ1 (x) =
+λ2 (x) = P[T = 1|X = x] := p(x), the propensity score, and so by adding and subtracting
+p(x) and using the fact that (1 − t)t = 0, we have
+Ḣ1 (x)(λ2 (x) − λ1 (x)t) + Ḣ2 (x)(λ0 (x)t − λ1 (x))
+(y − G(θ(x)′ t))
+2
+λ2 (x)λ0 (x) − λ1 (x)
+(t − p(x))(y − α(x) − β(x)t)
+= β(x) +
+p(x) − p(x)2
+[(1 − p(x))t − p(x)(1 − t)](y − α(x) − β(x)t))
+= β(x) +
+p(x)(1 − p(x))
+(1 − p(x))t(y − α(x) − β(x)t)) p(x)(1 − t)(y − α(x) − β(x)t))
+−
+= β(x) +
+p(x)(1 − p(x))
+p(x)(1 − p(x))
+t(y − α(x) − β(x)t)) (1 − t)(y − α(x)))
+−
+.
+= β(x) +
+p(x)
+(1 − p(x))
+
+ψ(w, θ, Λ) = β(x) +
+
+In this example, the standard overlap assumption, that the propensity score is bounded
+away from zero and one, ensures that Λ(x)−1 is well behaved: the determinant of Λ(x) =
+p(x)(1 − p(x)), the initial denominator above.
+It is straightforward to extend this example in a number of directions. Additional mean
+parameters could be added to cover average treatment effects for specific treatment groups or
+multi-valued treatments (see Cattaneo (2010) and Cattaneo and Farrell (2011) for inference
+using classical nonparametrics (series) and Farrell (2015) for machine learning (group lasso)
+results).
+Beyond means, the framework makes it easy to consider the variance of Y (1) versus that
+of Y (0), to assess riskiness of treatments over the population, by taking a quasi-likelihood
+approach, i.e., letting ℓ(y, t, θ(x)) include the variance instead of simply fitting least squares.
+
+57
+
+The conditions for convexity of this loss are well-known from likelihood theory and can be
+directly used here.
+
+C.2
+
+Partially Linear Models
+
+Partially linear models are a common case for semiparametric inference, dating to the seminal
+work of Robinson (1988). Here (B.2) holds, but with β ⋆ (x) = β ⋆ constant. Restricting the
+slope to be constant rules out all treatment effect heterogeneity and is a strong assumption
+that should be used with caution.
+For simplicity, consider the case with a scalar treatment variable. If β ⋆ is the parameter
+of interest, (B.5) shows that ψ(w, θ ⋆ , Λ) − β ⋆ is
+
+
+λ1 (x)2
+λ2 (x) −
+λ0 (x)
+
+−1 
+
+λ1 (x)
+t−
+λ0 (x)
+
+
+
+
+y − G(α⋆ (x) + β ⋆ t) .
+
+We must assume that λ2 (x)λ0 (x) ̸= λ1 (x)2 , which for identity G requires positive
+conditional variance of T . In nonlinear models the conditional moments will be weighted by
+Ġ if we have used the appropriate loss. In some cases the nonsingularity will follow from
+other regularity conditions, such as for the logistic link, where Ġ = G(1 − G) and the Hessian
+is invertible under bounded covariates and we use the log-likelihood.
+Partially linear models have featured prominently in the recent literature on high dimensional and ML settings, particularly with idenity link. The pioneering work of Belloni,
+Chernozhukov, and Hansen (2014) established valid inference after lasso selection in this
+context. Chernozhukov et al. (2018a) use it as the leading example of their generic results, and
+present several different Neyman orthogonal scores that could be used, none of which agree
+with ours due to the fact that we do not impose constant slope. Cattaneo, Jansson, and Newey
+(2018) study high dimensional linear models, including many-terms series settings, establish
+a more refined distributional approximation, and study standard error (in)validity. For the
+case of nonlinear link function, Carroll et al. (1997) and Mammen and van de Geer (1997)
+
+58
+
+are closest to our work, while Belloni, Chernozhukov, and Wei (2016) study high-dimensional
+sparse models. Not imposing the constant slope means we do not attain the efficiency bound
+(Mammen and van de Geer, 1997) in general, but only under restrictions on the variance,
+such as Y being homoskedastic in T in the linear case.
+However, it is trivial to impose a constant slope by changing the architecture in Figure
+B.1 so that only α(x) is flexible. Establishing that such a slope estimate is root-n consistent
+is beyond the scope here, but appears natural as the functional approximation holds without
+essential change. Deriving the statistical properties of this estimate would be interesting
+future work.
+Finally, our results could be used to study other components of the partially linear setting.
+For example, in both empirical finance Cattaneo et al. (2020) and applied microeconomics
+Cattaneo et al. (2024b) the function α(x) is of direct interest and we could conduct inference
+on the average.
+
+C.3
+
+Continuous Treatment Variables
+
+Wooldridge (2004) and Graham and de Xavier Pinto (2022) consider the linear model case
+and discuss conditions for a causal interpretation of E[β ⋆ (X)]. Our result in (B.4) matches
+the locally efficient influence function of Graham and de Xavier Pinto (2022). Hirshberg and
+Wager (2019) use a different approach to recover the average effect, but briefly discuss double
+robustness. Chernozhukov et al. (2019) use the model with the goal of policy targeting.
+Our method could be used to enrich other structural models in this context. As a first
+example, consider the so-called Berry logit (Berry, 1994) model for demand. Here the outcome
+is the market share distribution across firms. The researcher observes {Yjm } which represent
+a collection of j = 0 . . . J market shares across m = 1 . . . M markets. The objective is then to
+model these as a function of firm (marketing) decisions Tjm (see e.g. Nevo (2001)). We can
+introduce heterogeneity across markets by allowing for the marketing effects to be moderated
+by consumer characteristics xm , so that we can write a collection of (J − 1) equations as
+59
+
+follows
+
+E log
+
+
+
+Yjm
+Y0m
+
+
+
+
+
+X = xm , Tjm = tjm = αj⋆ (xm ) + β ⋆ (xm )′ (tjm − t0m ).
+
+Stacking these equations and the corresponding data allows us to construct an estimator for
+α0j (xm ) and β ⋆ (xm ). We could extend this to include instruments (Okui et al., 2012).
+Second, consider the Cobb-Douglas production function with heterogeneous parameters,
+⋆
+
+⋆
+
+which is given by Y = CK θ1 (x) Lθ2 (x) . The standard approach is to take logs and assume
+
+E [log Y | X = x, K = k, L = l] = log C + θ1⋆ (x) log k + θ2⋆ (x) log l.
+
+We can then estimate the structural parameters using our deep learning approach and conduct
+inference to decide if on average the technology exhibits increasing, constant, or decreasing
+returns to scale by computing µ⋆ = E[θ1⋆ (x) + θ2⋆ (x)]. The Cobb-Douglas specification has
+also been used in demand settings and marketing mix models and the framework described
+above would be readily applicable there as well.
+
+C.4
+
+Fractional Outcomes
+
+The case of nonlinear (B.2) (nonidentity G(u)) is less well studied. The empirical application
+in Sections 2 and 4 uses a logistic link. To give another example, consider a fractional outcome
+model where Y is continuous but restricted to lie in [0, 1]. Following the seminal treatment of
+Papke and Wooldridge (1996), we take a quasi-likelihood approach, using logistic distribution
+with mean given by Equation (B.2): E[Y | T = t, X = x] = G(α⋆ (x) + β ⋆ (x)′ t). Papke and
+Wooldridge (1996) explicitly advocate the use of structure to ensure that the outcomes remain
+on the unit interval and argue that this specification is valid even at the endpoints and is
+more practically relevant then transformations of the dependent variable.
+In the application of Papke and Wooldridge (1996), the data is at the firm level, the
+outcome is 401(k) participation, and the policy variable is the firm’s rate of contribution
+60
+
+matching. The quantities of interest are the marginal effect of the match rate on participation
+and the degree to which this marginal effect exhibits diminishing patterns. Our framework
+makes it trivial to enrich this model with heterogeneity across firms and then conduct inference
+on average marginal effects or the average change in the marginal effect, given by
+
+
+
+∂E[Y | X, t]
+AME t̃ = E
+∂t
+t=t̃
+
+and
+
+ 2
+
+
+∂ E[Y | X, t]
+ACME t̃ = E
+.
+∂t2
+t=t̃
+
+Because of the structure of the model, these are easily recovered in the form of µ⋆ , by taking
+HAME (x, θ; t̃) = β ⋆ G0 (x, t)(1 − G0 (x, t)) and HACME (x, θ; t̃) = β ⋆ 2 G0 (x, t)(1 − G0 (x, t))(1 −
+2G0 (x, t)), respectively.
+It is useful to contrast our model with the unstructured, naive ML approach, as in (B.3).
+We impose structure on the nature of the effect of T on Y . For unrestricted effects of
+continuous treatments using influence functions, see Kennedy et al. (2017) and Colangelo
+and Lee (2023). The unrestricted model may increase the generality of the results but can
+make inference and interpretation more difficult. A common parameter of interest in such
+cases is the average derivative (Powell, Stock, and Stoker, 1989; Newey and Stoker, 1993).
+This represents the average of a linear approximation of an unstructured relationship of
+T to Y . Our approach is perhaps more direct and transparent: if a linear summary is of
+interest in the end, we directly enrich the linear approximation, rather than recover it from
+a more complex object. This contrast can also be seen in the fractional outcome models,
+where recovering the second derivative of a complex G(b
+η (x, t)) could be challenging but our
+approach is transparent and simple.
+
+C.4.1
+
+Application – American Community Survey
+
+To illustrate this idea, we revisit the American Community Survey data studied by Cattaneo
+et al. (2024a).6 This is a simple, and narrow, empirical exercise, intended only as an example.
+We will apply our method to the setting of Figure 4(a) in Cattaneo et al. (2024a). The
+6
+
+Replication files are available at https://github.com/maxhfarrell/FLM2.
+
+61
+
+data is at the zip code tabulation area level and has n = 27, 985 samples. The outcome
+Y is the percentage of individuals without health insurance and the treatment variable T ,
+which is of course not randomized, is a binary indicator for low and high population density
+states, defined as those with population densities below or above 100 people per square mile,
+respectively. Density is defined as the average population per square mile, and the data is
+available from the Census Bureau. The heterogeneity variable X is per capita income.
+Cattaneo et al. (2024a) are concerned with nonparametric properties and inference of the
+functions G(α⋆ (x)) and G(α⋆ (x) + β ⋆ (x)), in the notation of (B.2). Here we will conduct
+semiparametric inference on the average effect of density:
+
+µ⋆ = E[G(α⋆ (X) + β ⋆ (X)) − G(α⋆ (X))].
+
+With X being scalar and continuous and nearly 30,000 observations, this is a fairly simple
+nonparametric problem. We estimate α⋆ (x) and β ⋆ (x) using structured neural networks, as
+in Figure B.1 (or Figure 1 more generally) using two hidden layers with 20 nodes each. For
+Λ(x) we use same network, but unstructured as this is regression. We additionally implement
+short stacking of Ahrens et al. (2025) using neural nets, random forests, and linear regression,
+as an example. We use 50-fold cross fitting with three-way splitting and two-way splitting
+b
+b
+(where α
+b(x), β(x),
+and Λ(x)
+are fit on the same data), but also no splitting at all.
+The results are shown in Figure C.1 and Table C.1. Figure C.1 shows the first stage: the
+b
+estimated G(b
+α(x)) and G(b
+α(x) + β(x))
+using neural networks (solid lines) and binscatter
+regressions (dots). This estimation is done using the full sample. The shaded regions are
+robust bias corrected confidence bands for the binscatter regressions. The binscatter results
+are obtained using binsreg R package (Cattaneo et al., 2025) and are identical to Figure
+4(a) of Cattaneo et al. (2024a). We see that the neural networks and binscatter regressions
+are similar estimates of the unknown functions.
+Table C.1 shows the semiparametric inference results. The point estimates are quite
+
+62
+
+Figure C.1: Fractional Outcome Model with Binary Treatment – First Stage. This
+figure uses the ACS data of Cattaneo et al. (2024a) to compare areas in low density states
+(blue) and high density states (orange). Low density states are defined as those with average
+population per square mile below 100. The dots and shaded region are the point estimates
+and robust bias corrected 95% confidence bands from the original paper. The solid lines show
+structured neural network estimates.
+consistent across the different approaches. The standard errors vary, and we see much smaller
+standard errors without cross fitting. This may be because cross fitting introduces extra
+variation (across the samples) which might be reduced with repeated splitting and median
+aggregation. Note that the short-stacking standard errors are also valid for the row above, i.e.,
+without short stacking. Further, under strong enough assumptions that the plug-in estimate
+is asymptotically normal, the row below will yield valid standard errors, though this may
+be unrealistic in this setting. The bottom two rows, using three-way splitting, are the only
+results that are fully theoretically justified, however, as discussed above, the other may be as
+well.
+
+63
+
+Table C.1: Fractional Outcome Model with Binary Treatment – Semiparametric
+Inference. This table shows point estimates and standard errors for semiparametric inference
+on µ⋆ = E[G(α⋆ (X) + β ⋆ (X)) − G(α⋆ (X))], comparing uninsuredness rates between low and
+high density states, with heterogeneity in per capita income. Low density states are defined
+as those with average population per square mile below 100.
+Method
+Plug-in
+No cross fitting
+2-way cross fitting
+. . . w/ short stacking
+3-way cross fitting
+. . . w/ short stacking
+
+C.5
+
+Point Estimate Standard Error
+0.019
+—
+0.020
+0.0005
+0.014
+0.0044
+0.017
+0.0042
+0.026
+0.0043
+0.021
+0.0036
+
+Tobit
+
+The type I Tobit model is well-studied in the parametric case, and so it serves as a useful
+example to illustrate how existing knowledge can be used to interpret the assumptions
+required in the enriched case.
+The observed outcome is Y = max(0, Y ∗ ), where in the parametric, homogeneous case
+Y ∗ is Gaussian given T = t with mean α⋆ + β ⋆ ′ t and variance σ 2 . The enriched version has
+mean α⋆ (x) + β ⋆ (x)′ t and variance σ 2 (x) (in practice it can help to fit σ 2 (x) = exp{σ̃(x)}).
+As usual, we work with the transformed parameters θ ⋆ (x) = (θ1⋆ (x)′ , θ2⋆ (x))′ , with θ1⋆ (x) =
+(α⋆ (x), β ⋆ (x)′ )′ /σ(x) and θ2⋆ (x) = σ −1 (x). See Amemiya (1985) and Wooldridge (2010) for
+textbook treatments.
+The gradient and Hessian are cumbersome but known. These can be used both for
+understanding the assumptions required but also, if desired, in the computation. Let
+
+10 = 1{Y ∗ ≤ 0} and 11 = 1{Y ∗ > 0}. Let ϕ and Φ denote the Gaussian density and
+distribution functions. With T1 = (1, t′ )′ , the gradient (score) terms are
+ℓθ1 (w, θ(x)) = 10
+
+
+
+ϕ(θ1 (x)′ T1 )T1
+′
+′
+−
+1
+θ
+(x)y
+−
+θ
+(x)
+T
+1
+2
+1
+1 T1
+1 − Φ(θ1 (x)′ T1 )
+
+and
+ℓθ2 (w, θ(x)) = −11 θ2 (x)−1 + 11 (θ2 (x)y − θ1 (x)′ T1 )y.
+64
+
+The second derivatives are
+ℓθ1 θ1 (w, θ(x)) = −10
+
+ϕ(θ1 (x)′ T1 )(θ1 (x)′ T1 )T1 T1′
+ϕ(θ1 (x)′ T1 )2 T1 T1 T1′
++
+1
++ 11 T1 T1′ ,
+0
+′
+′
+2
+1 − Φ(θ1 (x) T1 )
+[1 − Φ(θ1 (x) T1 )]
+
+ℓθ2 θ2 (w, θ(x)) = −11 θ2 (x)−2 + 11 y 2 ,
+
+and
+
+ℓθ1 θ2 (w, θ(x)) = 11 yT1 .
+
+That the gradients are conditionally mean zero can be directly verified. The matrix Λ(x)−1
+exists because θ1 (x)′ T1 − ϕ(θ1 (x)′ T1 )/[1 − Φ(θ1 (x)′ T1 )] > 0, using exactly the logic from
+parametric models (Donald, 1990; Olsen, 1978; Amemiya, 1985). The remaining assumptions
+required would be standard for nonparametrics/ML, such as smoothness and boundedness.
+
+C.6
+
+Instrumental Variables
+
+For multiple first stage objects, the influence function correction terms are generally additive
+(Newey, 1994). A good example is when T is endogenous and instrumental variables are
+available. Suppose there is single endogenous variable T and a single instrument Z and
+the researcher is applying two stage least squares. We enrich this to allow for fully flexible
+observed heterogeneity in the effects of the instrument and the endogenous variable, arriving
+at the two-equation model
+
+Y = θ1⋆ (X) + θ2⋆ (X)T + V,
+
+(C.1)
+
+T = ζ1⋆ (X) + ζ2⋆ (X)Z + U,
+
+(C.2)
+
+where E[V | X, Z] = E[U | X, Z] = 0. For estimation, and moreover, derivation of an
+orthogonal score, we simply plug (C.2) into (C.1) to obtain the reduced form equation
+Y = α⋆ (X) + β ⋆ (X)Z + Ṽ ,
+(C.3)
+⋆
+
+α (x) = θ1⋆ (x) + θ2⋆ (x)ζ1⋆ (x),
+
+⋆
+
+β (x) = θ2⋆ (x)ζ2⋆ (x),
+
+65
+
+Ṽ
+
+= θ2⋆ (X)U + V.
+
+This approach directly generalizes two-stage least squares to handle high-dimensional, complex
+heterogeneity, but notice that the linearity structure is maintained. To estimate the first
+stage parameter functions we simply apply (3.3) where the loss is the sum of two squared
+losses and the architecture in Figure B.1 is used twice. The leading case for inference would
+be the average partial effect µ⋆ = E[θ2⋆ (X)] = E[β ⋆ (X)/ζ2⋆ (X)]. We again see the familiarity
+of the assumptions required: we need strong instruments, which here means we need ζ2⋆ (X)
+to be nowhere zero. This is a strong assumption, and may not be tenable in applications.
+A constant slope can be assumed to make this assumption more plausible, at the cost of
+restricting heterogeneity. Any other function H(X, α⋆ , β ⋆ , ζ1⋆ , ζ2⋆ ; t̃) could be used.
+The influence function will be of the standard form in this case, with essentially two copies
+of the linear case above. Define θ ⋆ = (α⋆ , β ⋆ , ζ1⋆ , ζ2⋆ )′ , w = (y, t, z), t1 = (1, t)′ , z1 = (1, z)′
+and I2 the 2 × 2 identity matrix. Then
+
+
+y − α⋆ (x) − β ⋆ (x)z
+⋆
+ℓθ (w, θ (x)) = −
+⊗z
+t − ζ1⋆ (x) − ζ2⋆ (x)z
+
+and
+
+ℓθθ (w, θ ⋆ (x)) = I2 ⊗ z1 z1′ .
+
+Therefore Λ(x) = I2 ⊗ ΛZ (x), where ΛZ (x) = E[z1 z1′ | X = x].
+As before, our score is not the only possibility for estimation and inference IV models.
+Our approach aims for ease of use and transparency, both by sticking to the two stage least
+squares and by the structural compatibility of deep learning. Restricting to homogeneous
+effects, Chernozhukov et al. (2018a) study partially linear IV models and study three different
+possibly orthogonal scores, each requiring different functions in the first step and in the
+correction term. The same could be done in our unrestricted model. As in partially linear
+models, if any parameters are constant this can be enforced in the architecture. It is not
+obvious which approach is best.
+
+66
+
+

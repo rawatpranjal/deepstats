@@ -1,0 +1,824 @@
+Deep Neural Networks for Estimation and Inference∗
+Max H. Farrell
+
+Tengyuan Liang
+
+Sanjog Misra
+
+University of Chicago, Booth School of Business
+
+arXiv:1809.09953v3 [econ.EM] 18 Sep 2019
+
+September 19, 2019
+
+Abstract
+We study deep neural networks and their use in semiparametric inference. We establish
+novel rates of convergence for deep feedforward neural nets. Our new rates are sufficiently fast
+(in some cases minimax optimal) to allow us to establish valid second-step inference after firststep estimation with deep learning, a result also new to the literature. Our estimation rates
+and semiparametric inference results handle the current standard architecture: fully connected
+feedforward neural networks (multi-layer perceptrons), with the now-common rectified linear
+unit activation function and a depth explicitly diverging with the sample size. We discuss other
+architectures as well, including fixed-width, very deep networks. We establish nonasymptotic
+bounds for these deep nets for a general class of nonparametric regression-type loss functions,
+which includes as special cases least squares, logistic regression, and other generalized linear
+models. We then apply our theory to develop semiparametric inference, focusing on causal parameters for concreteness, such as treatment effects, expected welfare, and decomposition effects.
+Inference in many other semiparametric contexts can be readily obtained. We demonstrate the
+effectiveness of deep learning with a Monte Carlo analysis and an empirical application to direct
+mail marketing.
+
+Keywords: Deep Learning, Neural Networks, Rectified Linear Unit, Nonasymptotic Bounds,
+Convergence Rates, Semiparametric Inference, Treatment Effects, Program Evaluation, Treatment
+Targeting.
+
+1
+
+Introduction
+
+Statistical machine learning methods are being rapidly integrated into the social and medical sciences. Economics is no exception, and there has been a recent surge of research that applies and
+explores machine learning methods in the context of econometric modeling, particularly in “big
+data” settings. Furthermore, theoretical properties of these methods are the subject of intense recent study. This has netted several breakthroughs both theoretically, such as robust, valid inference
+following machine learning, and in novel applications and conclusions. Our goal in the present work
+∗
+We thank Milica Popovic for outstanding research assistance. Liang gratefully acknowledges support from the
+George C. Tiao Fellowship. Misra gratefully acknowledges support from the Neubauer Family Foundation. We are
+thank Guido Imbens, the handling co-editor, and two anonymous reviewers, as well as Alex Belloni, Xiaohong Chen,
+Denis Chetverikov, Chris Hansen, Whitney Newey, and Andres Santos, for thoughtful comments, suggestions, and
+discussions that substantially improved the paper.
+
+is to study a particular statistical machine learning technique which is widely popular in industrial
+applications, but less frequently used in academic work and largely ignored in recent theoretical
+developments on inference: deep neural networks. To our knowledge we provide the first inference
+results using deep learning methods.
+Neural networks are estimation methods that model the relationship between inputs and outputs using layers of connected computational units (neurons), patterned after the biological neural
+networks of brains. These computational units sit between the inputs and output and allow datadriven learning of the appropriate model, in addition to learning the parameters of that model.
+Put into terms more familiar in nonparametric econometrics: neural networks can be thought of as
+a (complex) type of sieve estimation where the basis functions are flexibly learned from the data.
+Neural networks are perhaps not as familiar to economists as other methods, and indeed, were out
+of favor in the machine learning community for several years, returning to prominence only very
+recently in the form of deep learning. Deep neural nets contain many hidden layers of neurons
+between the input and output layers, and have been found to exhibit superior performance across
+a variety of contexts. Our work aims to bring wider attention to these methods and to take the
+first step toward filling the gaps in the theoretical understanding of inference using deep neural
+networks. Our results can be used in many economic contexts, including selection models, games,
+consumer surplus, and dynamic discrete choice.
+Before the recent surge in attention, neural networks had taken a back seat to other methods
+(such as kernel methods or forests) largely because of their modest empirical performance and challenging optimization. However, the availability of scalable computing and stochastic optimization
+techniques (LeCun et al., 1998; Kingma and Ba, 2014) and the change from smooth sigmoid-type
+activation functions to rectified linear units (ReLU), x 7→ max(x, 0) (Nair and Hinton, 2010), have
+seemingly overcome optimization hurdles and now this form of deep learning matches or sets the
+state of the art in many prediction contexts (Krizhevsky et al., 2012; He et al., 2016). Our theoretical results speak directly to this modern implementation of deep learning: we explicitly model the
+depth of the network as diverging with the sample size and focus on the ReLU activation function.
+Further back in history, before falling out of favor, neural networks were widely studied and
+applied, particularly in the 1990s. In that time, shallow neural networks with smooth activation
+functions were shown to have many good theoretical properties. Intuitively, neural networks are
+1
+
+a form of sieve estimation, wherein basis functions of the original variables are used to approximate unknown nonparametric objects. What sets neural nets apart is that the basis functions are
+themselves learned from the data by optimizing over many flexible combinations of simple functions. It has been known for some time that such networks yield universal approximations (Hornik
+et al., 1989). Comprehensive theoretical treatments are given by White (1992) and Anthony and
+Bartlett (1999). Of particular relevance in this strand of theoretical work is Chen and White (1999),
+where it was shown that single-layer, sigmoid-based networks could attain sufficiently fast rates for
+semiparametric inference (see Chen (2007) for more references).
+We explicitly depart from the extant literature by focusing on the modern setting of deep neural
+networks with the rectified linear (ReLU) activation function. We provide nonasymptotic bounds
+for nonparametric estimation using deep neural networks, immediately implying convergence rates.
+The bounds and convergence rates appear to be new to the literature and are one of the main
+theoretical contributions of the paper. We provide results for a general class of smooth loss functions
+for nonparametric regression style problems, covering as special cases generalized linear models and
+other empirically useful contexts. In our application to causal inference we specialize our results
+to linear and logistic regression as concrete illustrations. Our proof strategy employs a localization
+analysis that uses scale-insensitive measures of complexity, allowing us to consider richer classes
+of neural networks. This is in contrast to analyses which restrict the networks to have bounded
+parameters for each unit (discussed more below) and to the application of scale sensitive measures
+such as metric entropy (used by Chen and White, 1999, for example). These approaches would
+not deliver our sharp bounds and fast rates. Recent developments in approximation theory and
+complexity for deep ReLU networks are important building blocks for our results.
+Our second main result establishes valid inference on finite-dimensional parameters following
+first-step estimation using deep learning. We focus on causal inference for concreteness and wide
+applicability, as well as to allow direct comparison to the literature. Program evaluation with
+observational data is one of the most common and important inference problems, and has often
+been used as a test case for theoretical study of inference following machine learning (e.g., Belloni
+et al., 2014; Farrell, 2015; Belloni et al., 2017; Athey et al., 2018). Causal inference as a whole is a
+vast literature; see Imbens and Rubin (2015) for a broad review and Abadie and Cattaneo (2018)
+for a recent review of program evaluation methods, and further references in both. Deep neural
+2
+
+networks have been argued (experimentally) to outperform the previous state-of-the-art in causal
+inference (Westreich et al., 2010; Johansson et al., 2016; Shalit et al., 2017; Hartford et al., 2017).
+To the best of our knowledge, ours are among the first theoretical results that explicitly deliver
+inference using deep neural networks.
+We give specific results for average treatment effects, counterfactual expected utility/profits
+from treatment targeting strategies, and decomposition effects. Our results allow planners (e.g.,
+firms or medical providers) to compare different strategies, either predetermined or estimated using
+auxiliary data, and recognizing that targeting can be costly, decide which strategy to implement. An
+interesting, and potentially useful, point we make in this context is that the selection on observables
+framework yields identification of counterfactual average outcomes without additional structural
+assumptions, so that, e.g., expected profit from a counterfactual treatment rule can be evaluated.
+The usefulness of our deep learning results is of course not limited to causal inference. In
+particular, our results yield inference on essentially any estimand that admits a locally robust
+estimator (Chernozhukov et al., 2018c) that depends only on target functions within our class
+of loss function (under appropriate regularity conditions). Our aim is not to innovate at the
+semiparametric step, for example by seeking weaker conditions on the first stage, but rather, we
+aim to utilize such results. Prior work has verified the high-level conditions for other first-stage
+estimators, such as traditional kernels or series/sieves, lasso methods, sigmoid-based shallow neural
+networks, and others (under suitable assumptions for each method). Our work contributes directly
+to this area of research by showing that deep nets are a valid and useful first-step estimator, in
+particular, attaining a rate of o(n−1/4 ) under appropriate smoothness conditions. Finally, we do
+not rely on sample splitting or cross fitting. In particular, we use localization explicitly to directly
+verify conditions required for valid inference, which may be a novel application of this proof method
+that is useful in future semiparametric inference problems.
+We numerically illustrate our results, and more generally the utility of deep learning, with a
+detailed simulation study and an empirical study of a direct mail marketing campaign. Our data
+come from a large US consumer products retailer and consists around to three hundred thousand
+consumers with one hundred fifty covariates. Hitsch and Misra (2018) recently used this data to
+study various estimators, both traditional and modern, of heterogeneous treatment effects. We refer
+the reader to that paper for a more complete description of the data as well as results using other
+3
+
+estimators (see also Hansen et al. (2017)). We study the effect of catalog mailings on consumer
+purchases, and moreover, compare different targeting strategies (i.e. to which consumers catalogs
+should be mailed). The cost of sending out a single catalog can be close to one dollar, and with
+millions being set out, carefully assessing the targeting strategy is crucial. Our results suggest that
+deep nets are at least as good as (and sometimes better than) the best methods in Hitsch and Misra
+(2018).
+The remainder of the paper proceeds as follows. Next, we briefly review the related theoretical literature. Section 2 introduces deep ReLU networks and states our main theoretical results:
+nonasymptotic bounds and convergence rates for general nonparametric regression-type loss functions. The semiparametric inference problem is set up in Section 3 and asymptotic results are
+presented in Section 4. The empirical application is presented in Section 5. Results of a simulation
+study are reported in Section 6. Section 7 concludes. All proofs are given in the appendix.
+
+1.1
+
+Related Theoretical Literature
+
+Our paper contributes to several rapidly growing literatures, and we can not hope to do justice
+to each here. We give only those citations of particular relevance; more references can be found
+within these works. First, there has been much recent study of the statistical properties of the
+machine learning tools as an end in itself. Many studies have focused on the lasso and its variants
+(Bickel et al., 2009; Belloni et al., 2011, 2012; Farrell, 2015) and tree/forest based methods (Wager
+and Athey, 2018), though earlier work studied shallow (typically with a single hidden layer) neural
+networks with smooth activation functions (White, 1989, 1992; Chen and White, 1999). We fill the
+gap in this literature by studying deep neural networks with the non-smooth ReLU activation.
+A second, intertwined strand of literature focuses on inference following the use of machine
+learning methods, often with a focus on average causal effects. Initial theoretical results were concerned with obtaining valid inference on a coefficient in a high-dimensional regression, following
+model selection or regularization, with particular focus on the lasso (Belloni et al., 2012; Javanmard and Montanari, 2014; van de Geer et al., 2014). Intuitively, this is a semiparametric problem,
+where the coefficient of interest is estimable at the parametric rate and the remaining coefficients
+are collectively a nonparametric nuisance parameter estimated using machine learning methods.
+Building on this intuition, many have studied the semiparametric stage directly, such as obtaining
+4
+
+novel, weaker conditions easing the application of machine learning methods (Belloni et al., 2014;
+Farrell, 2015; Chernozhukov et al., 2018c; Belloni et al., 2018, and references therein). Conceptually related to this strand are targeted maximum likelihood (van der Laan and Rose, 2001) and
+the higher-order influence functions (Robins et al., 2008, 2017). Our work builds on this work,
+employing conditions therein, and in particular, verifying them for deep ReLU nets.
+Finally, our convergence rates build on, and contribute to, the recent theoretical machine learning literature on deep neural networks. Because of the renaissance in deep learning, a considerable
+amount of study has been done in recent years. Of particular relevance to us are Yarotsky (2017,
+2018) and Bartlett et al. (2017); a recent textbook treatment, containing numerous other references,
+is given by Goodfellow et al. (2016).
+
+2
+
+Deep Neural Networks
+
+In this section we will give our main theoretical results: nonasymptotic bounds and associated
+convergence rates for deep neural network estimation. The utility of these results for secondstep semiparametric causal inference (the downstream task), for which our rates are sufficiently
+rapid, is demonstrated in Section 4. We view our results as an initial step in establishing both
+the estimation and inference theory for modern deep learning, i.e. neural networks built using
+the multi-layer perceptron architecture (described below) and the nonsmooth ReLU activation
+function. This combination is crucial: it has demonstrated state of the art performance empirically
+and can be feasibly optimized. This is in contrast with sigmoid-based networks, either shallow (for
+which theory exists, but may not match empirical performance) or deep (which are not feasible to
+optimize), and with shallow ReLU networks, which are not known to approximate broad classes
+functions.
+As neural networks are perhaps less familiar to economists and other social scientists, we first
+briefly review the construction of deep ReLU nets. Our main focus will be on the fully connected
+feedfoward neural network, frequently referred to as a multi-layer perceptron, as this is the most
+commonly implemented network architecture and we want our results to inform empirical practice.
+However, our results are more general, accommodating other architectures provided they are able
+to yield a universal approximation (in the appropriate function class), and so we review neural nets
+
+5
+
+more generally and give concrete examples.
+Our goal is to estimate an unknown, assumed-smooth function f∗ (x), that relates the covariates
+X ∈ Rd to an outcome Y as the minimizer of the expectation of the per-observation loss function.
+Collecting these random variables into the vector Z = (Y, X 0 )0 ∈ Rd+1 , with z = (y, x0 )0 denoting
+a realization, we write
+f∗ = arg min E [` (f, Z)] .
+We allow for any loss function that is Lipschitz in f and obeys a curvature condition around f∗ .
+Specifically, for constants c1 , c2 , and C` that are bounded and bounded away from zero, we assume
+that `(f, z) obeys
+|`(f, z) − `(g, z)| ≤ C` |f (x) − g(x)|,
+
+
+
+
+c1 E (f − f∗ )2 ≤ E[`(f, Z)] − E[`(f∗ , Z)] ≤ c2 E (f − f∗ )2 .
+
+(2.1)
+
+Our results will be stated for a general loss obeying these two conditions.1 We give a unified
+localization analysis of all such problems. This family of loss function covers many interesting
+problems. Two leading examples, used in our application to causal inference, are least squares and
+logistic regression, corresponding to the outcome and propensity score models respectively. For
+least squares, the target function and loss are
+
+f∗ (x) := E[Y |X = x]
+
+and
+
+1
+` (f, z) = (y − f (x))2 ,
+2
+
+(2.2)
+
+
+
+` (f, z) = −yf (x) + log 1 + ef (x) .
+
+(2.3)
+
+respectively, while for logistic regression these are
+
+f∗ (x) := log
+
+E[Y |X = x]
+1 − E[Y |X = x]
+
+and
+
+Lemma 8 verifies, with explicit constants, that (2.1) holds for these two. Losses obeying (2.1)
+extend beyond these cases to other generalized linear models, such as count models, and can even
+cover multinomial logistic regression (multiclass classification), as shown in Lemma 9.
+1
+
+We thank an anonymous referee for suggesting this approach.
+
+6
+
+Figure 1: Illustration of a feedforward neural network with W = 18, L = 2, U = 5, and input
+dimension d = 2. The input units are shown in blue at left, the output in red at right, and the
+hidden units in grey between them.
+
+2.1
+
+Neural Network Constructions
+
+For any loss, we estimate the target function using a deep ReLU network. We will give a brief outline
+of their construction here, paying closer attention to the details germane to our theory; complete
+introductions, and further references, are given by Anthony and Bartlett (1999) and Goodfellow
+et al. (2016).
+The crucial choice is the specific network architecture, or class. In general we will call this
+FDNN . From a theoretical point of view, different classes have different complexity and different
+approximating power. We give results for several concrete examples below. We will focus on
+feedforward neural networks. An example of a feedforward network is shown in Figure 1. The
+network consists of d input units, corresponding to the covariates X ∈ Rd , one output unit for
+the outcome Y . Between these are U hidden units, or computational nodes or neurons. These
+are connected by a directed acyclic graph specifying the architecture. The key graphical feature
+of a feedforward network is that hidden units are grouped in a sequence of L layers, the depth
+of the network, where a node is in layer l = 1, 2, . . . , L, if it has a predecessor in layer l − 1 and
+no predecessor in any layer l0 ≥ l. The width of the network at a given layer, denoted Hl , is the
+number of units in that layer. The network is completed with the choice of an activation function
+σ : R 7→ R applied to the output of each node as described below. In this paper, we focus on
+the popular ReLU activation function σ(x) = max(x, 0), though our results can be extended (at
+notational cost) to cover piecewise linear activation functions (see also Remark 3).
+An important and widely used subclass is the one that is fully connected between consecutive
+layers but has no other connections and each layer has number of hidden units that are of the same
+order of magnitude. This architecture is often referred to as a Multi-Layer Perceptron (MLP) and
+
+7
+
+Figure 2: Illustration of multi-layer perceptron FMLP with H = 3, L = 2 (U = 6, W = 25), and
+input dimension d = 2.
+we denote this class as FMLP . See Figure 2, cf. Figure 1. We will assume that all the width of all
+layers share a common asymptotic order H, implying that for this class U  LH.
+We will allow for generic feedforward networks in our results, but we present special results for
+the MLP case, as it is widely used in empirical practice. As we will see below, the architecture,
+through its complexity, and more importantly, approximation power, plays a crucial role in the
+final convergence rate. In particular, we find only a suboptimal rate for the MLP case, but our
+upper bound is still sufficient for semiparametric inference. As a note on exposition, while our
+main results are in fact nonasymptotic bounds that hold with high probability, for simplicity we
+will refer to them as “rates” in most discussion.
+To build intuition on the computation, and compare to other nonparametric methods, let us
+focus on least squares for the moment, i.e. Equation (2.2), with a continuous outcome using a
+multilayer perceptron with constant width H. Each hidden unit u receives an input in the form of
+a linear combination x̃0 w +b, and then returns σ(x̃0 w +b), where the vector x̃ collects the output of
+all the units with a directed edge into u (i.e., from prior layers), w is a vector of weights, and b is a
+constant term. (The constant term is often referred to as the “bias” in the deep learning literature,
+but given the loaded meaning of this term in inference, we will largely avoid referring to b as a bias.)
+The final layer’s output is simply x̃0 w + b in the least squares case. The collection, over all nodes, of
+w and b, constitutes the parameters θ which are optimized in the final estimation. We denote W as
+the total number of parameters of the network. For the MLP, W = (d+1)H+(L−1)(H 2 +H)+H+1.
+In general, W , U , L, and H, may change with n, but we suppress this in the notation.
+Optimization proceeds layer-by-layer using (variants of) stochastic gradient descent, with gradients of the parameters calculated by back-propagation (implementing the chain rule) induced
+by the network structure. To see this, let x̃h,l denote the scalar output of a node u = (h, l), for
+
+8
+
+h = 1, . . . H, l = 1, . . . L, and let x̃l = (x̃1,l , . . . , x̃H,l )0 for layer l ≤ L. Each node thus computes
+x̃h,l = σ(x̃0l−1 wh,l−1 + bh,l−1 ) and the final output is ŷ = x̃0L wL + bL . Once we recall that the
+network begins with the original observation x, we can view x̃L = x̃L (x), and thus the final output may be seen as a basis function approximation (albeit a complex and random one) written
+as fˆMLP (x) = x̃L (x)0 wL + bL , which is reminiscent of a traditional series (linear sieve) estimator. If all layers save the last were fixed, we could simply optimize using least squares directly:
+(wL , bL ) = arg minw,b kyi − x̃0L w − bk2n .
+The crucial distinction is that the basis functions x̃L (·) are learned from the data. The “basis”
+is x̃L = (x̃1,L , . . . , x̃H,L )0 , where each x̃h,L = σ(x̃0L−1 wh,L−1 + bh,L−1 ). Therefore, “before” we can
+0
+solve the least squares problem above, we would have to estimate (wh,L−1
+, bh,L−1 ), h = 1, . . . , H,
+
+anticipating the final estimation. These in turn depend on the prior layer, and so forth back to
+the original inputs X. Measuring the gradient of the loss with respect to each layer of parameters
+uses the chain rule recursively, and is implemented by back-propagation. This is simply a sketch
+of course; for further introduction, see Hastie et al. (2009) and Goodfellow et al. (2016).
+To further clarify the use of deep nets, it is useful to make explicit analogies to more classical
+nonparametric techniques, leveraging the form fˆMLP (x) = x̃L (x)0 wL + bL . For a traditional series
+estimator, say smoothing splines, the two choices for the practitioner are the spline basis (the
+shape and the degree) and the number of terms (knots), commonly referred to as the smoothing
+and tuning parameters, respectively. In kernel regression, these would respectively be the shape of
+the kernel (and degree of local polynomial) and the bandwidth(s). For neural networks, the same
+phenomena are present: the architecture as a whole (the graph structure and activation function)
+are the smoothing parameters while the width and depth play the role of tuning parameters for a
+set architecture.
+The architecture plays a crucial role in that it determines the approximation power of the
+network, and it is worth noting that because of the relative complexity of neural networks, such
+approximations, and comparisons across architectures, are not simple. It is comparatively obvious
+that quartic splines are more flexible than cubic splines (for the same number of knots) as is a
+higher degree local polynomial (for the same bandwidth). At a glance, it may not be clear what
+function class a given network architecture (width, depth, graph structure, and activation function)
+can approximate. As we will show below, the MLP architecture is not yet known to yield an optimal
+9
+
+approximation (for a given width and depth) and therefore we are only able to prove a bound with
+slower than optimal rate. As a final note, computational considerations are important for deep nets
+in a way that is not true conventionally; see Remarks 1, 2, and 3.
+Just as for classical nonparametrics, for a fixed architecture, it is the tuning parameter choices
+that determine the rate of convergence (for a fixed smoothness of the underlying function). The
+recent wave of theoretical study of deep learning is still in its infancy. As such, there is no understanding yet of optimal architecture(s) or tuning parameters. Choices of both are quite difficult,
+and only preliminary research has been done (see e.g., Daniely, 2017; Telgarsky, 2016; Safran and
+Shamir, 2016; Mhaskar and Poggio, 2016a; Raghu et al., 2017, and references therein). Further
+exploration of these ideas is beyond the current scope. It is interesting to note that in some cases,
+a good approximation can be obtained even with a fixed width H, provided the network is deep
+enough, a very particular way of enriching the “sieve space” FDNN ; see Corollary 2.
+In sum, for a user-chosen architecture FDNN , encompassing the choices σ(·), U , L, W , and the
+graph structure, the final estimate is computed using observed samples zi = (yi , x0i )0 , i = 1, 2, . . . , n,
+of Z, by solving
+
+fbDNN := arg min
+
+n
+X
+
+` (f, zi ) .
+
+(2.4)
+
+fθ ∈FDNN i=1
+kfθ k∞ ≤2M
+
+Recall that θ collects, over all nodes, the weights and constants w and b. When (2.4) is restricted
+to the MLP class we denote the resulting estimator fbMLP . The choice of M may be arbitrarily
+large, and is part of the definition of the class FDNN . This is neither a tuning parameter nor
+regularization in the usual sense: it is not assumed to vary with n, and beyond being finite and
+bounding kf∗ k∞ (see Assumption 1), no properties of M are required. This is simply a formalization
+of the requirement that the optimizer is not allowed to diverge on the function level in the l∞ sense–
+the weakest form of constraint. It is important to note that while typically regularization will alter
+the approximation power of the class, that is not the case with the choice of M as we will assume
+that the true function f∗ (x) is bounded, as is standard in nonparametric analysis. With some extra
+notational burden, one can make the dependence of the bound on M explicit, though we omit this
+for clarity as it is not related to statistical issues.
+
+10
+
+Remark 1. In applications it is common to apply some form of regularization to the optimization
+of (2.4). However, in theory, the role of explicit regularization is unclear and may be unnecessary,
+as stochastic gradient descent presents good, if not better, solutions empirically (see Section 6 and
+Zhang et al., 2016). Regularization may improve empirical performance in low signal-to-noise ratio
+problems. A detailed investigation is beyond the scope of the current work, though we do investigate
+this numerically in Sections 5 and 6. There are many alternative regularization methods, including
+L1 and L2 (weight decay) penalties, drop out, and others.
+
+2.2
+
+y
+
+Bounds and Convergence Rates for Multi-Layer Perceptrons
+
+We can now state our main theoretical results: bounds and convergence rates for deep ReLU
+networks. All proofs appear in the Appendix. We study neural networks from a nonparametric
+point of view (e.g., White, 1989, 1992; Schmidt-Hieber, 2017; Liang, 2018; Bauer and Kohler,
+2017, in specific scenarios). Chen and Shen (1998) and Chen and White (1999) share our goal, fast
+convergence rates for use in semiparametric inference, but focus on shallow, sigmoid-based networks
+compared to our deep, ReLU-based networks, though they consider dependent data which we do
+not. Our theoretical approach is quite different. In particular, Chen and White (1999) obtain
+sufficiently fast rates by following the approach of Barron (1993) in using Maurey’s method (Pisier,
+1981) for approximation, but applying the refinement of Makovoz (1996). Our analysis of deep
+nets instead employs localization methods (Koltchinskii and Panchenko, 2000; Bartlett et al., 2005;
+Koltchinskii, 2006, 2011; Liang et al., 2015), along with the recent approximation work of Yarotsky
+(2017, 2018) and complexity results of Bartlett et al. (2017).
+The regularity conditions we require are collected in the following.
+Assumption 1. Assume that zi = (yi , x0i )0 , 1 ≤ i ≤ n are i.i.d. copies of Z = (Y, X) ∈ Y ×[−1, 1]d ,
+where X is continuously distributed. For an absolute constant M > 0, assume kf∗ k∞ ≤ M and
+Y ⊂ [−M, M ].
+This assumption is fairly standard in nonparametrics. The only restriction worth mentioning
+is that the outcome is bounded. In many cases this holds by default (such as logistic regression,
+where Y = {0, 1}) or count models (where Y = {0, 1, . . . , M }, with M limited by real-world
+constraints). For continuous outcomes, such as least squares regression, our restriction is not
+11
+
+substantially more limiting than the usual assumption of a model such as Y = f∗ (X) + ε, where
+X is compact-supported, f∗ is bounded, and the stochastic error ε possesses many moments.
+Indeed, in many applications such a structure is only coherent with bounded outcomes, such as the
+common practice of including lagged outcomes as predictors. Next, the assumption of continuously
+distributed covariates is quite standard. From a theoretical point of view, covariates taking on
+only a few values can be conditioned on and then averaged over, and these will, as usual, not enter
+into the dimensionality which curses the rates. Discrete covariates taking on many values may be
+more realistically thought of as continuous, and it may be more accurate to allow these to slow
+the convergence rates. Our focus on L2 (X) convergence allows for these essentially automatically.
+Finally, from a practical point of view, deep networks handle discrete covariates seamlessly and
+have demonstrated excellent empirical performance, which is in contrast to other more classical
+nonparametric techniques that may require manual adaptation.
+Proceeding now to our results, we begin with the most important network architecture, the
+multi-layer perceptron. This is the most widely used network architecture in practice and an
+important contribution of our work is to cover this directly, along with ReLU activation. MLPs
+are now known to approximate smooth functions well, leading to our next assumption: that the
+target function f∗ lies in a Sobolev ball with certain smoothness. Discussion of Sobolev spaces, and
+comparisons to Hölder and Besov spaces, can be found in Gine and Nickl (2016).
+Assumption 2. Assume f∗ lies in the Sobolev ball W β,∞ ([−1, 1]d ), with smoothness β ∈ N+ ,
+(
+f∗ (x) ∈ W
+
+β,∞
+
+d
+
+([−1, 1] ) :=
+
+)
+α
+
+f : max ess sup |D f (x)| ≤ 1 ,
+α,|α|≤β x∈[−1,1]d
+
+where α = (α1 , . . . , αd ), |α| = α1 + . . . + αd and Dα f is the weak derivative.
+Under Assumptions 1 and 2 we obtain the following result, which, to the best of our knowledge,
+is new to the literature. In some sense, this is our main result for deep learning, as it deals with
+the most common architecture. We apply this in Sections 4 and 5 for semiparametric inference.
+Theorem 1 (Multi-Layer Perceptron). Suppose Assumptions 1 and 2 hold. Let fbMLP be the deep
+MLP-ReLU network estimator defined by (2.4), restricted to FMLP , for a loss function obeying
+d
+
+(2.1), with width H  n 2(β+d) log2 n and depth L  log n. Then with probability at least 1 −
+12
+
+d
+
+exp(−n β+d log8 n), for n large enough,
+
+
+β
+log log n
+− β+d
+2
+8
+b
+(a) kfMLP − f∗ kL2 (x) ≤ C · n
+log n +
+and
+n
+
+
+h
+i
+β
+log log n
+− β+d
+2
+8
+b
+(b) En (fMLP − f∗ ) ≤ C · n
+,
+log n +
+n
+for a constant C > 0 independent of n, which may depend on d, M , and other fixed constants.
+Several aspects of this result warrant discussion. We build on the recent results of Bartlett et al.
+(2017), who find nearly-tight bounds on the Vapnik-Chervonenkis (VC) and Pseudo-dimension of
+deep nets. One contribution of our proof is to use a scale sensitive localization theory with scale
+insensitive measures, such as VC- or Pseudo-dimension, for deep neural networks for general smooth
+loss functions. For the special case of least squares regression, Koltchinskii (2011) uses a similar
+approach, and a similar result to our Theorem 1(a) can be derived for this case using his Theorem
+5.2 and Example 3 (p. 85f).
+This approach has two tangible benefits. First, we do not restrict the class of network architectures to have bounded weights for each unit (scale insensitive), in accordance to standard practice
+(Zhang et al., 2016) and in contrast to the classic sieve analysis with scale sensitive measure such
+as metric entropy. Moreover, this allows for a richer set of approximating possibilities, in particular
+allowing more flexibility in seeking architectures with specific properties, as we explore in the next
+subsection. Second, from a technical point of view, we are able to attain a faster rate on the second
+term of the bound, order n−1 in the sample size, instead of the n−1/2 that would result from a
+direct application of uniform deviation bounds. This upper bound informs the trade offs between
+width and depth, and the approximation power, and may point toward optimal architectures for
+statistical inference.
+This result gives a nonasymptotic bound that holds with high probability. As mentioned above,
+we will generally refer to our results simply as “rates” when this causes no confusion. This result
+relies on choosing H appropriately given the smoothness β of Assumption 2. Of course, the true
+smoothness is unknown and thus in practice the “β” appearing in H, and consequently in the
+convergence rates, need not match that of Assumption 2. In general, the rate will depend on the
+smaller of the two. Most commonly it is assumed that the user-chosen β is fixed and that the truth
+is smoother; witness the ubiquity of cubic splines and local linear regression. Rather than spell
+13
+
+out these consequences directly, we will tacitly assume the true smoothness is not less than the β
+appearing in H (here and below). Adaptive approaches, as in classical nonparametrics, may also
+be possible with deep nets, but are beyond the scope of this study.
+Even with these choices of H and L, the bound of Theorem 1 is not optimal (for fixed β, in the
+sense of Stone (1982)). We rely on the explicit approximating constructions of Yarotsky (2017), and
+it is possible that in the future improved approximation properties of MLPs will be found, allowing
+for a sharpening of the results of Theorem 1 immediately, i.e. without change to our theoretical
+argument. At present, it is not clear if this rate can be improved, but it is sufficiently fast for valid
+inference.
+
+2.3
+
+Other Network Architectures
+
+Theorem 1 covers only one specific architecture, albeit the most important one at present. However,
+given that this field is rapidly evolving, it is important to consider other possible architectures which
+may be beneficial in some cases. To this end, we will state a more generic result and then two
+specific examples: one to obtain a faster rate of convergence and one for fixed-width networks. All
+of these results are, at present, more of theoretical interest than practical value, as they are either
+agnostic about the network (thus infeasible) or rely on more limiting assumptions.
+In order to be agnostic about the specific architecture of the network we need to be flexible in
+the approximation power of the class. To this end, we will replace Assumption 2 with the following
+generic assumption, rather more of a definition, regarding the approximation power of the network.
+Assumption 3. Let f∗ lie in a class F. For the feedforward network class FDNN , used in (2.4),
+let the approximation error DNN be
+
+DNN := sup
+
+inf
+
+f∗ ∈F f ∈FDNN
+kf k∞ ≤2M
+
+kf − f∗ k∞ .
+
+It may be possible to require only an approximation in the L2 (X) norm, but this assumption
+matches the current approximation theory literature and is more comparable with other work in
+nonparametrics, and thus we maintain the uniform definition.
+Under this condition we obtain the following generic result.
+
+14
+
+Theorem 2 (General Feedforward Architecture). Suppose Assumptions 1 and 3 hold. Let fbDNN
+be the deep ReLU network estimator defined by (2.4), for a loss function obeying (2.1). Then with
+probability at least 1 − e−γ , for n large enough,
+
+
+W L log W
+log log n + γ
+2
+2
+b
+(a) kfDNN − f∗ kL2 (x) ≤ C
+log n +
++ DNN and
+n
+n
+
+
+h
+i
+log log n + γ
+W L log W
+2
+2
+b
+log n +
++ DNN ,
+(b) En (fDNN − f∗ ) ≤ C
+n
+n
+for a constant C > 0 independent of n, which may depend on d, M , and other fixed constants.
+This is a more general than Theorem 1, covering the general deep ReLU network problem
+defined in (2.4), general feedforward architectures, and the general class of losses defined by (2.1).
+The same comments as were made following Theorem 1 apply here as well: the same localization
+argument is used with the same benefits. We explicitly use this in the next two corollaries, where
+we exploit the allowed flexibility in controlling DNN by stating results for particular architectures.
+The bound here is not directly applicable without specifying the network structure, which will
+determine both the variance portion (through W , L, and U ) and the approximation error. With
+these set, the bound becomes operational upon choosing γ, which can be optimized as desired, and
+this will immediately then yield a convergence rate.
+Turning to special cases, we first show that the optimal rate of Stone (1982) can be attained, up
+to log factors. However, this relies on a rather artificial network structure, designated to approximate functions in a Sobolev space well, but without concern for practical implementation. Thus,
+while the following rate improves upon Theorem 1, we view this result as mainly of theoretical
+interest: establishing that (certain) deep ReLU networks are able to attain the optimal rate.
+Corollary 1 (Optimal Rate). Suppose Assumptions 1 and 2 hold. Let fbOPT solve (2.4) using the
+d
+
+(deep and wide) network of Yarotsky (2017, Theorem 1), with W  U  n 2β+d log n and depth
+L  log n, the following hold with probability at least 1 − e−γ , for n large enough,
+
+
+2β
+log
+log
+n
++
+γ
+−
+2
+4
+(a) kfbOPT − f∗ kL2 (x) ≤ C · n 2β+d log n +
+and
+n
+
+
+h
+i
+2β
+log
+log
+n
++
+γ
+−
+2
+4
+(b) En (fbOPT − f∗ ) ≤ C · n 2β+d log n +
+,
+n
+for a constant C > 0 independent of n, which may depend on d, M , and other fixed constants.
+15
+
+Next, we turn to very deep networks that are very narrow, which have attracted substantial
+recent interest. Theorem 1 and Corollary 1 dealt with networks where the depth and the width
+grow with sample size. This matches the most common empirical practice, and is what we use in
+Sections 5 and 6. However, it is possible to allow for networks of fixed width, provided the depth is
+sufficiently large. The next result is perhaps the largest departure from the classical study of neural
+networks: earlier work considered networks with diverging width but fixed depth (often a single
+layer), while the reverse is true here. The activation function is of course qualitatively different as
+well, being piecewise linear instead of smooth. Using recent results (Mhaskar and Poggio, 2016b;
+Hanin, 2017; Yarotsky, 2018) we can establish the following rate for very deep, fixed-width MLPs.
+Corollary 2 (Fixed Width Networks). Let the conditions of Theorem 1 hold, with β ≥ 1 in
+d
+
+Assumption 2. Let fbFW solve (2.4) for an MLP with fixed width H = 2d+10 and depth L  n 2(2+d) .
+Then with probability at least 1 − e−γ , for n large enough,
+
+
+2
+log log n + γ
+− 2+d
+2
+2
+b
+(a) kfFW − f∗ kL2 (x) ≤ C · n
+log n +
+and
+n
+
+
+i
+h
+2
+log log n + γ
+− 2+d
+2
+2
+b
+(b) En (fFW − f∗ ) ≤ C · n
+log n +
+,
+n
+for a constant C > 0 independent of n, which may depend on d, M , and other fixed constants.
+This result is again mainly of theoretical interest. The class is only able to approximate well
+functions with β = 1 (cf. the choice of L) which limits the potential applications of the result
+because, in practice, d will be large enough to render this rate, unlike those above, too slow for use
+in later inference procedures. In particular, if d ≥ 3, the sufficient conditions of Theorem 3 fail.
+Finally, as mentioned following Theorem 1, our theory here will immediately yield a faster
+rate upon discovery of improved approximation power of this class of networks. In other words,
+for example, if a proof became available that fixed-width, very deep networks can approximate
+β-smooth functions (as in Assumption 2), then Corollary 2 will trivially be improvable to match
+the rate of Theorem 1. Similarly, if the MLP architecture can be shown to share the approximation
+power with that of Corollary 1, then Theorem 1 will itself deliver the optimal rate. Our proofs will
+not require adjustment.
+Remark 2. Although there has been a great deal of work in easing implementation (optimization
+and tuning) of deep nets, it still may be a challenge in some settings, particularly when using
+16
+
+non-standard architectures. See also Remark 1. Given the renewed interest in deep networks,
+this is an area of study already (Hartford et al., 2017; Polson and Rockova, 2018) and we expect
+this to continue and that implementations will rapidly evolve. This is perhaps another reason that
+Theorem 1 is, at the present time, the most practically useful, but that (as just discussed) Theorem
+2 will be increasingly useful in the future.
+
+y
+
+Remark 3. Our results can be extended easily to include piecewise linear activation functions
+beyond ReLU. Intuitively, being itself piecewise linear, appropriate combinations of a fixed number
+of ReLU functions can equal a piecewise linear function (with a fixed number of knots) and therefore
+the complexity and approximation power can be easily adjusted to this case. See Bartlett et al.
+(2017).
+In principle, similar rates of convergence could be attained for other activation functions, given
+results on their approximation error. However, it is not clear what practical value would be offered
+due to computational issues (in which the activation choice plays a crucial role). Indeed, the
+recent switch to ReLU stems not from their greater approximation power, but from the fact that
+optimizing a deep net with sigmoid-type activation is unstable or impossible in practice. Thus, while
+it is certainly possible that we could complement the single-layer results with rates for sigmoid-based
+deep networks, these results would have no consequences for real-world practice.
+From a purely practical point of view, several variations of the ReLU activation function have
+been proposed recently (including the so-called Leaky ReLU, Randomized ReLU, (Scaled) Exponential Linear Units, and so forth) and have been found in some experiments to improve optimization
+properties. It is not clear what theoretical properties these activation functions have or if the computational benefits persist more generically, though this area is rapidly evolving. We conjecture
+that our results could be extended to include these activation functions.
+
+3
+
+y
+
+Parameters of Interest
+
+We will use the results above, in particular Theorem 1, coupled with results in the semiparametric
+literature, to deliver valid asymptotic inference for causal effects. The novelty of our results is not
+in this semiparametric stage per se, but rather in delivering valid inference after relying on deep
+
+17
+
+learning for the first step estimation. In this section we define the parameters of interest, while
+asymptotic inference is discussed next.
+We will focus, for concreteness, on causal parameters that are of interest across different disciplines: average treatment effects, expected utility (or profits) under different targeting policies,
+average effects on (non-)treated subpopulations, and decomposition effects. Our focus on causal
+inference with observational data is due to the popularity of these estimands both in applications
+and in theoretical work, thus allowing our results to be put to immediate use and easily compared to
+prior literature. The average treatment effect in particular is often used as a benchmark parameter
+for studying inference following machine learning (see references in the Introduction). However,
+armed with our results for deep neural networks we can cover a great deal more (some discussion
+is in Section 3.4).
+The estimation of average causal effects is a well-studied problem, and we will give only a brief
+overview here. Recent reviews and further references are given by Belloni et al. (2017); Athey et al.
+(2017); Abadie and Cattaneo (2018). We consider the standard setup for program evaluation with
+observational data: we observe a sample of n units, each exposed to a binary treatment, and for
+each unit we observe a vector of pre-treatment covariates, X ∈ Rd , treatment status T ∈ {0, 1}, and
+a scalar post-treatment outcome Y . The observed outcome obeys Y = T Y (1) + (1 − T )Y (0), where
+Y (t) is the (potential) outcome under treatment status t ∈ {0, 1}. The “fundamental problem” is
+that only Y (0) or Y (1) is observed for each unit, never both.
+The crucial identification assumptions, which pertain to all the parameters we consider, are
+selection on observables, also known as ignorability, unconfoundedness, missingness at random, or
+conditional independence, and overlap, or common support. Let p(x) = P[T = 1|X = x] denote
+the propensity score and µt (x) = E[Y (t)|X = x], t ∈ {0, 1} denote the two outcome regression
+functions. We then assume the following throughout, beyond which, we will mostly need only
+regularity conditions for inference.
+Assumption 4. For t ∈ {0, 1} and almost surely X, E[Y (t)|T, X = x] = E[Y (t)|X = x] and
+p̄ ≤ p(x) ≤ 1 − p̄ for some p̄ > 0.
+It will be useful to divide our discussion between parameters that are fully marginal averages,
+such as the average treatment effect, and those which are for specific subpopulations. Here, “sub18
+
+populations” refer to the treated or nontreated groups, with corresponding parameters such as
+the treatment effect for the treated. Any parameter, in either case, can be studied for a suitable
+subpopulation defined by the covariates X, such as a specific demographic group. Though causal
+effects as a whole share some structure, there are slight conceptual and notational differences. In
+particular, the form of the efficient influence function and doubly robust estimator is different for
+the two sets, but common within.
+
+3.1
+
+Full-Population Average Effect Parameters
+
+Here we are interested in averages over the entire population. The prototypical parameter of interest
+is the average treatment effect:
+τ = E[Y (1) − Y (0)].
+
+(3.1)
+
+In the context of our empirical example, the treatment is being mailed a catalog and the outcome
+is dollars spent (results for the binary purchase decision are available on request). The average
+treatment effect, also referred to as “lift” in digital contexts, corresponds to the expected gain in
+revenue from an average individual receiving the catalog compared to the same person not receiving
+the catalog.
+A closely related parameter of interest is the average realized outcome, which in general may
+be interpreted as the expected utility or welfare from a counterfactual treatment policy. In the
+context of our empirical application this is expected profits; in a medical context it would be the
+total health outcome. The question of interest here is whether a change in the treatment policy
+would be beneficial in terms of increasing outcomes, and this is judged using observational data.
+Intuitively, the average treatment effect is the expected gain from treating the “next” person,
+relative to if they had not been exposed. That is, it is the expected change in the outcome.
+Expected utility/profit, on the other hand, is concerned with the total outcome, not the difference
+in outcomes. In the context of our empirical application, we are interested in total sales rather
+than the change in sales. Our discussion is grounded in this language for easy comparison.
+The parameter depends on a counterfactual/hypothetical treatment targeting strategy, which
+is often itself the object of evaluation. This is simply a rule that assigns a given set of characteristics (e.g. a consumer profile), determined by the covariates X, to treatment status: that
+
+19
+
+is, a known function (which may include randomization but is not estimated from the sample)
+s(x) : supp{X} 7→ {0, 1}. Note well that this is not necessarily the observed treatment: s(xi ) 6= ti .
+The policy maker may wish to evaluate the gain from targeting only a certain subset of customers,
+a price discrimination strategy, or comparisons of different such policies. Our assumptions, while
+standard, deliver identification of such counterfactuals at no cost.
+The parameter of interest is expected utility, or profit, from a fixed policy, given by
+
+
+
+π(s) = E s(X)Y (1) + (1 − s(X)) Y (0) ,
+
+(3.2)
+
+where we make explicit the dependence on the policy s(·). Compare to Equation (3.1) and recall
+that the observed outcome obeys Y = T Y (1) + (1 − T )Y (0)
