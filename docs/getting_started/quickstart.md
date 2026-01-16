@@ -37,9 +37,26 @@ result = structural_dml(
 ### 3. Interpret Results
 
 ```python
-print(f"Estimate:    {result.mu_hat:.4f}")
-print(f"Std Error:   {result.se:.4f}")
-print(f"95% CI:      [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
+print(result.summary())
+```
+
+Output:
+```
+==============================================================================
+                            Structural DML Results
+==============================================================================
+Family:           Linear               Target:           E[beta]
+No. Observations: 2000                 No. Folds:        50
+==============================================================================
+                  coef     std err         z     P>|z|      [0.025    0.975]
+------------------------------------------------------------------------------
+     E[beta]    0.0312      0.0234     1.333    0.183    -0.0147    0.0771
+==============================================================================
+Diagnostics:
+  Min Lambda eigenvalue:    0.998765
+  Mean condition number:    1.00
+  Correction ratio:         0.1234
+------------------------------------------------------------------------------
 ```
 
 ## Configuration Options
@@ -63,8 +80,11 @@ result = structural_dml(
     n_folds=50
 )
 
-# The result contains both estimates
-print(f"Naive estimate:    {result.mu_naive:.4f}")
+# View full results including naive estimate
+print(result.summary())
+
+# Access individual components if needed
+print(f"\nNaive estimate:    {result.mu_naive:.4f}")
 print(f"Debiased estimate: {result.mu_hat:.4f}")
 print(f"Difference:        {result.mu_hat - result.mu_naive:.4f}")
 

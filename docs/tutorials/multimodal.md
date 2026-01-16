@@ -58,8 +58,7 @@ result = structural_dml(
     n_folds=50
 )
 
-print(f"Avg experience premium: {result.mu_hat:.4f}")
-print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
+print(result.summary())
 
 # Analyze heterogeneity
 beta_hat = result.theta_hat[:, 1]  # Individual-level effects
@@ -135,8 +134,8 @@ result = structural_dml(
 )
 
 # Citation multiplier from OA
-print(f"Avg OA effect: {result.mu_hat:.3f} log-points")
-print(f"Citation multiplier: {np.exp(result.mu_hat):.2f}x")
+print(result.summary())
+print(f"\nCitation multiplier: {np.exp(result.mu_hat):.2f}x")
 
 # Which papers benefit most?
 beta_hat = result.theta_hat[:, 1]

@@ -138,6 +138,9 @@ result_wages = structural_dml(
     verbose=False
 )
 
+print("\nPublication-ready summary:")
+print(result_wages.summary())
+
 print(f"\nRESULTS:")
 print(f"  True E[β]:     {mu_true_wages:.4f}")
 print(f"  Estimated:     {result_wages.mu_hat:.4f}")
@@ -233,6 +236,9 @@ result_purchase = structural_dml(
     lr=0.01,
     verbose=False
 )
+
+print("\nPublication-ready summary:")
+print(result_purchase.summary())
 
 print(f"\nRESULTS:")
 print(f"  True E[β]:     {mu_true_purchase:.4f}")
@@ -331,6 +337,9 @@ result_cite = structural_dml(
     lr=0.01,
     verbose=False
 )
+
+print("\nPublication-ready summary:")
+print(result_cite.summary())
 
 print(f"\nRESULTS:")
 print(f"  True E[β]:     {mu_true_cite:.4f}")

@@ -157,6 +157,10 @@ Check condition numbers of estimated Hessians:
 ### Compare to Naive Estimate
 
 ```python
+# The summary shows both debiased and naive estimates
+print(result.summary())
+
+# Or access individually
 print(f"Naive estimate: {result.mu_naive:.4f}")
 print(f"Debiased estimate: {result.mu_hat:.4f}")
 print(f"Difference: {result.mu_hat - result.mu_naive:.4f}")
@@ -172,6 +176,10 @@ print(f"Difference: {result.mu_hat - result.mu_naive:.4f}")
 ### Report Results
 
 ```python
+# Use summary() for a publication-ready table
+print(result.summary())
+
+# Or access individual values
 print(f"Average Treatment Effect: {result.mu_hat:.3f}")
 print(f"Standard Error: {result.se:.3f}")
 print(f"95% CI: [{result.ci_lower:.3f}, {result.ci_upper:.3f}]")
@@ -250,22 +258,15 @@ result = structural_dml(
 )
 
 # ======================
-# 4. VALIDATE
+# 4. VALIDATE & 5. INTERPRET
 # ======================
+# Use summary() for publication-ready output
+print(result.summary())
+
 # Compare naive vs debiased
-print(f"Naive: {result.mu_naive:.4f}")
+print(f"\nNaive: {result.mu_naive:.4f}")
 print(f"Debiased: {result.mu_hat:.4f}")
 print(f"Bias correction: {result.mu_hat - result.mu_naive:.4f}")
-
-# ======================
-# 5. INTERPRET
-# ======================
-print("\n" + "="*50)
-print("RESULTS")
-print("="*50)
-print(f"Average Price Sensitivity: {result.mu_hat:.4f}")
-print(f"Standard Error: {result.se:.4f}")
-print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
 
 if result.ci_upper < 0:
     print("Conclusion: Price significantly reduces purchase probability")

@@ -80,10 +80,7 @@ result = structural_dml(
     lr=0.01
 )
 
-print("\n--- Results ---")
-print(f"Estimate: {result.mu_hat:.4f}")
-print(f"SE:       {result.se:.4f}")
-print(f"95% CI:   [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
+print(result.summary())
 ```
 
 ## Expected Results

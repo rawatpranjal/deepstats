@@ -62,10 +62,8 @@ result = structural_dml(
     n_folds=50,
 )
 
-print(f"Avg Elasticity (Truth): {mu_true:.4f}")
-print(f"Avg Elasticity (Est):   {result.mu_hat:.4f}")
-print(f"Standard Error:         {result.se:.4f}")
-print(f"95% CI:                 [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
+print(f"True mu* = {mu_true:.4f}")
+print(result.summary())
 ```
 
 ## New `inference()` API

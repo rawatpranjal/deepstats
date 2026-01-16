@@ -2,6 +2,15 @@
 
 ## 2026-01-16
 
+### Propagated summary() Output Through Documentation & Tutorials
+- Updated all documentation and tutorials to use `print(result.summary())` instead of manual print statements
+- **Homepages** (2 files): README.md, docs/index.md
+- **Getting Started** (2 files): quickstart.md, usage.md - added example output block
+- **API Docs** (1 file): inference.md - added "Viewing Results with summary()" section
+- **Tutorial Docs** (9 files): gallery.md, linear.md, logit.md, poisson.md, tobit.md, gamma.md, gumbel.md, negbin.md, weibull.md, multimodal.md
+- **Jupyter Notebooks** (3 files): 01_showcase.ipynb, 02_logit_oracle.ipynb, 06_multimodal_gallery.ipynb - added cells demonstrating summary()
+- **Python Scripts** (2 files): 05_john_minnesota_e2e.py, 06_multimodal_gallery.py - added summary() calls after inference
+
 ### FLM Paper Quotes Added to Theory/Algorithm Docs
 - Added authoritative quotes from Farrell, Liang, Misra (2021) to strengthen academic grounding
 - `docs/theory/index.md`: Added core insight quote about ML and economic structure as complements

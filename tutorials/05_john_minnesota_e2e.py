@@ -116,6 +116,10 @@ result = structural_dml(
 
 print("✓ Inference complete!")
 
+# Show the publication-ready summary
+print("\nPublication-ready summary:")
+print(result.summary())
+
 # ============================================================
 # STEP 4: Results
 # ============================================================

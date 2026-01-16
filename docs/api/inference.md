@@ -69,8 +69,45 @@ result = structural_dml(
     epochs=100
 )
 
-print(f"Estimate: {result.mu_hat:.4f} ± {result.se:.4f}")
-print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
+print(result.summary())
+```
+
+Output:
+```
+==============================================================================
+                            Structural DML Results
+==============================================================================
+Family:           Linear               Target:           E[beta]
+No. Observations: 2000                 No. Folds:        50
+==============================================================================
+                  coef     std err         z     P>|z|      [0.025    0.975]
+------------------------------------------------------------------------------
+     E[beta]    0.5012      0.0234    21.410    0.000     0.4553    0.5471
+==============================================================================
+Diagnostics:
+  Min Lambda eigenvalue:    0.998765
+  Mean condition number:    1.00
+  Correction ratio:         0.0523
+------------------------------------------------------------------------------
+```
+
+### Viewing Results with `summary()`
+
+Both `DMLResult` and `InferenceResult` provide a `summary()` method that produces a statsmodels-style table with:
+
+- **Header**: Family, target, sample size, number of folds, date/time
+- **Coefficient table**: Estimate, standard error, z-statistic, p-value, 95% CI
+- **Diagnostics**: Lambda eigenvalue, condition number, correction ratio
+
+```python
+# Get formatted summary string
+print(result.summary())
+
+# Individual components are still accessible
+print(result.mu_hat)      # Point estimate
+print(result.se)          # Standard error
+print(result.ci_lower)    # Lower 95% CI
+print(result.ci_upper)    # Upper 95% CI
 ```
 
 ### DMLResult Object

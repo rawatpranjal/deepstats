@@ -31,8 +31,7 @@ result = structural_dml(
     epochs=200, n_folds=50
 )
 
-print(f"Avg return to experience: {result.mu_hat:.4f}")
-print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
+print(result.summary())
 ```
 
 **Validation:** Corr(true, estimated) = 0.985
@@ -51,6 +50,8 @@ result = structural_dml(
     family='logit',
     epochs=200, n_folds=50
 )
+
+print(result.summary())
 
 # Who should get discounts?
 beta_hat = result.theta_hat[:, 1]
@@ -73,6 +74,8 @@ result = structural_dml(
     family='poisson',
     epochs=200, n_folds=50
 )
+
+print(result.summary())
 
 # Citation multiplier
 print(f"OA multiplier: {np.exp(result.mu_hat):.2f}x")

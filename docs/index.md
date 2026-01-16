@@ -55,8 +55,7 @@ result = structural_dml(
     n_folds=50
 )
 
-print(f"Estimate: {result.mu_hat:.4f} +/- {result.se:.4f}")
-print(f"95% CI: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]")
+print(result.summary())
 ```
 
 ### New `inference()` API
