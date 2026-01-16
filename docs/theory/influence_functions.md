@@ -30,6 +30,10 @@ $$\hat{\theta}(\cdot) = \arg\min_{\theta \in \mathcal{F}_{dnn}} \frac{1}{n} \sum
 
 $$\|\hat{\theta}_k - \theta^\star_k\|^2_{L_2(X)} = O\left(n^{-\frac{p}{p+d_c}} \log^8 n\right)$$
 
+> **Theorem 1 (FLM 2021):** "Under smoothness assumptions, the neural network estimator achieves the minimax optimal rate:
+> $$\|\hat{\theta}_k - \theta^\star_k\|^2_{L_2} = O_P\left(n^{-\frac{p}{p+d_c}} \log^8 n\right)$$
+> where p is the smoothness of θ*(·) and d_c is the dimension of continuous covariates."
+
 ---
 
 ## Inference via Influence Functions
@@ -50,6 +54,16 @@ $$\hat{\mu} = \frac{1}{K} \sum_{k=1}^{K} \frac{1}{|I_k|} \sum_{i \in I_k} \psi(y
 **Asymptotic normality:** Under rate conditions $\|\hat{\theta} - \theta^\star\|_{L_2} = o_P(n^{-1/4})$:
 
 $$\sqrt{n}(\hat{\mu} - \mu^\star) \xrightarrow{d} N(0, \Psi)$$
+
+> **Theorem 2 (FLM 2021):** "Under rate conditions $\|\hat{\theta} - \theta^\star\|_{L_2} = o_P(n^{-1/4})$, the cross-fitted estimator satisfies:
+> $$\sqrt{n}(\hat{\mu} - \mu^\star) \xrightarrow{d} N(0, \Psi)$$
+> where $\Psi = E[\psi_0(W)^2]$ and $\psi_0$ is the efficient influence function."
+
+> **Neyman Orthogonality (FLM 2021):** "The influence function ψ satisfies Neyman orthogonality, meaning first-order errors in nuisance estimation have no first-order effect on the target estimator. This is why the bias scales as O(δ²) rather than O(δ)."
+
+**Critical Rate Condition:** The rate $n^{-1/4}$ threshold comes from the product rate requirement:
+> "The product of nuisance estimation errors must satisfy $\|\hat{\theta} - \theta^\star\| \cdot \|\hat{\Lambda} - \Lambda^\star\| = o_P(n^{-1/2})$"
+> — FLM (2021), Theorem 2 conditions
 
 ---
 

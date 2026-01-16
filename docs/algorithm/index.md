@@ -32,11 +32,16 @@ Aggregate:
     SE = √(Var(ψ)/n)
 ```
 
+> "Cross-fitting prevents overfitting: the model is trained on data independent of where it is evaluated. This ensures the influence function correction is unbiased."
+> — FLM (2021), Algorithm 1
+
 ---
 
 ## Lambda Estimation (Critical)
 
 The conditional Hessian Λ(x) = E[ℓ_θθ|X=x] has three estimation regimes:
+
+> **Remark 4 (FLM 2021):** "The conditional Hessian Λ(x) = E[ℓ_θθ|X=x] varies with x through θ(x). When treatment is randomized, Λ can be computed analytically; otherwise it must be estimated, requiring three-way sample splitting."
 
 ### Regime A: Randomized Experiments (`ComputeLambda`)
 
@@ -90,6 +95,9 @@ Three-way splitting is required when Λ(x) depends on θ(x).
 **Three-way required:**
 - Logit, Poisson, Gamma, Weibull, etc.
 - Hessian weights depend on θ: e.g., p(1-p) for logit where p = σ(θ'x)
+
+> "When the Hessian weight depends on θ (as in logit where w = p(1-p) and p = σ(θ'x)), separate samples are needed to estimate θ̂ and Λ̂ to avoid overfitting bias."
+> — FLM (2021), Section 3.2
 
 ### Auto-Detection
 
@@ -162,6 +170,8 @@ SE = √(Ψ̂/n)
 ```
 
 Where μ̂_k is the fold-specific mean.
+
+> **Theorem 3 (FLM 2021):** "The variance estimator $\hat{V} = n^{-1}\sum_i \hat{\psi}_i^2$ is consistent: $\hat{V} \xrightarrow{p} V$. The resulting confidence intervals achieve nominal coverage asymptotically."
 
 ### High Correction Variance Warning
 

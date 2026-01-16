@@ -2,6 +2,12 @@
 
 ## 2026-01-16
 
+### FLM Paper Quotes Added to Theory/Algorithm Docs
+- Added authoritative quotes from Farrell, Liang, Misra (2021) to strengthen academic grounding
+- `docs/theory/index.md`: Added core insight quote about ML and economic structure as complements
+- `docs/theory/influence_functions.md`: Added Theorem 1 (convergence rate), Theorem 2 (asymptotic normality), Neyman orthogonality explanation, and critical rate condition quote
+- `docs/algorithm/index.md`: Added cross-fitting quote, Lambda regime remark, three-way splitting quote, and Theorem 3 (variance estimation)
+
 ### E2E Smoke Test Document
 - Added `smoke_e2e_user_run_tests.md` - "John from Minnesota" new user experience test
 - Tests all 12 GLM families (linear, logit, poisson, gamma, gaussian, gumbel, tobit, negbin, weibull, probit, beta, zip)

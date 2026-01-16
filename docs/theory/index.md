@@ -24,3 +24,6 @@ This section explains the theoretical foundations of `deep-inference`, specifica
 - **ML alone** fits data well but extrapolates nonsensically and can't answer causal questions
 - **Structure alone** provides interpretability but misses heterogeneity
 - **Combined**: ML learns heterogeneity patterns $\theta(X)$ while structure ensures valid economics
+
+> "The central idea is that machine learning methods and economic structure are complements, not substitutes. Machine learning methods alone predict well, but extrapolate nonsensically... Economic structure alone can produce robust inference, but may miss important heterogeneity that is visible in the data."
+> — Farrell, Liang, Misra (2021)
