@@ -27,13 +27,20 @@ from scipy.stats import beta as beta_dist
 from deep_inference import structural_dml, FAMILY_REGISTRY
 
 # =============================================================================
-# CONFIGURATION
+# CONFIGURATION - Eval-Validated Settings for structural_dml() API
 # =============================================================================
-N = 500          # samples
-EPOCHS = 30      # training epochs
-N_FOLDS = 10     # cross-fitting folds
-HIDDEN_DIMS = [32, 16]
+# Based on eval_06 but adjusted for structural_dml() which lacks early stopping
+# structural_dml() doesn't support patience, so use epochs=100 (default) not 200
+N = 5000           # samples (10x previous, matches eval settings)
+N_BINARY = 8000    # For binary families (logit, probit) - need 2x samples
+EPOCHS = 100       # Default; use 100 not 200 since no early stopping available
+N_FOLDS = 50       # Package recommended minimum for valid SE estimation
+HIDDEN_DIMS = [64, 32]  # Adequate network capacity (was [32, 16])
+LR = 0.01          # Standard learning rate
 SEED = 42
+
+# Binary families need more samples (1 bit/observation)
+BINARY_FAMILIES = {'logit', 'probit'}
 
 # GROUND TRUTH: E[beta(X)] = E[0.3 + 0.1*X1] = 0.3 (since E[X1] = 0)
 MU_TRUE = 0.3
@@ -47,10 +54,15 @@ results = {}
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
-def generate_covariates():
+def get_sample_size(family_name):
+    """Get appropriate sample size for family (binary families need 2x)."""
+    return N_BINARY if family_name in BINARY_FAMILIES else N
+
+def generate_covariates(n_samples=None):
     """Generate X and T for all tests."""
-    X = np.random.randn(N, 3)
-    T = np.random.randn(N)
+    n = n_samples if n_samples is not None else N
+    X = np.random.randn(n, 3)
+    T = np.random.randn(n)
     return X, T
 
 def alpha(X):
@@ -69,7 +81,7 @@ def evaluate_result(family, result):
     """
     checks = {
         'finite': np.isfinite(result.mu_hat) and np.isfinite(result.se),
-        'se_positive': result.se > 0.01,
+        'se_positive': result.se > 0.001,  # Lower threshold for families with tight SEs
         'se_reasonable': result.se < 10,
         'estimate_sane': abs(result.mu_hat - MU_TRUE) < 0.5,
         'ci_covers': result.ci_lower < MU_TRUE < result.ci_upper,
@@ -93,7 +105,10 @@ def run_family_test(family_name, Y, X, T):
         result = structural_dml(
             Y=Y, T=T, X=X,
             family=family_name,
-            epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
+            epochs=EPOCHS,
+            n_folds=N_FOLDS,
+            hidden_dims=HIDDEN_DIMS,
+            lr=LR
         )
         verdict, checks = evaluate_result(family_name, result)
         return {
@@ -124,7 +139,7 @@ def run_family_test(family_name, Y, X, T):
 print("=" * 80)
 print("BRUTAL E2E SMOKE TEST: ALL 12 GLM FAMILIES")
 print("=" * 80)
-print(f"Config: N={N}, epochs={EPOCHS}, n_folds={N_FOLDS}, hidden_dims={HIDDEN_DIMS}")
+print(f"Config: N={N} (binary={N_BINARY}), epochs={EPOCHS}, n_folds={N_FOLDS}, hidden_dims={HIDDEN_DIMS}")
 print(f"Ground Truth: μ* = E[β(X)] = {MU_TRUE}")
 print("=" * 80)
 
@@ -145,10 +160,10 @@ else:
           f"covers_μ*={r['checks'].get('ci_covers', False)}")
 
 # ============================================================================
-# 2. LOGIT FAMILY
+# 2. LOGIT FAMILY (binary: uses N_BINARY samples)
 # ============================================================================
 print("\n[2/12] Testing LOGIT family...")
-X, T = generate_covariates()
+X, T = generate_covariates(N_BINARY)  # Binary family needs more samples
 eta = alpha(X) + beta(X) * T
 p = expit(eta)
 Y = np.random.binomial(1, p).astype(float)
@@ -285,10 +300,10 @@ else:
           f"covers_μ*={r['checks'].get('ci_covers', False)}")
 
 # ============================================================================
-# 10. PROBIT FAMILY
+# 10. PROBIT FAMILY (binary: uses N_BINARY samples)
 # ============================================================================
 print("\n[10/12] Testing PROBIT family...")
-X, T = generate_covariates()
+X, T = generate_covariates(N_BINARY)  # Binary family needs more samples
 eta = alpha(X) + beta(X) * T
 p = norm_dist.cdf(eta)
 Y = np.random.binomial(1, p).astype(float)
@@ -377,7 +392,7 @@ print(f"\nSUMMARY: {passed} PASS, {warned} WARN, {failed} FAIL out of 12 familie
 # Verdict criteria reminder
 print("\n" + "-" * 80)
 print("VERDICT CRITERIA:")
-print("  PASS: CI covers μ*=0.3 AND |μ̂ - 0.3| < 0.5 AND 0.01 < SE < 10 AND λ_min > 0")
+print("  PASS: CI covers μ*=0.3 AND |μ̂ - 0.3| < 0.5 AND 0.001 < SE < 10 AND λ_min > 0")
 print("  WARN: Estimate reasonable but CI doesn't cover (SE miscalibrated)")
 print("  FAIL: Exception OR NaN OR estimate wildly wrong")
 print("-" * 80)

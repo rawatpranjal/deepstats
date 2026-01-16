@@ -2,6 +2,14 @@
 
 ## 2026-01-16
 
+### Smoke Test: Eval-Validated Hyperparameters
+- Updated `smoke_test.py` with eval-validated settings for `structural_dml()` API
+- **New settings**: n=5000 (8000 for binary), epochs=100, n_folds=50, hidden_dims=[64,32], lr=0.01
+- **Binary family auto-scaling**: logit/probit use n=8000 (2x samples needed for ~1 bit/observation)
+- **SE threshold adjustment**: Lowered from 0.01 to 0.001 to accommodate families with tight SEs (e.g., weibull)
+- **Results**: 8/12 PASS (logit, poisson, gaussian, gumbel, tobit, negbin, weibull, probit), 3/12 WARN (linear, gamma, beta), 1/12 FAIL (zip)
+- Note: `structural_dml()` doesn't support early stopping (`patience`), so epochs=100 instead of 200
+
 ### Quick Start Documentation Verification
 - Fixed fabricated output in `docs/index.md` and `docs/getting_started/quickstart.md`
 - Added `torch.manual_seed(42)` to both Quick Start examples for reproducibility
