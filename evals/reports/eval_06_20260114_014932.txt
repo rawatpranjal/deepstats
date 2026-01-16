@@ -20,3 +20,4 @@ Simulation Settings:
 RUNNING SIMULATIONS (PARALLEL)
 ------------------------------------------------------------
 [Parallel(n_jobs=11)]: Done   3 tasks      | elapsed: 29.2min
+[Parallel(n_jobs=11)]: Done  10 tasks      | elapsed: 38.9min

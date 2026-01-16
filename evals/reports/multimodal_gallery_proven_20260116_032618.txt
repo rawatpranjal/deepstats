@@ -1,0 +1,33 @@
+================================================================================
+MULTIMODAL GALLERY: Deep Inference with High-Dimensional Embeddings
+================================================================================
+
+================================================================================
+EXAMPLE 1: LINEAR MODEL
+Wages ~ Years of Experience | Job Description Embeddings
+================================================================================
+
+SCENARIO: A labor economist studies how experience affects wages.
+The effect may vary by job type - captured via job description embeddings.
+
+- Y: Log hourly wage (continuous)
+- T: Years of experience (continuous, 0-20)
+- X: 64-dim embeddings of job descriptions (simulated text features)
+
+HYPOTHESIS: Experience premium varies by job complexity.
+  - Complex jobs (high embedding norm): steeper experience gradient
+  - Simple jobs: flatter experience gradient
+
+Data: N=10000, X dim=64
+True E[β(X)] = 0.0303 (avg 3.0% wage increase per year exp)
+Heterogeneity: β ranges from -0.043 to 0.103
+
+Running deep-inference (Linear family)...
+Traceback (most recent call last):
+  File "/Users/pranjal/deepest/tutorials/06_multimodal_gallery.py", line 102, in <module>
+    result_wages = structural_dml(
+                   ^^^^^^^^^^^^^^^
+  File "/Users/pranjal/deepest/src/deep_inference/__init__.py", line 198, in structural_dml
+    return structural_dml_core(
+           ^^^^^^^^^^^^^^^^^^^^
+TypeError: structural_dml_core() got an unexpected keyword argument 'patience'

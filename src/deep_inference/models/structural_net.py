@@ -7,6 +7,13 @@ from typing import Callable, List, Optional, Tuple
 from dataclasses import dataclass, field
 import numpy as np
 
+# Optional tqdm import
+try:
+    from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    HAS_TQDM = False
+
 
 @dataclass
 class TrainingHistory:
@@ -26,6 +33,27 @@ class TrainingHistory:
         if val_loss < self.best_val_loss:
             self.best_val_loss = val_loss
             self.best_epoch = len(self.val_losses) - 1
+
+    def summary(self) -> str:
+        """Generate training summary."""
+        n_epochs = len(self.train_losses)
+        if n_epochs == 0:
+            return "Training History: No epochs completed"
+
+        final_train = self.train_losses[-1]
+        final_val = self.val_losses[-1]
+        train_val_gap = final_train - final_val
+
+        lines = [
+            "Training History:",
+            f"  Epochs trained:     {n_epochs}",
+            f"  Best epoch:         {self.best_epoch + 1}",
+            f"  Best val loss:      {self.best_val_loss:.6f}",
+            f"  Final train loss:   {final_train:.6f}",
+            f"  Final val loss:     {final_val:.6f}",
+            f"  Train-val gap:      {train_val_gap:.6f}",
+        ]
+        return "\n".join(lines)
 
 
 class StructuralNet(nn.Module):
@@ -153,7 +181,12 @@ def train_structural_net(
     if batch_size is None or batch_size >= len(X_train):
         batch_size = len(X_train)
 
-    for epoch in range(epochs):
+    # Epoch iterator with optional tqdm
+    epoch_iterator = range(epochs)
+    if verbose and HAS_TQDM:
+        epoch_iterator = tqdm(epoch_iterator, desc="Training", ncols=80, leave=False)
+
+    for epoch in epoch_iterator:
         model.train()
 
         # Shuffle training data
@@ -201,6 +234,10 @@ def train_structural_net(
         grad_norm = np.sqrt(grad_norm)
 
         history.add(train_loss, val_loss, grad_norm)
+
+        # Update tqdm postfix
+        if verbose and HAS_TQDM and hasattr(epoch_iterator, 'set_postfix'):
+            epoch_iterator.set_postfix(train=f"{train_loss:.4f}", val=f"{val_loss:.4f}")
 
         # Early stopping
         if val_loss < best_val_loss:

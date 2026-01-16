@@ -308,4 +308,5 @@ def run_eval_06(
 if __name__ == "__main__":
     # Run with M=50, n=8000, epochs=200, lambda_method=lgbm for rigorous validation
     # Key fixes: t_tilde=0.0, lambda_method=lgbm, patience=50, n=8000 (binary scaling)
-    result = run_eval_06(M=50, n=8000, n_folds=20, epochs=200, lambda_method="lgbm")
+    # n_jobs=4 to avoid memory issues (11 workers caused OOM at 28/50)
+    result = run_eval_06(M=50, n=8000, n_folds=20, epochs=200, lambda_method="lgbm", n_jobs=4)

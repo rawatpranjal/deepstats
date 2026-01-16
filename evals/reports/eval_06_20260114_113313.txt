@@ -1,0 +1,82 @@
+[Parallel(n_jobs=4)]: Using backend LokyBackend with 4 concurrent workers.
+============================================================
+EVAL 06: FREQUENTIST COVERAGE
+============================================================
+
+DGP:
+  α*(x) = 0.0 + 0.5·sin(x)
+  β*(x) = 1.0 + 0.5·x
+  True μ* = 0.241016
+
+Simulation Settings:
+  M = 50 replications
+  n = 8000 observations
+  n_folds = 20
+  epochs = 200
+  lambda_method = lgbm
+  n_jobs = 4 (parallel workers)
+
+------------------------------------------------------------
+RUNNING SIMULATIONS (PARALLEL)
+------------------------------------------------------------
+[Parallel(n_jobs=4)]: Done   5 tasks      | elapsed: 23.4min
+[Parallel(n_jobs=4)]: Done  10 tasks      | elapsed: 36.6min
+[Parallel(n_jobs=4)]: Done  17 tasks      | elapsed: 58.6min
+[Parallel(n_jobs=4)]: Done  24 tasks      | elapsed: 88.5min
+[Parallel(n_jobs=4)]: Done  33 tasks      | elapsed: 113.9min
+[Parallel(n_jobs=4)]: Done  42 tasks      | elapsed: 138.1min
+[Parallel(n_jobs=4)]: Done  50 out of  50 | elapsed: 165.1min finished
+
+============================================================
+RESULTS
+============================================================
+
+--- Simulation Summary ---
+  Total simulations: 50
+  Valid simulations: 50
+  Failed simulations: 0
+
+--- Point Estimation ---
+  True μ*: 0.241016
+  Mean(μ̂): 0.232175
+  Std(μ̂): 0.022170
+  Bias: -0.008841
+
+--- Standard Error ---
+  Empirical SE: 0.022170
+  Mean SE (IF): 0.021468
+  SE Ratio: 1.0327
+
+--- Coverage ---
+  Coverage: 94.0% (47/50)
+
+--- z-Score Distribution ---
+  Mean z: -0.3809 (should be ~0)
+  Std z: 1.0425 (should be ~1)
+
+--- Individual Results (first 10) ---
+  Sim   μ̂         SE         CI_lo      CI_hi      Cov   z         
+-----------------------------------------------------------------
+  1     0.2123     0.0240     0.1654     0.2593     T     -1.1969   
+  2     0.2466     0.0210     0.2054     0.2879     T     0.2672    
+  3     0.2598     0.0217     0.2173     0.3023     T     0.8671    
+  4     0.2382     0.0212     0.1966     0.2798     T     -0.1334   
+  5     0.2202     0.0204     0.1802     0.2603     T     -1.0173   
+  6     0.2329     0.0172     0.1993     0.2665     T     -0.4731   
+  7     0.2288     0.0236     0.1825     0.2752     T     -0.5160   
+  8     0.1955     0.0204     0.1555     0.2355     F     -2.2281   
+  9     0.2397     0.0218     0.1970     0.2825     T     -0.0586   
+  10    0.2284     0.0219     0.1855     0.2713     T     -0.5784   
+
+============================================================
+VALIDATION CRITERIA
+============================================================
+  Coverage in [85%, 99%]: PASS
+  SE Ratio in [0.5, 2.0]: PASS
+  |Bias| < 0.1: PASS
+  |z_mean| < 0.5: PASS
+  z_std in [0.5, 2.0]: PASS
+
+============================================================
+EVAL 06: PASS
+============================================================

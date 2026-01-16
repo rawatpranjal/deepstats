@@ -11,6 +11,13 @@ from .lambda_estimator import LambdaEstimator, AggregateLambdaEstimator
 from ..models import StructuralNet, train_structural_net, TrainingHistory
 from ..utils import batch_inverse
 
+# Optional tqdm import
+try:
+    from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    HAS_TQDM = False
+
 
 @dataclass
 class DMLResult:
@@ -24,6 +31,49 @@ class DMLResult:
     theta_hat: np.ndarray                  # Estimated parameters theta(x) for all x
     mu_naive: float                        # Naive estimate (for comparison)
     diagnostics: Dict[str, Any] = field(default_factory=dict)
+
+    # Metadata fields (set by structural_dml wrapper)
+    _family: Optional[str] = field(default=None, repr=False)
+    _target: Optional[str] = field(default=None, repr=False)
+    _n_obs: Optional[int] = field(default=None, repr=False)
+    _n_folds: Optional[int] = field(default=None, repr=False)
+
+    def __repr__(self) -> str:
+        """Short representation."""
+        from ..utils.formatting import format_short_repr
+        return format_short_repr(
+            class_name="DMLResult",
+            estimate=self.mu_hat,
+            se=self.se,
+            ci_lower=self.ci_lower,
+            ci_upper=self.ci_upper,
+        )
+
+    def summary(self) -> str:
+        """
+        Generate statsmodels-style summary.
+
+        Returns:
+            Formatted summary string
+        """
+        from ..utils.formatting import format_full_summary
+
+        # Determine target name for display
+        target_name = self._target if self._target else "E[beta]"
+
+        return format_full_summary(
+            title="Structural DML Results",
+            coef_name=target_name,
+            estimate=self.mu_hat,
+            se=self.se,
+            ci_lower=self.ci_lower,
+            ci_upper=self.ci_upper,
+            diagnostics=self.diagnostics,
+            family=self._family,
+            target=target_name,
+            n_obs=self._n_obs,
+            n_folds=self._n_folds,
+        )
 
 
 def structural_dml_core(
@@ -135,8 +185,12 @@ def structural_dml_core(
             return grad
 
     # Cross-fitting loop
-    for k in range(n_folds):
-        if verbose:
+    fold_iterator = range(n_folds)
+    if verbose and HAS_TQDM:
+        fold_iterator = tqdm(fold_iterator, desc="Cross-fitting", ncols=80)
+
+    for k in fold_iterator:
+        if verbose and not HAS_TQDM:
             print(f"Processing fold {k+1}/{n_folds}")
 
         # Get fold indices

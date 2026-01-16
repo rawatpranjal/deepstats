@@ -32,7 +32,7 @@ $$\|\hat{\theta}_k - \theta^\star_k\|^2_{L_2(X)} = O\left(n^{-\frac{p}{p+d_c}} \
 
 ---
 
-## Inference via Double Machine Learning
+## Inference via Influence Functions
 
 **Influence function (Theorem 2):**
 
@@ -43,7 +43,7 @@ where:
 - $\Lambda(x) = \mathbb{E}[\ell_{\theta\theta}(Y, T, \theta(x)) \mid X = x]$ is the conditional Hessian
 - $H_\theta$ is the Jacobian of $H$ w.r.t. $\theta$
 
-**DML estimator:**
+**Cross-fitted estimator:**
 
 $$\hat{\mu} = \frac{1}{K} \sum_{k=1}^{K} \frac{1}{|I_k|} \sum_{i \in I_k} \psi(y_i, t_i, \hat{\theta}_k(x_i), \hat{\Lambda}_k(x_i))$$
 

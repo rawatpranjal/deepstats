@@ -2,6 +2,13 @@
 
 ## 2026-01-16
 
+### Statsmodels-Style Summary and tqdm Progress Bars
+- Added `summary()` method to `DMLResult`, `InferenceResult`, `CrossFitResult`, `TrainingHistory`
+- Added `__repr__()` methods for clean object representation
+- Added tqdm progress bars to cross-fitting loops (fold iteration) and training loops (epoch iteration)
+- Created `utils/formatting.py` with summary formatting utilities (z-stats, p-values, coefficient tables)
+- Metadata (family, target, n_obs, n_folds) now passed through to result objects
+
 ### Complete Eval Documentation
 - Added detailed documentation for Evals 04-06 in `evals/eval.md`
 - Eval 04: Target Jacobian H_θ - paper references, test matrix (9 parts), pass criteria

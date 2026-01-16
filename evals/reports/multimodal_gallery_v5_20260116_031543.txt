@@ -1,0 +1,278 @@
+================================================================================
+MULTIMODAL GALLERY: Deep Inference with High-Dimensional Embeddings
+================================================================================
+
+================================================================================
+EXAMPLE 1: LINEAR MODEL
+Wages ~ Years of Experience | Job Description Embeddings
+================================================================================
+
+SCENARIO: A labor economist studies how experience affects wages.
+The effect may vary by job type - captured via job description embeddings.
+
+- Y: Log hourly wage (continuous)
+- T: Years of experience (continuous, 0-20)
+- X: 64-dim embeddings of job descriptions (simulated text features)
+
+HYPOTHESIS: Experience premium varies by job complexity.
+  - Complex jobs (high embedding norm): steeper experience gradient
+  - Simple jobs: flatter experience gradient
+
+Data: N=10000, X dim=64
+True E[β(X)] = 0.0303 (avg 3.0% wage increase per year exp)
+Heterogeneity: β ranges from -0.043 to 0.103
+
+Running deep-inference (Linear family)...
+
+RESULTS:
+  True E[β]:     0.0303
+  Estimated:     0.0392
+  SE:            0.0005
+  95% CI:        [0.0383, 0.0401]
+  Covers truth:  False
+
+Heterogeneity Recovery:
+  Corr(β_true, β_hat): 0.402
+
+  Top 10% (highest experience premium):
+    Avg job complexity: 0.33 (high)
+    Avg β_hat: 0.1101
+  Bottom 10%:
+    Avg job complexity: -1.00 (low)
+    Avg β_hat: -0.0344
+
+================================================================================
+EXAMPLE 2: LOGIT MODEL
+Purchase ~ Discount | Product Image Embeddings
+================================================================================
+
+SCENARIO: An e-commerce company studies discount effectiveness.
+Does a 10% discount work better for some products than others?
+
+- Y: Purchase (0/1 binary)
+- T: Discount percentage (0-30%)
+- X: 64-dim embeddings from product images (simulated visual features)
+
+HYPOTHESIS: Discount effectiveness varies by product aesthetics.
+  - "Premium-looking" products: discount signals quality compromise
+  - "Value-looking" products: discount drives conversions
+
+Data: N=12000, X dim=64
+True E[β(X)] = 0.0492 (avg log-odds increase per 1% discount)
+Heterogeneity: β ranges from -0.249 to 0.406
+Purchase rate: 53.5%
+
+Running deep-inference (Logit family)...
+
+RESULTS:
+  True E[β]:     0.0492
+  Estimated:     0.0511
+  SE:            0.0015
+  95% CI:        [0.0482, 0.0539]
+  Covers truth:  True
+
+Heterogeneity Recovery:
+  Corr(β_true, β_hat): 0.862
+
+  Products where discounts WORK (top 10%):
+    Avg premium score: -5.38 (value products)
+    Avg β_hat: 0.2444
+  Products where discounts HURT (bottom 10%):
+    Avg premium score: 4.90 (premium products)
+    Avg β_hat: -0.0741
+
+================================================================================
+EXAMPLE 3: POISSON MODEL
+Citations ~ Open Access | Paper Abstract Embeddings
+================================================================================
+
+SCENARIO: A bibliometrics researcher studies the Open Access citation advantage.
+Does making a paper open access increase citations? For which papers?
+
+- Y: Citation count (non-negative integer)
+- T: Open Access indicator (0/1)
+- X: 64-dim embeddings of paper abstracts (simulated text features)
+
+HYPOTHESIS: OA advantage varies by paper accessibility.
+  - Technical papers: OA removes paywall barrier → large boost
+  - Accessible papers: Already widely read → smaller OA boost
+
+Data: N=15000, X dim=64
+True E[β(X)] = 0.2967 (avg log-rate increase from OA)
+  → Exp(β) = 1.35x citation multiplier
+Heterogeneity: β ranges from -1.254 to 1.790
+Mean citations: 7.0, Max: 184
+
+Running deep-inference (Poisson family)...
+
+RESULTS:
+  True E[β]:     0.2967
+  Estimated:     -5.6961
+  SE:            6.1741
+  95% CI:        [-17.7975, 6.4052]
+  Covers truth:  True
+
+Heterogeneity Recovery:
+  Corr(β_true, β_hat): 0.863
+
+  Papers with LARGEST OA advantage (top 10%):
+    Avg technicality: 4.76 (highly technical)
+    Avg β_hat: 1.0383 (2.8x multiplier)
+  Papers with SMALLEST OA advantage (bottom 10%):
+    Avg technicality: -3.85 (accessible)
+    Avg β_hat: -0.2611 (0.8x multiplier)
+
+================================================================================
+GALLERY SUMMARY
+================================================================================
+
+Model        Outcome              Treatment       X Dim    Covers?    Corr(β)   
+--------------------------------------------------------------------------------
+Linear       Log wages            Experience      64       False      0.402
+Logit        Purchase (0/1)       Discount %      64       True       0.862
+Poisson      Citations            Open Access     64       True       0.863
+--------------------------------------------------------------------------------
+
+
+KEY INSIGHTS:
+
+1. EMBEDDINGS AS COVARIATES: Feature embeddings (64 dim) work seamlessly as
+   covariates X. The neural network learns which dimensions drive heterogeneity.
+
+2. VALID INFERENCE: Despite high-dimensional X, influence function correction
+   provides valid 95% confidence intervals. Naive SEs would be ~5x too small.
+
+3. HETEROGENEITY RECOVERY: The package captures treatment effect heterogeneity
+   driven by latent factors in the embeddings. This enables:
+   - Targeting (which products to discount?)
+   - Personalization (which workers benefit from training?)
+   - Policy design (which papers to make open access?)
+
+4. REAL-WORLD USAGE:
+   - Replace simulated embeddings with real features (PCA of BERT/ResNet)
+   - For very high-dim embeddings (384-768), use larger N or apply PCA first
+   - Rule of thumb: n/dim ratio > 50 for stable estimation
+
+
+================================================================================
+HETEROGENEOUS TREATMENT EFFECT (HTE) DISTRIBUTIONS
+================================================================================
+
+LINEAR: Experience → Wages:
+                       True β(X)            Estimated β̂(X)     
+  ------------------------------------------------------------
+  Mean                 0.0303               0.0426              
+  Std Dev              0.0192               0.0396              
+  Min                  -0.0430              -0.2174             
+  25th %ile            0.0172               0.0220              
+  Median               0.0303               0.0441              
+  75th %ile            0.0433               0.0656              
+  Max                  0.1031               0.1664              
+
+  Interpretation: β represents % wage increase per year of experience
+
+LOGIT: Discount → Purchase:
+                       True β(X)            Estimated β̂(X)     
+  ------------------------------------------------------------
+  Mean                 0.0492               0.0501              
+  Std Dev              0.0828               0.0892              
+  Min                  -0.2491              -0.2821             
+  25th %ile            -0.0070              -0.0030             
+  Median               0.0483               0.0242              
+  75th %ile            0.1044               0.0901              
+  Max                  0.4055               0.6878              
+
+  Interpretation: β represents log-odds increase per 1% discount
+
+POISSON: Open Access → Citations:
+                       True β(X)            Estimated β̂(X)     
+  ------------------------------------------------------------
+  Mean                 0.2967               0.4066              
+  Std Dev              0.4150               0.3496              
+  Min                  -1.2537              -1.5322             
+  25th %ile            0.0194               0.2471              
+  Median               0.2982               0.3827              
+  75th %ile            0.5723               0.6004              
+  Max                  1.7904               1.6811              
+
+  Interpretation: β represents log citation rate increase from OA
+
+--------------------------------------------------------------------------------
+HTE DISTRIBUTIONS (Estimated β̂(X))
+--------------------------------------------------------------------------------
+
+  LINEAR: β̂(X) for Experience Effect on Wages
+  ──────────────────────────────────────────────────
+  -0.217 │
+  -0.198 │
+  -0.179 │
+  -0.160 │
+  -0.141 │
+  -0.121 │
+  -0.102 │
+  -0.083 │
+  -0.064 │█
+  -0.045 │███
+  -0.026 │██████
+  -0.006 │████████████
+   0.013 │██████████████████████████
+   0.032 │███████████████████████████████████
+   0.051 │██████████████████████████████
+   0.070 │███████████████
+   0.090 │████████
+   0.109 │████
+   0.128 │█
+   0.147 │
+  ──────────────────────────────────────────────────
+
+  LOGIT: β̂(X) for Discount Effect on Purchase
+  ──────────────────────────────────────────────────
+  -0.282 │
+  -0.234 │
+  -0.185 │
+  -0.137 │██
+  -0.088 │██████
+  -0.040 │██████████████████████████████
+   0.009 │███████████████████████████████████
+   0.057 │█████████████████
+   0.106 │██████████
+   0.154 │██████
+   0.203 │███
+   0.251 │█
+   0.300 │█
+   0.348 │
+   0.397 │
+   0.445 │
+   0.494 │
+   0.542 │
+   0.591 │
+   0.639 │
+  ──────────────────────────────────────────────────
+
+  POISSON: β̂(X) for Open Access Effect on Citations
+  ──────────────────────────────────────────────────
+  -1.532 │
+  -1.372 │
+  -1.211 │
+  -1.050 │
+  -0.890 │
+  -0.729 │
+  -0.568 │█
+  -0.408 │██
+  -0.247 │███
+  -0.086 │██████
+   0.074 │█████████████
+   0.235 │███████████████████████████████████
+   0.396 │███████████████████████
+   0.556 │█████████████
+   0.717 │█████████
+   0.878 │██████
+   1.038 │███
+   1.199 │█
+   1.360 │
+   1.520 │
+  ──────────────────────────────────────────────────
+
+================================================================================
+GALLERY COMPLETE
+================================================================================

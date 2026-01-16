@@ -195,7 +195,7 @@ def structural_dml(
             def target_fn(x, theta):
                 return theta[:, 1].mean()
 
-    return structural_dml_core(
+    result = structural_dml_core(
         Y=Y,
         T=T,
         X=X,
@@ -215,6 +215,14 @@ def structural_dml(
         **kwargs,
     )
 
+    # Set metadata on result
+    result._family = family
+    result._target = target if target else "E[beta]"
+    result._n_obs = len(Y)
+    result._n_folds = n_folds
+
+    return result
+
 
 # New API: inference() with general loss/target
 from dataclasses import dataclass
@@ -232,6 +240,49 @@ class InferenceResult:
     psi_values: Tensor
     theta_hat: Tensor
     diagnostics: dict
+
+    # Metadata fields
+    _model: Optional[str] = None
+    _target: Optional[str] = None
+    _n_obs: Optional[int] = None
+    _n_folds: Optional[int] = None
+
+    def __repr__(self) -> str:
+        """Short representation."""
+        from .utils.formatting import format_short_repr
+        return format_short_repr(
+            class_name="InferenceResult",
+            estimate=self.mu_hat,
+            se=self.se,
+            ci_lower=self.ci_lower,
+            ci_upper=self.ci_upper,
+        )
+
+    def summary(self) -> str:
+        """
+        Generate statsmodels-style summary.
+
+        Returns:
+            Formatted summary string
+        """
+        from .utils.formatting import format_full_summary
+
+        # Determine target name for display
+        target_name = self._target if self._target else "E[beta]"
+
+        return format_full_summary(
+            title="Structural Inference Results",
+            coef_name=target_name,
+            estimate=self.mu_hat,
+            se=self.se,
+            ci_lower=self.ci_lower,
+            ci_upper=self.ci_upper,
+            diagnostics=self.diagnostics,
+            family=self._model,
+            target=target_name,
+            n_obs=self._n_obs,
+            n_folds=self._n_folds,
+        )
 
 
 def inference(
@@ -415,6 +466,10 @@ def inference(
             "n_folds": n_folds,
             "lambda_method": lambda_strategy.__class__.__name__,
         },
+        _model=model,
+        _target=target if target else "E[beta]",
+        _n_obs=len(Y),
+        _n_folds=n_folds,
     )
 
 

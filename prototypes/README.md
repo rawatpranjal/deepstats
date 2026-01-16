@@ -1,6 +1,6 @@
 # Sanjog Misra Paper Validation
 
-This folder contains a prototype simulation to validate the results from "Deep Learning for Individual Heterogeneity" (and related literature on DML/Influence Functions).
+This folder contains a prototype simulation to validate the results from "Deep Learning for Individual Heterogeneity" (Farrell, Liang, Misra).
 
 ## Files
 
@@ -11,9 +11,9 @@ This folder contains a prototype simulation to validate the results from "Deep L
 The script compares three inference methods for estimating the average partial effect (or average treatment effect) in Linear and Logit models with heterogeneity:
 
 1.  **Naive**: Train a Deep Neural Network to predict the outcome (or parameters), then average the estimated parameter $\hat{\theta}(X)$. Standard errors are computed naively (ignoring estimation uncertainty).
-2.  **Influence Function (DML)**: Use the "Double/Debiased Machine Learning" approach.
-    *   For Linear: Standard DML for ATE.
-    *   For Logit: The specific influence function derived in the paper/prompt, involving the Jacobian of the structural model and a correction term.
+2.  **Influence Function**: Use the influence function correction from Farrell-Liang-Misra.
+    *   For Linear: Influence function for ATE.
+    *   For Logit: The specific influence function derived in the paper, involving the Jacobian of the structural model and a correction term.
 3.  **Bootstrap**: Bootstrap the Naive estimator to get standard errors.
 
 ## Running

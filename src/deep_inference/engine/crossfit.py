@@ -16,10 +16,17 @@ Orchestrates 2-way or 3-way cross-fitting based on Lambda regime.
 """
 
 from typing import TYPE_CHECKING, Optional, List, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 import torch
 from torch import Tensor
+
+# Optional tqdm import
+try:
+    from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    HAS_TQDM = False
 
 if TYPE_CHECKING:
     from deep_inference.models import StructuralModel
@@ -49,6 +56,40 @@ class CrossFitResult:
     ci_lower: float
     ci_upper: float
     fold_results: List[FoldResult]
+
+    def __repr__(self) -> str:
+        """Short representation."""
+        return (
+            f"<CrossFitResult: mu_hat={self.mu_hat:.4f}, se={self.se:.4f}, "
+            f"95% CI=[{self.ci_lower:.4f}, {self.ci_upper:.4f}]>"
+        )
+
+    def summary(self) -> str:
+        """Generate cross-fitting summary."""
+        n_folds = len(self.fold_results)
+        n_obs = len(self.psi_values)
+
+        lines = [
+            "Cross-Fitting Results:",
+            f"  Number of folds:    {n_folds}",
+            f"  Observations:       {n_obs}",
+            f"  Point estimate:     {self.mu_hat:.6f}",
+            f"  Standard error:     {self.se:.6f}",
+            f"  95% CI:             [{self.ci_lower:.6f}, {self.ci_upper:.6f}]",
+        ]
+
+        # Add fold-level info if available
+        if self.fold_results and self.fold_results[0].train_history:
+            val_losses = [
+                fr.train_history.get("val_loss", float("nan"))
+                for fr in self.fold_results
+                if fr.train_history
+            ]
+            if val_losses:
+                mean_val = np.mean(val_losses)
+                lines.append(f"  Mean val loss:      {mean_val:.6f}")
+
+        return "\n".join(lines)
 
 
 class CrossFitter:
@@ -196,8 +237,12 @@ def run_crossfit(
     fold_results = []
 
     # Cross-fitting loop
-    for k, eval_fold in enumerate(folds):
-        if verbose:
+    fold_iterator = list(enumerate(folds))
+    if verbose and HAS_TQDM:
+        fold_iterator = tqdm(fold_iterator, desc="Cross-fitting", ncols=80)
+
+    for k, eval_fold in fold_iterator:
+        if verbose and not HAS_TQDM:
             print(f"Fold {k+1}/{n_folds}")
 
         # Get training indices (everything except eval fold)
