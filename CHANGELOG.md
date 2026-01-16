@@ -2,6 +2,14 @@
 
 ## 2026-01-16
 
+### API Flowchart Page for RTD
+- Added `docs/flowchart.md`: Interactive decision tree for model/target/regime selection
+- Mermaid diagram with color-coded nodes: outcome types → families → targets → regimes → API calls
+- 8 GLM families, 4 target functionals, 3 Lambda regimes documented
+- 4 common paths with code examples: Logistic demand, RCT binary, Linear, Custom
+- Quick reference parameter table and API summary
+- Added `sphinxcontrib-mermaid>=0.9` dependency and extension
+
 ### RTD Documentation Audit
 - Verified ReadTheDocs configuration is production-ready with complete coverage
 - `.readthedocs.yaml`: v2, Python 3.11, PDF/ePub enabled ✅

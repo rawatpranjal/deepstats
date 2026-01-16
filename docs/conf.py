@@ -22,6 +22,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
     "sphinx_copybutton",
+    "sphinxcontrib.mermaid",
 ]
 
 # MyST configuration for Markdown support

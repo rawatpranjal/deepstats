@@ -92,6 +92,7 @@ result = inference(Y, T, X, model='logit', target='beta',
 :caption: Contents
 
 getting_started/index
+flowchart
 tutorials/index
 theory/index
 algorithm/index
