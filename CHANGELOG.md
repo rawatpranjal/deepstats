@@ -2,6 +2,12 @@
 
 ## 2026-01-16
 
+### RTD Documentation Audit
+- Verified ReadTheDocs configuration is production-ready with complete coverage
+- `.readthedocs.yaml`: v2, Python 3.11, PDF/ePub enabled ✅
+- `docs/conf.py`: 8 extensions (myst_parser, autodoc, napoleon, viewcode, intersphinx, sphinx_autodoc_typehints, sphinx_copybutton, sphinxcontrib.mermaid) ✅
+- All 37 markdown files properly linked in toctrees with no orphaned or dead links
+
 ### BRUTAL E2E Smoke Test Implementation
 - Added `smoke_test.py`: Ground truth verification for all 12 GLM families
 - **Ground truth**: μ* = 0.3 (β(X) = 0.3 + 0.1*X₁, E[X₁] = 0)
