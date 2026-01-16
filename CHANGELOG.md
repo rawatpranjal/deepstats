@@ -2,6 +2,13 @@
 
 ## 2026-01-16
 
+### Evaluation Strategy by Architecture (Section 7.7)
+- Added Section 7.7 to `paper_replication_details.md`: How eval suite survives architecture changes
+- Analysis: ~60% of eval logic is architecture-agnostic (math oracles), ~40% is API-coupled
+- Per-architecture eval compatibility ratings: Protocol Orchestra ★★★★★, Effects ★★★★★, Compiler ★★★☆☆, Dataflow ★★☆☆☆
+- Defined 5 "eval hooks" contract that any architecture must preserve for validation
+- Rewrite estimates: 10% (Protocol) to 80% (Dataflow) depending on architecture choice
+
 ### InferenceResult Prediction & Visualization Methods (Mixin Refactor)
 - Created `PredictVisualizeMixin` in `utils/result_mixin.py` to share methods between result classes
 - `InferenceResult` now has: `predict_theta()`, `predict_alpha()`, `predict_beta()`, `predict_proba()`, `predict()`, `plot_distributions()`, `plot_heterogeneity()`

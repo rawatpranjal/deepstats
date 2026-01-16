@@ -1107,3 +1107,211 @@ def _compute_scores_batch(self, Y, T, theta):
 ```
 
 This gives economists a familiar sklearn-like interface while achieving good performance where it matters.
+
+---
+
+### 7.7 Evaluation Strategy by Architecture
+
+The `evals/` folder represents 6+ weeks of validation work. A staff engineer must answer: **Can we keep the same level of rigor with a new architecture?**
+
+#### What the Evals Actually Test
+
+The 6 evals decompose into three layers with different architecture coupling:
+
+| Layer | What's Tested | Architecture-Dependent? |
+|-------|---------------|------------------------|
+| **Math Layer** | Score ℓ_θ matches oracle formula | NO - pure math |
+| **Math Layer** | Hessian ℓ_θθ is PSD | NO - pure math |
+| **Math Layer** | Jacobian H_θ matches chain rule | NO - pure math |
+| **Math Layer** | Coverage ∈ [85%, 99%] | NO - statistical guarantee |
+| **API Layer** | `from deep_inference.families import get_family` | YES - import paths |
+| **API Layer** | `family.loss(Y, T, theta)` | YES - method signatures |
+| **Pipeline Layer** | θ → Λ → ψ → μ̂ flow | PARTIALLY - sequence matters, not impl |
+
+**Key insight**: ~60% of eval logic is architecture-agnostic (oracle comparisons, coverage checks). ~40% is tightly coupled to current API.
+
+#### Architecture A: Compiler (JAX)
+
+**Eval compatibility**: ★★★☆☆
+
+**What breaks**:
+- All import statements (JAX ecosystem vs PyTorch)
+- Family/Model class structure (functions vs classes)
+- Training loop isolation tests (eager vs compiled)
+
+**What survives**:
+- Oracle formulas (pure math, same equations)
+- Coverage Monte Carlo logic
+- Multi-seed validation structure
+
+**New patterns enabled**:
+```python
+# Multi-seed becomes trivial with vmap
+def run_mc_seeds(params, data, seeds):
+    # Run 50 seeds in ONE vectorized call - no loop needed
+    return jax.vmap(inference_fn, in_axes=(None, None, 0))(params, data, seeds)
+
+# Unit testing pure functions is trivial
+def test_score():
+    # No mocking, no state - just input → output
+    assert jnp.allclose(score_fn(Y, T, theta), expected)
+```
+
+**Challenge**: JIT compilation makes intermediate inspection harder. Need `jax.debug.print()` or explicit checkpointing.
+
+**Rewrite estimate**: ~70% of eval code (new API surface), ~30% portable (math oracle comparisons)
+
+---
+
+#### Architecture B: Protocol Orchestra
+
+**Eval compatibility**: ★★★★★
+
+This is the **current approach** - evals already work this way.
+
+**What breaks**: Minimal, if protocols remain stable
+
+**What survives**: Everything (this is why current evals work)
+
+**Testing patterns enabled**:
+```python
+# Mock any protocol for isolation testing
+class MockLambdaStrategy(LambdaStrategy):
+    def compute(self, x, context): return torch.eye(2)  # Fixed oracle
+
+# Inject mock into pipeline
+pipeline = InferencePipeline(model=real_model, lambda_=MockLambdaStrategy())
+result = pipeline.run(Y, T, X)  # Tests model isolation from Lambda
+```
+
+**Rewrite estimate**: ~10% (minor refactors as protocols evolve)
+
+---
+
+#### Architecture C: Dataflow Graph
+
+**Eval compatibility**: ★★☆☆☆
+
+**Critical challenge**: Lazy evaluation prevents intermediate inspection.
+
+**What breaks**:
+- All intermediate access (can't read θ̂ until graph executes)
+- Eval 02 autodiff tests (need eager gradient computation)
+- Eval 03 Lambda validation (need Λ values before ψ assembly)
+- Eval 05 ψ component tests (can't isolate assembly step)
+
+**What survives**:
+- Eval 06 end-to-end coverage (only tests final output)
+- Oracle comparisons (if graph materializes results)
+
+**New patterns enabled**:
+```python
+# Graph inspection for debugging
+graph = build_inference_graph(Y, T, X)
+print(graph.nodes)  # ['fit_theta', 'estimate_lambda', 'assemble_psi', 'compute_mu']
+print(graph.edges)  # [('fit_theta', 'estimate_lambda'), ...]
+
+# Node caching for repeated tests
+graph.cache_node('fit_theta')  # Reuse fitted θ across test variations
+```
+
+**Challenge**: Need "observable" nodes for testing. Either:
+1. Explicit materialization points: `graph.materialize('lambda')`
+2. Debug mode that disables lazy evaluation
+3. Accept that only E2E tests work
+
+**Rewrite estimate**: ~80% (need observable node infrastructure)
+
+---
+
+#### Architecture D: Effect System
+
+**Eval compatibility**: ★★★★★
+
+**What breaks**: All import statements (new effect-based API)
+
+**What survives**:
+- Math layer (same formulas, different wrappers)
+- Test logic (same assertions)
+
+**New patterns enabled** (BEST FOR TESTING):
+```python
+# Same inference code, different handlers
+def inference(Y, T, X):
+    theta = perform(Fit, Y, T, X)        # Effect: could be real training or mock
+    lambda_ = perform(EstimateLambda, X)  # Effect: could be estimated or oracle
+    psi = perform(Assemble, theta, lambda_)
+    return perform(Variance, psi)
+
+# Production handler
+with ProductionHandler():
+    result = inference(Y, T, X)  # Real training, real estimation
+
+# Test handler - inject oracle values
+with TestHandler(oracle_lambda=fixed_lambda, oracle_theta=true_theta):
+    result = inference(Y, T, X)  # Uses injected oracles
+
+# Deterministic random handler for reproducible tests
+with DeterministicRandom(seed=42):
+    result = inference(Y, T, X)  # Same result every time
+```
+
+**Why this is powerful for testing**:
+1. **Same code path** - tests run THE EXACT production code
+2. **Perfect isolation** - swap any component without changing test code
+3. **Deterministic randomness** - reproducible without global seeds
+4. **Replay capability** - `SimulationHandler` can replay exact sequences
+
+**Rewrite estimate**: ~50% (new handlers), but BETTER tests than before
+
+---
+
+#### Recommendation: Maintain Eval Contract
+
+Regardless of architecture, **preserve these 5 eval hooks**:
+
+```python
+# HOOK 1: Score computation (Eval 02)
+compute_score(y: Tensor, t: Tensor, theta: Tensor) -> Tensor
+
+# HOOK 2: Hessian computation (Eval 02)
+compute_hessian(y: Tensor, t: Tensor, theta: Tensor) -> Tensor
+
+# HOOK 3: Lambda estimation (Eval 03)
+compute_lambda(x: Tensor, context: Any) -> Tensor
+
+# HOOK 4: Influence function assembly (Eval 05)
+assemble_psi(score: Tensor, lambda_inv: Tensor, jacobian: Tensor) -> Tensor
+
+# HOOK 5: End-to-end inference (Eval 06)
+inference(Y: Tensor, T: Tensor, X: Tensor, ...) -> Result
+```
+
+These 5 hooks enable all 6 evals regardless of internal architecture:
+
+| Eval | Required Hooks | Tests |
+|------|----------------|-------|
+| 01: θ recovery | `inference` | θ̂(x) vs θ*(x) |
+| 02: Autodiff | `compute_score`, `compute_hessian` | Gradients match oracle |
+| 03: Lambda | `compute_lambda` | Λ̂(x) vs E[ℓ_θθ\|X=x] |
+| 04: Jacobian | (uses `compute_score` internally) | H_θ autodiff vs chain rule |
+| 05: ψ assembly | `assemble_psi` | ψ package vs oracle |
+| 06: Coverage | `inference` | MC coverage ∈ [85%, 99%] |
+
+**Contract enforcement strategy**:
+
+```python
+# In any architecture, expose these functions
+from deep_inference.testing import (
+    compute_score,      # For eval 02
+    compute_hessian,    # For eval 02
+    compute_lambda,     # For eval 03
+    assemble_psi,       # For eval 05
+    inference,          # For eval 01, 06
+)
+
+# Evals import from testing module, not internal implementation
+# This decouples eval code from architecture choice
+```
+
+This way, an architecture rewrite touches only the `testing` module's implementation, not the eval code itself.
