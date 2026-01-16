@@ -25,6 +25,7 @@
 
 ### Propagated summary() Output Through Documentation & Tutorials
 - Updated all documentation and tutorials to use `print(result.summary())` instead of manual print statements
+- Added statsmodels-style output block to `docs/index.md` Quick Start section
 - **Homepages** (2 files): README.md, docs/index.md
 - **Getting Started** (2 files): quickstart.md, usage.md - added example output block
 - **API Docs** (1 file): inference.md - added "Viewing Results with summary()" section
