@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-01-16 (Late Evening)
+
+### Implementation Verification: deep_inference vs FLM Papers & External Repo
+- **Verified all core formulas match FLM 2025 paper** (Farrell, Liang, Misra):
+  - ✅ Influence function: ψ = H - H_θ Λ⁻¹ ℓ_θ (`engine/assembler.py`)
+  - ✅ Lambda definition: Λ(x) = E[ℓ_θθ | X=x] (`lambda_/estimate.py`)
+  - ✅ Logit score: ℓ_θ = (p-y)·[1,t]' (`families/logit.py:65-91`)
+  - ✅ Logit Hessian: ℓ_θθ = p(1-p)·[1,t][1,t]' (`families/logit.py:93-129`)
+  - ✅ Variance: SE = √(Ψ̂/n) (`engine/variance.py`)
+  - ✅ Cross-fitting: 2-way for linear, 3-way for nonlinear (`engine/crossfit.py`)
+- **Compared with external repo** (rmmomin/causal-ml-auto-inference):
+  - deep_inference is more general (12 GLM families vs MSE only)
+  - deep_inference has more flexible Lambda estimation methods
+  - Both use valid autodiff approaches
+- **Eval results confirm correctness**:
+  - Eval 02 (Autodiff): Max error 2.22e-16 (machine precision)
+  - Eval 04 (Jacobian): Max error 4.16e-17 (machine precision)
+  - Eval 05 (IF Assembly): Correlation 0.9952, Bias 0.001
+  - Eval 06 (Coverage): **94% coverage** (47/50), SE Ratio 1.03
+- Report: `/Users/pranjal/deepest/evals/reports/eval_06_20260114_113313.txt`
+
 ## 2026-01-16 (Evening)
 
 ### Critical Bug Fix: t_tilde Default in inference() API
