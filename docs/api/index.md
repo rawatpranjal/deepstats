@@ -4,6 +4,7 @@ Complete API documentation for `deep-inference`.
 
 ```{toctree}
 :maxdepth: 2
+:caption: API Reference
 
 inference
 families

@@ -4,6 +4,7 @@ This section will help you get up and running with `deep-inference`.
 
 ```{toctree}
 :maxdepth: 2
+:caption: Getting Started
 
 installation
 quickstart

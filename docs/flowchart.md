@@ -1,4 +1,4 @@
-# Flowchart: Choosing Your Model
+# Flowchart
 
 Use this decision tree to select the right model family, target functional, and inference regime for your data.
 

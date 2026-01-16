@@ -2,6 +2,12 @@
 
 ## 2026-01-16
 
+### RTD Navigation Menu Fix
+- Fixed inconsistent sidebar navigation by adding `:caption:` to all section toctrees
+- Added empty toctree to `docs/algorithm/index.md` for consistency
+- Removed `:hidden:` from `docs/validation/index.md` so eval pages appear in sidebar
+- Renamed flowchart title from "Flowchart: Choosing Your Model" to "Flowchart"
+
 ### DMLResult Prediction & Visualization Methods
 - Added prediction methods to `DMLResult`: `predict_theta()`, `predict_alpha()`, `predict_beta()`, `predict_proba()`, `predict()`
 - Added visualization methods: `plot_distributions()` (KDE plots), `plot_heterogeneity()` (covariate profiles)

@@ -3,7 +3,8 @@
 Comprehensive eval suite validating every mathematical component of the influence function methodology.
 
 ```{toctree}
-:hidden:
+:maxdepth: 2
+:caption: Validation
 
 eval_01
 eval_02

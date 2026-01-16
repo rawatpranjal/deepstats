@@ -2,6 +2,12 @@
 
 Implementation of Farrell-Liang-Misra influence function-based inference for neural networks.
 
+```{toctree}
+:hidden:
+:maxdepth: 1
+:caption: Algorithm
+```
+
 ---
 
 ## Overview

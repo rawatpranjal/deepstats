@@ -4,6 +4,7 @@ Step-by-step tutorials for each supported model family.
 
 ```{toctree}
 :maxdepth: 2
+:caption: Tutorials
 
 gallery
 linear

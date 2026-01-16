@@ -4,6 +4,7 @@ Mathematical foundations of the Farrell-Liang-Misra framework for deep learning 
 
 ```{toctree}
 :maxdepth: 2
+:caption: Theory
 
 influence_functions
 ```
