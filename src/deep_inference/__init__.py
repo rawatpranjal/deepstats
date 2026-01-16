@@ -231,12 +231,15 @@ def structural_dml(
 
 
 # New API: inference() with general loss/target
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 import torch
+
+from .utils.result_mixin import PredictVisualizeMixin
 
 
 @dataclass
-class InferenceResult:
+class InferenceResult(PredictVisualizeMixin):
     """Result from the new inference() API."""
 
     mu_hat: float
@@ -252,6 +255,10 @@ class InferenceResult:
     _target: Optional[str] = None
     _n_obs: Optional[int] = None
     _n_folds: Optional[int] = None
+
+    # Fields for prediction capability
+    _X_train: Optional[np.ndarray] = field(default=None, repr=False)
+    _theta_predictor: Optional[Any] = field(default=None, repr=False)
 
     def __repr__(self) -> str:
         """Short representation."""
@@ -319,6 +326,7 @@ def inference(
     # Other
     ridge: float = 1e-4,
     verbose: bool = False,
+    store_data: bool = True,
 ) -> InferenceResult:
     """
     General inference with user-provided loss and target.
@@ -357,6 +365,7 @@ def inference(
 
         ridge: Regularization for Lambda inversion
         verbose: Print progress
+        store_data: Store X for prediction methods (default=True)
 
     Returns:
         InferenceResult with mu_hat, se, ci, psi_values, theta_hat, diagnostics
@@ -460,7 +469,7 @@ def inference(
         verbose=verbose,
     )
 
-    return InferenceResult(
+    inf_result = InferenceResult(
         mu_hat=result.mu_hat,
         se=result.se,
         ci_lower=result.ci_lower,
@@ -477,6 +486,12 @@ def inference(
         _n_obs=len(Y),
         _n_folds=n_folds,
     )
+
+    # Store X for prediction capability
+    if store_data:
+        inf_result._X_train = np.asarray(X).copy()
+
+    return inf_result
 
 
 # Re-export key classes

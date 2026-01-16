@@ -10,6 +10,7 @@ from .formatting import (
     format_short_repr,
     format_full_summary,
 )
+from .result_mixin import PredictVisualizeMixin
 
 __all__ = [
     "safe_inverse",
@@ -21,4 +22,5 @@ __all__ = [
     "format_diagnostics_footer",
     "format_short_repr",
     "format_full_summary",
+    "PredictVisualizeMixin",
 ]

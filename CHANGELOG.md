@@ -2,6 +2,13 @@
 
 ## 2026-01-16
 
+### InferenceResult Prediction & Visualization Methods (Mixin Refactor)
+- Created `PredictVisualizeMixin` in `utils/result_mixin.py` to share methods between result classes
+- `InferenceResult` now has: `predict_theta()`, `predict_alpha()`, `predict_beta()`, `predict_proba()`, `predict()`, `plot_distributions()`, `plot_heterogeneity()`
+- Both `DMLResult` and `InferenceResult` inherit from the same mixin (no code duplication)
+- Added `store_data=True` parameter to `inference()` for prediction capability
+- Mixin handles both numpy arrays (DMLResult) and Tensors (InferenceResult) for theta_hat
+
 ### Staff Engineer Architecture Proposals (Section 7)
 - Added Section 7 to `paper_replication_details.md`: Four fundamentally different architectural approaches
 - **7.1 Architecture A: "The Compiler"** - JAX/XLA functional approach with end-to-end compilation, vmap batching
