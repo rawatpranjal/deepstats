@@ -2,6 +2,12 @@
 
 ## 2026-01-16
 
+### E2E Smoke Test Document
+- Added `smoke_e2e_user_run_tests.md` - "John from Minnesota" new user experience test
+- Tests all 12 GLM families (linear, logit, poisson, gamma, gaussian, gumbel, tobit, negbin, weibull, probit, beta, zip)
+- Includes fresh venv setup, package import verification, and synthetic data DGPs for each family
+- Fast settings: n=500, epochs=30, n_folds=10, hidden_dims=[32, 16]
+
 ### Statsmodels-Style Summary and tqdm Progress Bars
 - Added `summary()` method to `DMLResult`, `InferenceResult`, `CrossFitResult`, `TrainingHistory`
 - Added `__repr__()` methods for clean object representation
