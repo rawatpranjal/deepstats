@@ -8,10 +8,12 @@ This guide shows you how to use `deep-inference` to estimate treatment effects w
 
 ```python
 import numpy as np
+import torch
 from deep_inference import structural_dml
 
 # Example: Generate synthetic data
 np.random.seed(42)
+torch.manual_seed(42)
 n = 2000
 X = np.random.randn(n, 10)  # Covariates
 T = np.random.randn(n)       # Treatment
@@ -40,22 +42,24 @@ result = structural_dml(
 print(result.summary())
 ```
 
-Output:
+Output (Date/Time will vary):
 ```
 ==============================================================================
                             Structural DML Results
 ==============================================================================
 Family:           Linear               Target:           E[beta]
 No. Observations: 2000                 No. Folds:        50
+Date:             Fri, 16 Jan 2026     Time:             13:54:26
 ==============================================================================
                   coef     std err         z     P>|z|      [0.025    0.975]
 ------------------------------------------------------------------------------
-     E[beta]    0.0312      0.0234     1.333    0.183    -0.0147    0.0771
+     E[beta]   -0.0315      0.0323    -0.974  0.330     -0.0948    0.0318
 ==============================================================================
 Diagnostics:
-  Min Lambda eigenvalue:    0.998765
-  Mean condition number:    1.00
-  Correction ratio:         0.1234
+  Min Lambda eigenvalue:    1.970163
+  Mean condition number:    1.01
+  Correction ratio:         43.7779
+  Pct regularized:          0.0%
 ------------------------------------------------------------------------------
 ```
 

@@ -37,10 +37,12 @@ Deep Learning for Individual Heterogeneity with Valid Inference
 
 ```python
 import numpy as np
+import torch
 from deep_inference import structural_dml
 
 # Heterogeneous logistic demand (binary outcomes)
 np.random.seed(42)
+torch.manual_seed(42)
 n = 2000
 X = np.random.randn(n, 5)
 T = np.random.randn(n)
@@ -63,22 +65,24 @@ result = structural_dml(
 print(result.summary())
 ```
 
-**Output:**
+**Output** (Date/Time will vary):
 ```
 ==============================================================================
                             Structural DML Results
 ==============================================================================
 Family:           Logit                Target:           E[beta]
 No. Observations: 2000                 No. Folds:        50
+Date:             Fri, 16 Jan 2026     Time:             13:54:12
 ==============================================================================
                   coef     std err         z     P>|z|      [0.025    0.975]
 ------------------------------------------------------------------------------
-     E[beta]    0.4987      0.0312    15.981    0.000     0.4375    0.5599
+     E[beta]    0.4704      0.0496     9.492  0.000      0.3733    0.5675
 ==============================================================================
 Diagnostics:
-  Min Lambda eigenvalue:    0.152341
-  Mean condition number:    3.21
-  Correction ratio:         0.1847
+  Min Lambda eigenvalue:    0.134946
+  Mean condition number:    1.17
+  Correction ratio:         45.2493
+  Pct regularized:          0.0%
 ------------------------------------------------------------------------------
 ```
 

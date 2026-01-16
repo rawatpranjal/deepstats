@@ -2,6 +2,12 @@
 
 ## 2026-01-16
 
+### Quick Start Documentation Verification
+- Fixed fabricated output in `docs/index.md` and `docs/getting_started/quickstart.md`
+- Added `torch.manual_seed(42)` to both Quick Start examples for reproducibility
+- Replaced placeholder values (e.g., "Correction ratio: 0.1234") with real output
+- Added `evals/eval_08_docs.py` to verify Quick Start examples work and produce valid coverage
+
 ### Paper Replication Details Documentation
 - Created `paper_replication_details.md`: Comprehensive analysis of FLM paper coverage vs implementation
 - Documents ~67% paper scope coverage with detailed breakdown of implemented vs missing features

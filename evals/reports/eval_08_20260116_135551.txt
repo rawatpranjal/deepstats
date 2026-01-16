@@ -1,0 +1,104 @@
+/Users/pranjal/deepest/src/deep_inference/core/algorithm.py:642: UserWarning: High correction variance ratio (45.25). This suggests the influence function correction dominates the estimate variance. Consider using more cross-fitting folds (K >= 50).
+  warnings.warn(
+/Users/pranjal/deepest/src/deep_inference/core/algorithm.py:642: UserWarning: High correction variance ratio (43.78). This suggests the influence function correction dominates the estimate variance. Consider using more cross-fitting folds (K >= 50).
+  warnings.warn(
+
+==============================================================================
+EVAL 08: DOCUMENTATION QUICK START VERIFICATION
+==============================================================================
+
+This eval verifies that Quick Start examples in the documentation
+actually work and produce valid output.
+
+==============================================================================
+LOGIT EXAMPLE (docs/index.md)
+==============================================================================
+
+Ground truth: E[beta] = 0.5
+Sample E[beta]: 0.504291
+
+Running structural_dml (logit)...
+
+==============================================================================
+                            Structural DML Results                            
+==============================================================================
+Family:           Logit                Target:           E[beta]
+No. Observations: 2000                 No. Folds:        50
+Date:             Fri, 16 Jan 2026     Time:             13:55:56
+==============================================================================
+                  coef     std err         z     P>|z|      [0.025    0.975]
+------------------------------------------------------------------------------
+     E[beta]    0.4704      0.0496     9.492  0.000      0.3733    0.5675
+==============================================================================
+Diagnostics:
+  Min Lambda eigenvalue:    0.134946
+  Mean condition number:    1.17
+  Correction ratio:         45.2493
+  Pct regularized:          0.0%
+------------------------------------------------------------------------------
+
+Validation Checks:
+  mu_hat_finite: PASS
+  se_positive: PASS
+  se_finite: PASS
+  ci_covers_truth: PASS
+  min_lambda_positive: PASS
+
+LOGIT EXAMPLE: PASS
+
+==============================================================================
+LINEAR EXAMPLE (docs/getting_started/quickstart.md)
+==============================================================================
+
+Ground truth: E[beta] = -0.007705
+
+Running structural_dml (linear)...
+
+==============================================================================
+                            Structural DML Results                            
+==============================================================================
+Family:           Linear               Target:           E[beta]
+No. Observations: 2000                 No. Folds:        50
+Date:             Fri, 16 Jan 2026     Time:             13:55:58
+==============================================================================
+                  coef     std err         z     P>|z|      [0.025    0.975]
+------------------------------------------------------------------------------
+     E[beta]   -0.0315      0.0323    -0.974  0.330     -0.0948    0.0318
+==============================================================================
+Diagnostics:
+  Min Lambda eigenvalue:    1.970163
+  Mean condition number:    1.01
+  Correction ratio:         43.7779
+  Pct regularized:          0.0%
+------------------------------------------------------------------------------
+
+Validation Checks:
+  mu_hat_finite: PASS
+  se_positive: PASS
+  se_finite: PASS
+  ci_covers_truth: PASS
+  min_lambda_positive: PASS
+
+LINEAR EXAMPLE: PASS
+
+==============================================================================
+SUMMARY
+==============================================================================
+
+LOGIT: PASS
+  mu_hat: 0.470413
+  se: 0.049556
+  95% CI: [0.373283, 0.567544]
+  mu_true: 0.500000
+  CI covers truth: True
+
+LINEAR: PASS
+  mu_hat: -0.031470
+  se: 0.032303
+  95% CI: [-0.094784, 0.031844]
+  mu_true: -0.007705
+  CI covers truth: True
+
+==============================================================================
+EVAL 08 DOCUMENTATION VERIFICATION: PASS
+==============================================================================
