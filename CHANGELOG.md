@@ -8,6 +8,15 @@
 - Replaced placeholder values (e.g., "Correction ratio: 0.1234") with real output
 - Added `evals/eval_08_docs.py` to verify Quick Start examples work and produce valid coverage
 
+### World-Class Architecture Gap Analysis (Section 6)
+- Expanded `paper_replication_details.md` with comprehensive architectural critique
+- **6.1**: What Google engineers would build differently (type-safe tensors, unified computation graph, declarative models)
+- **6.2**: Missing paper components (IV/2SLS, doubly robust ATE, implicit targets)
+- **6.3**: Architectural debt (legacy/new API split, Family vs Model duplication, diagnostics framework)
+- **6.4**: Complete 5-tier replication checklist (core theory done, models mostly done, extensions not started)
+- **6.5**: 5-phase roadmap for full paper coverage (6-9 weeks)
+- **6.6**: Honest assessment of researcher-focused vs practitioner-focused architecture
+
 ### Paper Replication Details Documentation
 - Created `paper_replication_details.md`: Comprehensive analysis of FLM paper coverage vs implementation
 - Documents ~67% paper scope coverage with detailed breakdown of implemented vs missing features
