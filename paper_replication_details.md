@@ -757,3 +757,353 @@ class InferenceDiagnostics:
 - **Google**: Practitioner-focused. Opinionated, batteries-included, hard to misuse.
 
 **Verdict**: The architecture is sound for a research package. The gaps are feature gaps, not design flaws. A Google team would add more guardrails and automation, but wouldn't fundamentally restructure the approach.
+
+---
+
+## 7. Four Architectures a Staff Engineer Would Consider
+
+The key insight: Different architectural styles optimize for different constraints. A staff engineer doesn't just pick "the best" architecture—they evaluate trade-offs against project goals.
+
+---
+
+### 7.1 Architecture A: "The Compiler" (JAX/XLA Functional)
+
+**Philosophy**: The entire inference pipeline is a single differentiable program that can be traced, optimized, and compiled.
+
+**Core Idea**: Represent all computations as pure functions. Use JAX transforms (grad, vmap, jit) to automatically derive gradients, batch operations, and compile to XLA.
+
+```python
+# Everything is a pure function
+def influence_fn(params, data, regime_config):
+    """Single traced function for entire inference."""
+    theta = nn_forward(params['theta_net'], data.X)
+
+    # Regime-specific lambda (all branches must be traceable)
+    lambda_mat = jax.lax.switch(
+        regime_config.regime_id,
+        [compute_lambda_a, compute_lambda_b, compute_lambda_c],
+        params, data, theta
+    )
+
+    # All derivatives via autodiff
+    score = jax.vmap(jax.grad(loss_fn, argnums=2))(data.Y, data.T, theta)
+    h_jacobian = jax.vmap(jax.jacobian(target_fn, argnums=1))(data.X, theta)
+
+    # Assembly
+    psi = assemble_psi(h_jacobian, lambda_mat, score)
+    return psi.mean(), psi.var() / len(data.Y)
+
+# Usage: JIT compile the entire pipeline
+compiled_inference = jax.jit(influence_fn)
+mu_hat, var_hat = compiled_inference(params, data, config)
+
+# Cross-fitting via vmap over folds
+folded_inference = jax.vmap(influence_fn, in_axes=(None, 0, None))
+results = folded_inference(params, fold_data, config)
+```
+
+**What makes this "staff engineer level"**:
+1. **End-to-end compilation**: XLA optimizes across function boundaries
+2. **Automatic batching**: vmap eliminates manual loops
+3. **Regime unification**: `lax.switch` makes regimes branches in one graph
+4. **Gradient composition**: Higher-order derivatives come free
+
+**Trade-offs**:
+| Dimension | Rating | Notes |
+|-----------|--------|-------|
+| Performance | ★★★★★ | XLA compilation, GPU/TPU native |
+| Flexibility | ★★☆☆☆ | All code must be JAX-traceable |
+| Debuggability | ★★☆☆☆ | Traced execution hard to inspect |
+| Ecosystem | ★★★☆☆ | Growing but smaller than PyTorch |
+| Learning curve | ★☆☆☆☆ | Functional style unfamiliar |
+
+**When to choose**: High-performance production, research requiring complex derivatives, TPU deployment.
+
+---
+
+### 7.2 Architecture B: "The Protocol Orchestra" (Rust/Go-style Traits)
+
+**Philosophy**: Define minimal, orthogonal interfaces. Components are black boxes that fulfill contracts. Composition over inheritance.
+
+**Core Idea**: Each mathematical object (Model, Target, LambdaStrategy) is a protocol with exactly the methods needed. The orchestrator knows nothing about implementations.
+
+```python
+# Minimal protocols - each does ONE thing
+@runtime_checkable
+class LossFunction(Protocol):
+    """Just computes loss. That's it."""
+    def __call__(self, y: Tensor, t: Tensor, theta: Tensor) -> Tensor: ...
+
+@runtime_checkable
+class GradientProvider(Protocol):
+    """Provides gradients. May be closed-form or autodiff."""
+    def gradient(self, y: Tensor, t: Tensor, theta: Tensor) -> Tensor: ...
+
+@runtime_checkable
+class HessianProvider(Protocol):
+    """Provides Hessians. May be closed-form or autodiff."""
+    def hessian(self, y: Tensor, t: Tensor, theta: Tensor) -> Tensor: ...
+
+@runtime_checkable
+class LambdaComputer(Protocol):
+    """Computes Λ(x). Different implementations for A/B/C."""
+    def compute(self, x: Tensor, context: LambdaContext) -> Tensor: ...
+
+# Compose via dependency injection
+@dataclass
+class InferencePipeline:
+    loss_fn: LossFunction
+    grad_provider: GradientProvider      # May wrap loss_fn with autodiff
+    hess_provider: HessianProvider       # May wrap loss_fn with autodiff
+    lambda_computer: LambdaComputer
+    target: Target
+
+    def run(self, data: Data) -> InferenceResult:
+        # Orchestrator just calls protocols - knows nothing about implementations
+        theta = self.fit_theta(data)
+        grads = self.grad_provider.gradient(data.Y, data.T, theta)
+        lambdas = self.lambda_computer.compute(data.X, LambdaContext(theta=theta))
+        psi = self.assemble(theta, grads, lambdas)
+        return InferenceResult(psi.mean(), compute_se(psi))
+
+# Factory creates the right composition
+def create_pipeline(family: str, regime: str) -> InferencePipeline:
+    loss = LOSS_REGISTRY[family]
+
+    # Autodiff wrapper if no closed-form
+    grad = ClosedFormGradient(family) if has_closed_form(family) else AutodiffGradient(loss)
+    hess = ClosedFormHessian(family) if has_closed_form(family) else AutodiffHessian(loss)
+
+    # Regime determines lambda strategy
+    lambda_comp = LAMBDA_REGISTRY[regime]
+
+    return InferencePipeline(loss, grad, hess, lambda_comp, AverageParameter())
+```
+
+**What makes this "staff engineer level"**:
+1. **Single responsibility**: Each protocol does exactly one thing
+2. **Dependency injection**: Easy to test, mock, swap implementations
+3. **Open for extension**: Add new families/regimes without touching core
+4. **Closed for modification**: Orchestrator logic never changes
+
+**Trade-offs**:
+| Dimension | Rating | Notes |
+|-----------|--------|-------|
+| Performance | ★★★☆☆ | No cross-component optimization |
+| Flexibility | ★★★★★ | Maximum extensibility |
+| Debuggability | ★★★★★ | Each component testable in isolation |
+| Ecosystem | ★★★★★ | Works with any Python library |
+| Learning curve | ★★★★☆ | Familiar OOP patterns |
+
+**When to choose**: Library meant for extension by others, research prototyping, when components evolve independently.
+
+---
+
+### 7.3 Architecture C: "The Dataflow Graph" (TensorFlow 1.x / Spark)
+
+**Philosophy**: Build a lazy computation DAG. Optimize globally before execution. Enable automatic parallelization and caching.
+
+**Core Idea**: Users declare *what* to compute, not *how*. The framework analyzes dependencies and optimizes execution.
+
+```python
+# Declarative DAG construction
+class InferenceGraph:
+    def __init__(self):
+        self.nodes = {}
+        self.edges = {}
+
+    def add_node(self, name: str, op: Callable, deps: List[str]) -> 'NodeRef':
+        self.nodes[name] = Node(op=op, deps=deps)
+        for dep in deps:
+            self.edges.setdefault(dep, []).append(name)
+        return NodeRef(self, name)
+
+# User builds the graph declaratively
+graph = InferenceGraph()
+
+# Data nodes (inputs)
+Y = graph.add_node('Y', lambda: data.Y, deps=[])
+T = graph.add_node('T', lambda: data.T, deps=[])
+X = graph.add_node('X', lambda: data.X, deps=[])
+
+# Computation nodes (transformations)
+theta = graph.add_node('theta', fit_theta_net, deps=['X', 'Y', 'T'])
+score = graph.add_node('score', compute_score, deps=['Y', 'T', 'theta'])
+hessian = graph.add_node('hessian', compute_hessian, deps=['Y', 'T', 'theta'])
+lambda_mat = graph.add_node('lambda', estimate_lambda, deps=['X', 'hessian'])
+h_value = graph.add_node('h', compute_target, deps=['X', 'theta'])
+h_jacobian = graph.add_node('h_jac', compute_jacobian, deps=['X', 'theta'])
+
+# Assembly node
+psi = graph.add_node('psi', assemble_psi, deps=['h_value', 'h_jacobian', 'lambda_mat', 'score'])
+
+# Optimization passes before execution
+graph.optimize([
+    FuseConsecutiveOps(),        # Combine h_value + h_jacobian
+    ParallelizeIndependent(),    # Run score & hessian in parallel
+    CacheIntermediates('theta'), # Don't recompute theta
+    PruneUnused('psi'),          # Only compute what's needed for psi
+])
+
+# Execute with automatic scheduling
+result = graph.execute('psi', executor=ThreadPoolExecutor(4))
+```
+
+**What makes this "staff engineer level"**:
+1. **Global optimization**: Framework sees entire computation, can fuse/parallelize
+2. **Automatic caching**: Intermediate results cached by default
+3. **Lazy evaluation**: Only compute what's needed for requested output
+4. **Declarative**: Users say *what*, framework figures out *how*
+
+**Trade-offs**:
+| Dimension | Rating | Notes |
+|-----------|--------|-------|
+| Performance | ★★★★☆ | Cross-op optimization, parallelization |
+| Flexibility | ★★★☆☆ | Must fit into DAG model |
+| Debuggability | ★★☆☆☆ | Lazy eval makes stepping through hard |
+| Ecosystem | ★★★☆☆ | Custom framework, less tooling |
+| Learning curve | ★★☆☆☆ | Unfamiliar paradigm for most |
+
+**When to choose**: Complex pipelines with reusable subgraphs, distributed computing, when caching matters.
+
+---
+
+### 7.4 Architecture D: "The Effect System" (Algebraic Effects)
+
+**Philosophy**: Separate *what* effects a computation has from *how* those effects are handled. Pure math in the core, interpreters handle the messy stuff.
+
+**Core Idea**: The influence function formula is pure math. All "side effects" (randomness for MC, I/O for data, state for NN weights) are explicitly declared and handled by swappable interpreters.
+
+```python
+# Effects as explicit type-level declarations
+class Effect(ABC):
+    """Base class for computational effects."""
+    pass
+
+class RandomEffect(Effect):
+    """Declares: this computation needs random numbers."""
+    def sample(self, dist: Distribution, shape: Tuple[int, ...]) -> 'Effectful[Tensor]': ...
+
+class StateEffect(Effect):
+    """Declares: this computation reads/writes state."""
+    def get(self, key: str) -> 'Effectful[Any]': ...
+    def put(self, key: str, value: Any) -> 'Effectful[None]': ...
+
+class GradientEffect(Effect):
+    """Declares: this computation needs gradients of something."""
+    def grad(self, f: Callable, x: Tensor) -> 'Effectful[Tensor]': ...
+
+# Pure influence function - declares effects but doesn't perform them
+def influence_function_pure(
+    data: Data,
+    model: Model,
+    target: Target,
+    regime: Regime
+) -> Effectful[InferenceResult]:
+    """
+    Pure computation - all effects are declared, not performed.
+    Different handlers can interpret this differently.
+    """
+    # Declare we need gradient computation
+    score = yield GradientEffect().grad(model.loss, data.theta)
+
+    # Declare we need state (for theta network)
+    theta_net = yield StateEffect().get('theta_net')
+    theta = theta_net(data.X)
+
+    # Regime A: declare we need randomness for MC
+    if regime == Regime.A:
+        t_samples = yield RandomEffect().sample(treatment_dist, (1000,))
+        lambda_mat = mc_integrate(model.hessian, t_samples, theta)
+    else:
+        lambda_mat = yield compute_lambda_effectful(regime, data, theta)
+
+    psi = assemble_psi(theta, score, lambda_mat, target)
+    return InferenceResult(psi.mean(), compute_se(psi))
+
+# Different handlers for different contexts
+class ProductionHandler(EffectHandler):
+    """Real randomness, real gradients, GPU state."""
+    def handle_random(self, effect):
+        return torch.distributions.sample(effect.dist, effect.shape)
+    def handle_gradient(self, effect):
+        return torch.autograd.grad(effect.f, effect.x)
+
+class TestHandler(EffectHandler):
+    """Deterministic randomness, numerical gradients, CPU state."""
+    def handle_random(self, effect):
+        return self.deterministic_samples[self.sample_idx]  # Reproducible
+    def handle_gradient(self, effect):
+        return finite_difference_grad(effect.f, effect.x)  # No autodiff needed
+
+class SimulationHandler(EffectHandler):
+    """Record all effects for replay/analysis."""
+    def handle_random(self, effect):
+        sample = torch.distributions.sample(effect.dist, effect.shape)
+        self.recorded_effects.append(('random', sample))
+        return sample
+
+# Run same pure code with different handlers
+result_prod = run_with_handler(influence_function_pure, ProductionHandler(), data)
+result_test = run_with_handler(influence_function_pure, TestHandler(), data)
+```
+
+**What makes this "staff engineer level"**:
+1. **Separation of concerns**: Math is pure, effects are handled separately
+2. **Testability**: Same code runs with mock/deterministic handlers
+3. **Composability**: Effects compose algebraically
+4. **Provenance**: Can record all effects for debugging/auditing
+
+**Trade-offs**:
+| Dimension | Rating | Notes |
+|-----------|--------|-------|
+| Performance | ★★★☆☆ | Effect handling has overhead |
+| Flexibility | ★★★★★ | Swap any effect handler |
+| Debuggability | ★★★★★ | Record & replay effects |
+| Ecosystem | ★☆☆☆☆ | Very unfamiliar pattern |
+| Learning curve | ★☆☆☆☆ | Requires FP background |
+
+**When to choose**: Research code needing reproducibility, systems requiring auditability, when testing is paramount.
+
+---
+
+### 7.5 Architecture Comparison Matrix
+
+| Architecture | Best For | Performance | Extensibility | Familiarity | Testing |
+|--------------|----------|-------------|---------------|-------------|---------|
+| **A: Compiler** | Production ML | ★★★★★ | ★★☆☆☆ | ★★☆☆☆ | ★★☆☆☆ |
+| **B: Protocol** | Libraries | ★★★☆☆ | ★★★★★ | ★★★★☆ | ★★★★★ |
+| **C: Dataflow** | Pipelines | ★★★★☆ | ★★★☆☆ | ★★☆☆☆ | ★★★☆☆ |
+| **D: Effects** | Research | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | ★★★★★ |
+
+---
+
+### 7.6 Staff Engineer Recommendation
+
+**For THIS project** (research library for economists), the recommendation is:
+
+**Primary: Architecture B (Protocol Orchestra)** because:
+1. Target users (economists) need familiar patterns
+2. Extensibility matters more than raw performance
+3. Testing/validation is critical for academic credibility
+4. PyTorch ecosystem compatibility required
+
+**With elements of Architecture A** for:
+1. Inner loops (vmap for batched operations)
+2. Autodiff (torch.func for gradients/Hessians)
+3. JIT compilation of hot paths
+
+**Implementation strategy**:
+```python
+# High-level: Protocol Orchestra (familiar, extensible)
+class InferencePipeline:
+    model: StructuralModel      # Protocol
+    target: Target              # Protocol
+    lambda_strategy: Lambda     # Protocol
+
+# Inner loops: Compiler style (fast, batched)
+def _compute_scores_batch(self, Y, T, theta):
+    return vmap(grad(self.model.loss))(Y, T, theta)  # JAX-style inside
+```
+
+This gives economists a familiar sklearn-like interface while achieving good performance where it matters.

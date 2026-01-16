@@ -2,6 +2,15 @@
 
 ## 2026-01-16
 
+### Staff Engineer Architecture Proposals (Section 7)
+- Added Section 7 to `paper_replication_details.md`: Four fundamentally different architectural approaches
+- **7.1 Architecture A: "The Compiler"** - JAX/XLA functional approach with end-to-end compilation, vmap batching
+- **7.2 Architecture B: "The Protocol Orchestra"** - Rust/Go-style traits with minimal protocols and dependency injection
+- **7.3 Architecture C: "The Dataflow Graph"** - TensorFlow 1.x / Spark style lazy DAG with optimization passes
+- **7.4 Architecture D: "The Effect System"** - Algebraic effects with pure math core and swappable effect handlers
+- **7.5 Comparison Matrix**: Performance, extensibility, familiarity, testing tradeoffs for each architecture
+- **7.6 Recommendation**: Protocol Orchestra (B) as primary with Compiler (A) elements for inner loops
+
 ### Quick Start Documentation: Visual Plot Images
 - Added `plot_distributions()` and `plot_heterogeneity()` images to Quick Start in `docs/index.md`
 - Created `docs/_static/quickstart_distributions.png` and `docs/_static/quickstart_heterogeneity.png`
