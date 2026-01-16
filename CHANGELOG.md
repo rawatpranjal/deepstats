@@ -28,6 +28,7 @@
 - Replaced boring Linear example with Logit + Heterogeneous Effects example in `docs/index.md`
 - New example shows: binary outcomes, heterogeneous β(X) = 0.5 + 0.3*X₁, statsmodels-style summary()
 - Diagnostics now show interesting nonlinearity (Lambda eigenvalue < 1, condition number > 1)
+- Added "Predictions & Visualization" section to Quick Start showing `predict_beta()`, `predict_proba()`, `plot_distributions()`, `plot_heterogeneity()`
 
 ### API Flowchart Page for RTD
 - Added `docs/flowchart.md`: Interactive decision tree for model/target/regime selection

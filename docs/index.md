@@ -82,6 +82,23 @@ Diagnostics:
 ------------------------------------------------------------------------------
 ```
 
+### Predictions & Visualization
+
+```python
+# Predict treatment effects for new observations
+X_new = np.random.randn(5, 5)
+beta_new = result.predict_beta(X_new)
+print(f"Predicted β(X) for new data: {beta_new}")
+
+# Predict probabilities at treatment level T=1
+proba = result.predict_proba(X_new, t_value=1.0)
+print(f"P(Y=1|X,T=1): {proba}")
+
+# Visualize heterogeneity distributions
+result.plot_distributions()
+result.plot_heterogeneity(feature_idx=1)  # β(X) vs X₁
+```
+
 ### New `inference()` API
 
 The new API supports flexible targets and randomization mode:
