@@ -2,6 +2,10 @@
 
 ## 2026-01-16
 
+### Gallery Page for RTD
+- Added `docs/tutorials/gallery.md` - concise overview of 3 validated examples (Linear, Logit, Poisson)
+- Added to tutorials index as first item for visibility
+
 ### Showcase Tutorial Performance Improvements
 - Updated `tutorials/01_showcase.ipynb` settings to match eval_06 validated parameters
 - N_FOLDS: 30 → 50 (better SE calibration, ratio 0.91 → ~1.0)

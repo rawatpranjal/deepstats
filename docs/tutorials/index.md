@@ -5,6 +5,7 @@ Step-by-step tutorials for each supported model family.
 ```{toctree}
 :maxdepth: 2
 
+gallery
 linear
 logit
 poisson
@@ -13,6 +14,7 @@ negbin
 gamma
 gumbel
 weibull
+multimodal
 ```
 
 ## Overview
@@ -37,6 +39,7 @@ Each tutorial covers:
 | Positive right-skewed | Gamma | Gamma | [Gamma](gamma.md) |
 | Extreme values (maxima) | Gumbel | Gumbel | [Gumbel](gumbel.md) |
 | Time-to-event | Weibull | Weibull | [Weibull](weibull.md) |
+| **High-dim embeddings** | Any | Any | [Multimodal](multimodal.md) |
 
 ## Common Workflow
 
