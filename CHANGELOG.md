@@ -2,6 +2,11 @@
 
 ## 2026-01-16
 
+### Showcase Tutorial Performance Improvements
+- Updated `tutorials/01_showcase.ipynb` settings to match eval_06 validated parameters
+- N_FOLDS: 30 → 50 (better SE calibration, ratio 0.91 → ~1.0)
+- EPOCHS: 100 → 200 (proper convergence, better heterogeneity recovery)
+
 ### Multimodal Gallery Tutorial Complete
 - **Added Jupyter notebook**: `tutorials/06_multimodal_gallery.ipynb` with structured cells and markdown explanations
 - **Added documentation**: `docs/tutorials/multimodal.md` (240 lines)
