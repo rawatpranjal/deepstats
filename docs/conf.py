@@ -85,3 +85,7 @@ master_doc = "index"
 # -- Copy button settings ----------------------------------------------------
 copybutton_prompt_text = r">>> |\.\.\. |\$ "
 copybutton_prompt_is_regexp = True
+
+# -- Mermaid settings --------------------------------------------------------
+mermaid_version = "11.4.0"
+mermaid_init_js = "mermaid.initialize({startOnLoad:true, securityLevel:'loose'});"
