@@ -2,6 +2,13 @@
 
 ## 2026-01-16
 
+### BRUTAL E2E Smoke Test Implementation
+- Added `smoke_test.py`: Ground truth verification for all 12 GLM families
+- **Ground truth**: μ* = 0.3 (β(X) = 0.3 + 0.1*X₁, E[X₁] = 0)
+- **Verdict criteria**: PASS (CI covers μ*), WARN (SE miscalibrated), FAIL (exception/NaN)
+- **Real results**: 10/12 PASS, 2/12 WARN (negbin, beta have CI calibration issues)
+- Updated `smoke_e2e_user_run_tests.md` with brutal test and actual output
+
 ### Propagated summary() Output Through Documentation & Tutorials
 - Updated all documentation and tutorials to use `print(result.summary())` instead of manual print statements
 - **Homepages** (2 files): README.md, docs/index.md

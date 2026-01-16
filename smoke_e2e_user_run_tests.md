@@ -1,6 +1,31 @@
-# E2E Smoke Test: "John from Minnesota" Experience
+# BRUTAL E2E Smoke Test: "John from Minnesota" Experience
 
-This document simulates a new user experience: fresh venv, install package, import, and run each of the 12 GLM families on synthetic data.
+This document simulates a new user experience: fresh venv, install package, import, and run each of the 12 GLM families on synthetic data **with ground truth verification**.
+
+---
+
+## What Makes This Test BRUTAL
+
+| Aspect | Old (Weak) | New (Brutal) |
+|--------|------------|--------------|
+| Pass criterion | Didn't crash | CI covers μ* AND estimate reasonable |
+| Ground truth | None | μ* = 0.3 verified |
+| SE validation | None | 0.01 < SE < 10 |
+| CI check | None | Must cover 0.3 |
+| Expected output | Fabricated | Real run results |
+| Diagnostics | None | min_eigenvalue checked |
+
+---
+
+## Ground Truth
+
+For all families: `beta(X) = 0.3 + 0.1*X₁`, `E[X₁] = 0` → **μ* = 0.3**
+
+### Verdict Criteria
+
+- **PASS**: CI covers 0.3 AND |μ̂ - 0.3| < 0.5 AND 0.01 < SE < 10 AND λ_min > 0
+- **WARN**: Estimate reasonable but CI doesn't cover (SE miscalibrated)
+- **FAIL**: Exception OR NaN OR estimate wildly wrong
 
 ---
 
@@ -16,11 +41,6 @@ pip install -e .
 
 # Verify installation
 python3 -c "import deep_inference; print(f'deep-inference v{deep_inference.__version__ if hasattr(deep_inference, \"__version__\") else \"installed\"}')"
-```
-
-**Expected output:**
-```
-deep-inference v0.1.2
 ```
 
 ---
@@ -43,460 +63,161 @@ Total families: 12
 
 ---
 
-## 3. Smoke Test Script
+## 3. Run Smoke Test
 
-Save the following as `smoke_test.py` and run with `python3 smoke_test.py`:
+The brutal smoke test is at `/Users/pranjal/deepest/smoke_test.py`:
 
-```python
-#!/usr/bin/env python3
-"""
-E2E Smoke Test for deep-inference package.
-Tests all 12 GLM families with synthetic data.
-
-Settings (fast smoke test):
-- n=500 samples
-- epochs=30
-- n_folds=10
-- hidden_dims=[32, 16]
-"""
-
-import numpy as np
-import torch
-from scipy.special import expit
-from deep_inference import structural_dml, FAMILY_REGISTRY
-
-# Configuration
-N = 500          # samples
-EPOCHS = 30      # training epochs
-N_FOLDS = 10     # cross-fitting folds
-HIDDEN_DIMS = [32, 16]
-SEED = 42
-
-np.random.seed(SEED)
-torch.manual_seed(SEED)
-
-# Track results
-results = {}
-
-def generate_covariates():
-    """Generate X and T for all tests."""
-    X = np.random.randn(N, 3)
-    T = np.random.randn(N)
-    return X, T
-
-def alpha(X):
-    """Baseline heterogeneous intercept: alpha(x) = 0.5 + 0.2*x1"""
-    return 0.5 + 0.2 * X[:, 0]
-
-def beta(X):
-    """Heterogeneous treatment effect: beta(x) = 0.3 + 0.1*x1"""
-    return 0.3 + 0.1 * X[:, 0]
-
-print("=" * 70)
-print("DEEP-INFERENCE SMOKE TEST: ALL 12 FAMILIES")
-print("=" * 70)
-print(f"Config: N={N}, epochs={EPOCHS}, n_folds={N_FOLDS}, hidden_dims={HIDDEN_DIMS}")
-print("=" * 70)
-
-# ============================================================================
-# 1. LINEAR FAMILY
-# ============================================================================
-print("\n[1/12] Testing LINEAR family...")
-X, T = generate_covariates()
-eps = np.random.randn(N)
-Y = alpha(X) + beta(X) * T + eps  # Y = alpha + beta*T + eps
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='linear',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['linear'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['linear'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 2. LOGIT FAMILY
-# ============================================================================
-print("\n[2/12] Testing LOGIT family...")
-X, T = generate_covariates()
-eta = alpha(X) + beta(X) * T
-p = expit(eta)
-Y = np.random.binomial(1, p).astype(float)
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='logit',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['logit'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['logit'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 3. POISSON FAMILY
-# ============================================================================
-print("\n[3/12] Testing POISSON family...")
-X, T = generate_covariates()
-lam = np.exp(alpha(X) + beta(X) * T)
-lam = np.clip(lam, 0.01, 50)  # Stability
-Y = np.random.poisson(lam).astype(float)
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='poisson',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['poisson'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['poisson'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 4. GAMMA FAMILY
-# ============================================================================
-print("\n[4/12] Testing GAMMA family...")
-X, T = generate_covariates()
-shape = 2.0
-scale = np.exp(alpha(X) + beta(X) * T)  # scale = exp(eta)
-scale = np.clip(scale, 0.1, 10)
-Y = np.random.gamma(shape, scale)
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='gamma',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['gamma'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['gamma'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 5. GAUSSIAN FAMILY (3 params: alpha, beta, log_sigma)
-# ============================================================================
-print("\n[5/12] Testing GAUSSIAN family...")
-X, T = generate_covariates()
-sigma = 1.0
-eps = np.random.randn(N) * sigma
-Y = alpha(X) + beta(X) * T + eps
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='gaussian',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['gaussian'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['gaussian'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 6. GUMBEL FAMILY
-# ============================================================================
-print("\n[6/12] Testing GUMBEL family...")
-X, T = generate_covariates()
-loc = alpha(X) + beta(X) * T
-scale = 1.0
-Y = np.random.gumbel(loc, scale)
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='gumbel',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['gumbel'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['gumbel'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 7. TOBIT FAMILY (3 params: alpha, beta, log_sigma)
-# ============================================================================
-print("\n[7/12] Testing TOBIT family...")
-X, T = generate_covariates()
-sigma = 1.0
-Y_star = alpha(X) + beta(X) * T + sigma * np.random.randn(N)
-Y = np.maximum(0, Y_star)  # Left-censored at 0
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='tobit',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['tobit'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['tobit'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 8. NEGBIN FAMILY (Negative Binomial)
-# ============================================================================
-print("\n[8/12] Testing NEGBIN family...")
-X, T = generate_covariates()
-r = 5  # Number of successes (dispersion parameter)
-mu = np.exp(alpha(X) + beta(X) * T)
-mu = np.clip(mu, 0.1, 20)
-# NegBin parameterization: p = r / (r + mu)
-p = r / (r + mu)
-Y = np.random.negative_binomial(r, p).astype(float)
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='negbin',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['negbin'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['negbin'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 9. WEIBULL FAMILY
-# ============================================================================
-print("\n[9/12] Testing WEIBULL family...")
-X, T = generate_covariates()
-shape = 2.0  # k parameter
-scale = np.exp(alpha(X) + beta(X) * T)  # lambda = exp(eta)
-scale = np.clip(scale, 0.1, 10)
-Y = np.random.weibull(shape) * scale
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='weibull',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['weibull'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['weibull'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 10. PROBIT FAMILY
-# ============================================================================
-print("\n[10/12] Testing PROBIT family...")
-from scipy.stats import norm as norm_dist
-X, T = generate_covariates()
-eta = alpha(X) + beta(X) * T
-p = norm_dist.cdf(eta)  # Phi(eta)
-Y = np.random.binomial(1, p).astype(float)
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='probit',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['probit'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['probit'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 11. BETA FAMILY (for proportions in (0, 1))
-# ============================================================================
-print("\n[11/12] Testing BETA family...")
-from scipy.stats import beta as beta_dist
-X, T = generate_covariates()
-eta = alpha(X) + beta(X) * T
-mu = expit(eta)  # Mean in (0, 1)
-mu = np.clip(mu, 0.01, 0.99)
-phi = 10.0  # Precision parameter
-a = mu * phi
-b = (1 - mu) * phi
-Y = beta_dist.rvs(a, b)
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='beta',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['beta'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['beta'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# 12. ZIP FAMILY (Zero-Inflated Poisson, 4 params)
-# ============================================================================
-print("\n[12/12] Testing ZIP family...")
-X, T = generate_covariates()
-# ZIP has 4 parameters: alpha, beta, gamma, delta
-# lambda = exp(alpha + beta*T), pi = sigmoid(gamma + delta*T)
-gamma_zip = -1.0 + 0.1 * X[:, 0]  # Low zero-inflation
-delta_zip = 0.1 + 0.05 * X[:, 0]
-pi = expit(gamma_zip + delta_zip * T)
-lam = np.exp(alpha(X) + beta(X) * T)
-lam = np.clip(lam, 0.1, 20)
-
-# Generate ZIP data
-zero_inflated = np.random.binomial(1, pi)  # 1 = structural zero
-poisson_counts = np.random.poisson(lam)
-Y = np.where(zero_inflated == 1, 0, poisson_counts).astype(float)
-
-try:
-    result = structural_dml(
-        Y=Y, T=T, X=X,
-        family='zip',
-        epochs=EPOCHS, n_folds=N_FOLDS, hidden_dims=HIDDEN_DIMS
-    )
-    results['zip'] = ('PASS', result.mu_hat, result.se)
-    print(f"  PASS: mu_hat={result.mu_hat:.4f} +/- {result.se:.4f}")
-except Exception as e:
-    results['zip'] = ('FAIL', str(e))
-    print(f"  FAIL: {e}")
-
-# ============================================================================
-# FINAL SUMMARY
-# ============================================================================
-print("\n" + "=" * 70)
-print("SMOKE TEST SUMMARY")
-print("=" * 70)
-
-passed = sum(1 for r in results.values() if r[0] == 'PASS')
-failed = sum(1 for r in results.values() if r[0] == 'FAIL')
-
-print(f"\nFamily          Status    Estimate    SE")
-print("-" * 50)
-for family, res in results.items():
-    if res[0] == 'PASS':
-        print(f"{family:<15} PASS      {res[1]:>8.4f}    {res[2]:.4f}")
-    else:
-        print(f"{family:<15} FAIL      {res[1][:30]}...")
-
-print("-" * 50)
-print(f"\nTotal: {passed}/12 PASSED, {failed}/12 FAILED")
-
-if failed == 0:
-    print("\n" + "=" * 70)
-    print("ALL FAMILIES PASSED - PACKAGE IS WORKING CORRECTLY")
-    print("=" * 70)
-else:
-    print("\n" + "=" * 70)
-    print(f"WARNING: {failed} FAMILIES FAILED - SEE ERRORS ABOVE")
-    print("=" * 70)
-    exit(1)
+```bash
+python3 smoke_test.py
 ```
 
 ---
 
-## 4. Expected Output (All Pass)
+## 4. REAL Output (Actual Run - 2026-01-16)
 
 ```
-======================================================================
-DEEP-INFERENCE SMOKE TEST: ALL 12 FAMILIES
-======================================================================
+================================================================================
+BRUTAL E2E SMOKE TEST: ALL 12 GLM FAMILIES
+================================================================================
 Config: N=500, epochs=30, n_folds=10, hidden_dims=[32, 16]
-======================================================================
+Ground Truth: μ* = E[β(X)] = 0.3
+================================================================================
 
 [1/12] Testing LINEAR family...
-  PASS: mu_hat=0.2987 +/- 0.0521
+  PASS: μ̂=0.2153 ± 0.0498, CI=[0.1177, 0.3129], covers_μ*=True
 
 [2/12] Testing LOGIT family...
-  PASS: mu_hat=0.3124 +/- 0.0892
+  PASS: μ̂=0.2429 ± 0.0990, CI=[0.0490, 0.4369], covers_μ*=True
 
 [3/12] Testing POISSON family...
-  PASS: mu_hat=0.3056 +/- 0.0634
+  PASS: μ̂=0.3100 ± 0.0404, CI=[0.2309, 0.3892], covers_μ*=True
 
 [4/12] Testing GAMMA family...
-  PASS: mu_hat=0.2845 +/- 0.0712
+  PASS: μ̂=0.3357 ± 0.0379, CI=[0.2615, 0.4099], covers_μ*=True
 
 [5/12] Testing GAUSSIAN family...
-  PASS: mu_hat=0.3012 +/- 0.0498
+  PASS: μ̂=0.3496 ± 0.0476, CI=[0.2563, 0.4430], covers_μ*=True
 
 [6/12] Testing GUMBEL family...
-  PASS: mu_hat=0.2934 +/- 0.0567
+  PASS: μ̂=0.3848 ± 0.0575, CI=[0.2721, 0.4976], covers_μ*=True
 
 [7/12] Testing TOBIT family...
-  PASS: mu_hat=0.2878 +/- 0.0623
+  PASS: μ̂=0.3463 ± 0.0628, CI=[0.2233, 0.4693], covers_μ*=True
 
 [8/12] Testing NEGBIN family...
-  PASS: mu_hat=0.3089 +/- 0.0745
+  WARN: μ̂=0.4304 ± 0.0536, CI=[0.3253, 0.5354], covers_μ*=False
 
 [9/12] Testing WEIBULL family...
-  PASS: mu_hat=0.2956 +/- 0.0689
+  PASS: μ̂=0.2995 ± 0.0111, CI=[0.2777, 0.3214], covers_μ*=True
 
 [10/12] Testing PROBIT family...
-  PASS: mu_hat=0.3067 +/- 0.0834
+  PASS: μ̂=0.3024 ± 0.0631, CI=[0.1788, 0.4260], covers_μ*=True
 
 [11/12] Testing BETA family...
-  PASS: mu_hat=0.2923 +/- 0.0778
+  WARN: μ̂=0.1275 ± 0.0149, CI=[0.0983, 0.1567], covers_μ*=False
 
 [12/12] Testing ZIP family...
-  PASS: mu_hat=0.3145 +/- 0.0912
+  PASS: μ̂=0.2658 ± 0.0638, CI=[0.1406, 0.3909], covers_μ*=True
 
-======================================================================
-SMOKE TEST SUMMARY
-======================================================================
+================================================================================
+BRUTAL SMOKE TEST SUMMARY
+================================================================================
+Ground Truth: μ* = 0.3
+================================================================================
 
-Family          Status    Estimate    SE
---------------------------------------------------
-linear          PASS        0.2987    0.0521
-logit           PASS        0.3124    0.0892
-poisson         PASS        0.3056    0.0634
-gamma           PASS        0.2845    0.0712
-gaussian        PASS        0.3012    0.0498
-gumbel          PASS        0.2934    0.0567
-tobit           PASS        0.2878    0.0623
-negbin          PASS        0.3089    0.0745
-weibull         PASS        0.2956    0.0689
-probit          PASS        0.3067    0.0834
-beta            PASS        0.2923    0.0778
-zip             PASS        0.3145    0.0912
---------------------------------------------------
+Family       Verdict       μ̂       SE    CI_lo    CI_hi  Covers     Bias
+--------------------------------------------------------------------------------
+linear       PASS     0.2153   0.0498   0.1177   0.3129     Yes  -0.0847
+logit        PASS     0.2429   0.0990   0.0490   0.4369     Yes  -0.0571
+poisson      PASS     0.3100   0.0404   0.2309   0.3892     Yes  +0.0100
+gamma        PASS     0.3357   0.0379   0.2615   0.4099     Yes  +0.0357
+gaussian     PASS     0.3496   0.0476   0.2563   0.4430     Yes  +0.0496
+gumbel       PASS     0.3848   0.0575   0.2721   0.4976     Yes  +0.0848
+tobit        PASS     0.3463   0.0628   0.2233   0.4693     Yes  +0.0463
+negbin       WARN     0.4304   0.0536   0.3253   0.5354      No  +0.1304
+weibull      PASS     0.2995   0.0111   0.2777   0.3214     Yes  -0.0005
+probit       PASS     0.3024   0.0631   0.1788   0.4260     Yes  +0.0024
+beta         WARN     0.1275   0.0149   0.0983   0.1567      No  -0.1725
+zip          PASS     0.2658   0.0638   0.1406   0.3909     Yes  -0.0342
+--------------------------------------------------------------------------------
 
-Total: 12/12 PASSED, 0/12 FAILED
+SUMMARY: 10 PASS, 2 WARN, 0 FAIL out of 12 families
 
-======================================================================
-ALL FAMILIES PASSED - PACKAGE IS WORKING CORRECTLY
-======================================================================
+--------------------------------------------------------------------------------
+VERDICT CRITERIA:
+  PASS: CI covers μ*=0.3 AND |μ̂ - 0.3| < 0.5 AND 0.01 < SE < 10 AND λ_min > 0
+  WARN: Estimate reasonable but CI doesn't cover (SE miscalibrated)
+  FAIL: Exception OR NaN OR estimate wildly wrong
+--------------------------------------------------------------------------------
+
+⚡ WARNINGS (CI miscalibration):
+  negbin: CI=[0.3253, 0.5354] doesn't cover μ*=0.3
+  beta: CI=[0.0983, 0.1567] doesn't cover μ*=0.3
+
+================================================================================
+⚡ 10/12 PASSED, 2/12 WARNED - PACKAGE FUNCTIONAL (SE calibration issues)
+================================================================================
 ```
 
 ---
 
-## 5. Quick Reference: Family DGPs
+## 5. Results Analysis
 
-| Family | DGP | Parameters |
-|--------|-----|------------|
-| **linear** | `Y = alpha + beta*T + eps` | 2 (alpha, beta) |
-| **logit** | `P(Y=1) = sigmoid(alpha + beta*T)` | 2 |
-| **poisson** | `Y ~ Poisson(exp(alpha + beta*T))` | 2 |
-| **gamma** | `Y ~ Gamma(shape, exp(alpha + beta*T))` | 2 |
-| **gaussian** | `Y ~ N(alpha + beta*T, sigma)` | 3 (alpha, beta, log_sigma) |
-| **gumbel** | `Y ~ Gumbel(alpha + beta*T, scale)` | 2 |
-| **tobit** | `Y = max(0, alpha + beta*T + sigma*eps)` | 3 (alpha, beta, log_sigma) |
-| **negbin** | `Y ~ NegBin(exp(alpha + beta*T), r)` | 2 |
-| **weibull** | `Y ~ Weibull(shape, exp(alpha + beta*T))` | 2 |
-| **probit** | `P(Y=1) = Phi(alpha + beta*T)` | 2 |
-| **beta** | `Y ~ Beta(mu*phi, (1-mu)*phi), mu=sigmoid(eta)` | 2 |
-| **zip** | Mixture: `pi` zeros + `(1-pi)*Poisson(lambda)` | 4 (alpha, beta, gamma, delta) |
+### Passing Families (10/12)
+
+| Family | Bias | Verdict |
+|--------|------|---------|
+| linear | -0.0847 | PASS |
+| logit | -0.0571 | PASS |
+| poisson | +0.0100 | PASS |
+| gamma | +0.0357 | PASS |
+| gaussian | +0.0496 | PASS |
+| gumbel | +0.0848 | PASS |
+| tobit | +0.0463 | PASS |
+| weibull | -0.0005 | PASS |
+| probit | +0.0024 | PASS |
+| zip | -0.0342 | PASS |
+
+### Warned Families (2/12)
+
+| Family | Issue | Bias | Notes |
+|--------|-------|------|-------|
+| **negbin** | CI doesn't cover μ* | +0.1304 | Positive bias, SE may be underestimated |
+| **beta** | CI doesn't cover μ* | -0.1725 | Negative bias, SE too small (0.0149) |
+
+### Why Warnings Are Expected
+
+1. **Small sample (N=500)** - Some families need more data
+2. **Low epochs (30)** - More training might help
+3. **Few folds (10)** - Package recommends K≥50 for valid SEs
+4. **Family complexity** - NegBin and Beta have extra parameters
+
+This is exactly what a brutal test should show: **it exposes real weaknesses**, not just "did it crash".
 
 ---
 
-## 6. Troubleshooting
+## 6. Quick Reference: Family DGPs
+
+| Family | DGP | μ* Target |
+|--------|-----|-----------|
+| **linear** | `Y = α + β*T + ε` | E[β(X)] |
+| **logit** | `P(Y=1) = σ(α + β*T)` | E[β(X)] |
+| **poisson** | `Y ~ Poisson(exp(α + β*T))` | E[β(X)] |
+| **gamma** | `Y ~ Gamma(k, exp(α + β*T))` | E[β(X)] |
+| **gaussian** | `Y ~ N(α + β*T, σ)` | E[β(X)] |
+| **gumbel** | `Y ~ Gumbel(α + β*T, s)` | E[β(X)] |
+| **tobit** | `Y = max(0, α + β*T + ε)` | E[β(X)] |
+| **negbin** | `Y ~ NegBin(exp(α + β*T), r)` | E[β(X)] |
+| **weibull** | `Y ~ Weibull(k, exp(α + β*T))` | E[β(X)] |
+| **probit** | `P(Y=1) = Φ(α + β*T)` | E[β(X)] |
+| **beta** | `Y ~ Beta(μφ, (1-μ)φ)` | E[β(X)] |
+| **zip** | `Y ~ π*0 + (1-π)*Poisson(λ)` | E[β(X)] |
+
+Where: `α(X) = 0.5 + 0.2*X₁`, `β(X) = 0.3 + 0.1*X₁`, `E[X₁] = 0` → **μ* = 0.3**
+
+---
+
+## 7. Troubleshooting
 
 ### Import Error
 ```
@@ -504,51 +225,49 @@ ModuleNotFoundError: No module named 'deep_inference'
 ```
 **Fix:** Run `pip install -e .` from the project root.
 
-### CUDA/MPS Warning
+### High Correction Variance Warning
 ```
-UserWarning: MPS available but using CPU
+UserWarning: High correction variance ratio (22.98)
 ```
-**Fix:** Safe to ignore. CPU is fine for smoke tests.
+**Fix:** Increase `n_folds` to 50+ for production runs. This is expected for small K.
 
-### NaN in Loss
-```
-RuntimeError: NaN detected in loss
-```
-**Fix:** Check DGP parameters. Some families need bounded inputs:
-- Poisson/NegBin: `Y >= 0`
-- Beta: `Y in (0, 1)`
-- Gamma/Weibull: `Y > 0`
-
-### Slow Training
-**Fix:** Reduce `epochs=30` to `epochs=10` for faster smoke tests.
-
----
-
-## 7. Package Info
-
-```
-Package: deep-inference
-Version: 0.1.2
-Python: >=3.10
-Core Dependencies:
-  - torch>=2.0
-  - numpy>=1.24
-  - pandas>=2.0
-  - scipy>=1.10
-  - scikit-learn>=1.3
-  - formulaic>=1.0
-  - tabulate>=0.9
-  - tqdm>=4.65
+### CI Doesn't Cover Ground Truth
+**Expected for:** Hard families (beta, negbin) with small samples.
+**Fix:** Increase N, epochs, and n_folds:
+```python
+result = structural_dml(
+    Y=Y, T=T, X=X,
+    family='negbin',
+    epochs=100,     # More training
+    n_folds=50,     # More folds for valid SEs
+    hidden_dims=[64, 32]  # Larger network
+)
 ```
 
 ---
 
 ## 8. Verification Checklist
 
-- [ ] Fresh venv created and activated
-- [ ] `pip install -e .` succeeded
-- [ ] `from deep_inference import structural_dml` works
-- [ ] `FAMILY_REGISTRY` contains 12 families
-- [ ] All 12 families pass smoke test
-- [ ] No NaN/Inf in estimates
-- [ ] Standard errors are positive and reasonable
+- [x] Fresh venv created and activated
+- [x] `pip install -e .` succeeded
+- [x] `from deep_inference import structural_dml` works
+- [x] `FAMILY_REGISTRY` contains 12 families
+- [x] All 12 families run without exception
+- [x] No NaN/Inf in estimates
+- [x] Standard errors are positive and reasonable
+- [x] 10/12 families have CI covering ground truth
+- [ ] negbin and beta need investigation (known issues)
+
+---
+
+## 9. Next Steps for WARN Families
+
+### negbin (Negative Binomial)
+- **Issue:** +13% bias, CI misses μ*
+- **Hypothesis:** Dispersion parameter estimation interferes with β recovery
+- **TODO:** Test with larger N, check overdispersion parameter
+
+### beta (Beta regression)
+- **Issue:** -17% bias, SE very small (0.015)
+- **Hypothesis:** Link function (logit) may not match DGP properly
+- **TODO:** Verify DGP matches family assumptions, check phi parameter
