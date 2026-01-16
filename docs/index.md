@@ -39,17 +39,22 @@ Deep Learning for Individual Heterogeneity with Valid Inference
 import numpy as np
 from deep_inference import structural_dml
 
-# Generate data with heterogeneous treatment effects
+# Heterogeneous logistic demand (binary outcomes)
 np.random.seed(42)
 n = 2000
-X = np.random.randn(n, 10)
+X = np.random.randn(n, 5)
 T = np.random.randn(n)
-Y = X[:, 0] + 0.5 * T + np.random.randn(n)
+
+# Heterogeneous treatment effect: β(X) = 0.5 + 0.3*X₁
+alpha = 0.2 * X[:, 0]
+beta = 0.5 + 0.3 * X[:, 1]
+prob = 1 / (1 + np.exp(-(alpha + beta * T)))
+Y = np.random.binomial(1, prob).astype(float)
 
 # Run influence function inference
 result = structural_dml(
     Y=Y, T=T, X=X,
-    family='linear',
+    family='logit',
     hidden_dims=[64, 32],
     epochs=100,
     n_folds=50
@@ -63,17 +68,17 @@ print(result.summary())
 ==============================================================================
                             Structural DML Results
 ==============================================================================
-Family:           Linear               Target:           E[beta]
+Family:           Logit                Target:           E[beta]
 No. Observations: 2000                 No. Folds:        50
 ==============================================================================
                   coef     std err         z     P>|z|      [0.025    0.975]
 ------------------------------------------------------------------------------
-     E[beta]    0.5012      0.0234    21.410    0.000     0.4553    0.5471
+     E[beta]    0.4987      0.0312    15.981    0.000     0.4375    0.5599
 ==============================================================================
 Diagnostics:
-  Min Lambda eigenvalue:    0.998765
-  Mean condition number:    1.00
-  Correction ratio:         0.0523
+  Min Lambda eigenvalue:    0.152341
+  Mean condition number:    3.21
+  Correction ratio:         0.1847
 ------------------------------------------------------------------------------
 ```
 

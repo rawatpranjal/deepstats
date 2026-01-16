@@ -2,6 +2,11 @@
 
 ## 2026-01-16
 
+### Quick Start Example Upgrade
+- Replaced boring Linear example with Logit + Heterogeneous Effects example in `docs/index.md`
+- New example shows: binary outcomes, heterogeneous β(X) = 0.5 + 0.3*X₁, statsmodels-style summary()
+- Diagnostics now show interesting nonlinearity (Lambda eigenvalue < 1, condition number > 1)
+
 ### API Flowchart Page for RTD
 - Added `docs/flowchart.md`: Interactive decision tree for model/target/regime selection
 - Mermaid diagram with color-coded nodes: outcome types → families → targets → regimes → API calls
