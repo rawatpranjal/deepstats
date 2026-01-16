@@ -44,6 +44,7 @@ def structural_dml(
     epochs: int = 100,
     lr: float = 0.01,
     verbose: bool = False,
+    store_data: bool = True,
     **kwargs,
 ) -> DMLResult:
     """
@@ -96,6 +97,7 @@ def structural_dml(
         epochs: Training epochs per fold
         lr: Learning rate
         verbose: Print progress
+        store_data: Store X for prediction methods (default=True)
         **kwargs: Additional arguments to structural_dml_core
 
     Returns:
@@ -220,6 +222,10 @@ def structural_dml(
     result._target = target if target else "E[beta]"
     result._n_obs = len(Y)
     result._n_folds = n_folds
+
+    # Store X for prediction capability
+    if store_data:
+        result._X_train = np.asarray(X).copy()
 
     return result
 

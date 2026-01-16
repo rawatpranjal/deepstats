@@ -2,6 +2,12 @@
 
 ## 2026-01-16
 
+### DMLResult Prediction & Visualization Methods
+- Added prediction methods to `DMLResult`: `predict_theta()`, `predict_alpha()`, `predict_beta()`, `predict_proba()`, `predict()`
+- Added visualization methods: `plot_distributions()` (KDE plots), `plot_heterogeneity()` (covariate profiles)
+- Uses lightweight sklearn Ridge as surrogate predictor for out-of-sample extrapolation
+- New `store_data=True` parameter in `structural_dml()` to enable prediction capability
+
 ### FLM Papers Converted to Searchable Text
 - Downloaded FLM2025 (arxiv v3) and converted both FLM2021/FLM2025 PDFs to searchable `.txt` files
 - Split into ~50KB chunks for easier searching: `references/FLM2021_part_*`, `references/FLM2025_part_*`
