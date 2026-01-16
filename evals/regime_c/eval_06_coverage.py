@@ -71,6 +71,7 @@ def run_single_simulation(
             X=X.numpy(),
             model="logit",
             target="ame",
+            t_tilde=0.0,  # Must match DGP's mu_true() definition!
             n_folds=n_folds,
             epochs=epochs,
             hidden_dims=[64, 32],

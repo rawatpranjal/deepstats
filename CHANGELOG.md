@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-01-16 (Evening)
+
+### Critical Bug Fix: t_tilde Default in inference() API
+- **Fixed regime_c/eval_06_coverage.py**: Added `t_tilde=0.0` to match DGP's mu_true() definition
+- **Root cause**: `inference()` defaults t_tilde to `mean(T)` when not specified, but DGP's mu_true() is computed at t_tilde=0.0
+- **Before fix**: 0% coverage (systematic bias of -0.1)
+- **After fix**: 90% coverage (bias reduced to -0.028)
+- This affects any eval using `inference()` with `target="ame"` where the DGP defines mu_true at a specific t_tilde value
+
+### Restored eval_07_e2e.py from Archive
+- Copied `/Users/pranjal/deepest/archive/evals_experimental/eval_07_e2e.py` to `/Users/pranjal/deepest/evals/eval_07_e2e.py`
+- E2E user experience test: loan application scenario with heterogeneous rate sensitivity
+- Parts A-F: Bootstrap Oracle, structural_dml(), comparison tables, heterogeneity analysis
+- Round G: Multi-seed SE calibration (M=100)
+
 ## 2026-01-16
 
 ### Evaluation Strategy by Architecture (Section 7.7)
