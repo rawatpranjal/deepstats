@@ -101,7 +101,7 @@ class CrossFitter:
 
     def __init__(
         self,
-        n_folds: int = 5,
+        n_folds: int = 50,
         three_way_theta_frac: float = 0.6,
         shuffle: bool = True,
         random_state: Optional[int] = None,
@@ -185,8 +185,8 @@ def run_crossfit(
     model: "StructuralModel",
     target: "Target",
     lambda_strategy: "LambdaStrategy",
-    n_folds: int = 5,
-    epochs: int = 100,
+    n_folds: int = 50,
+    epochs: int = 200,
     lr: float = 0.01,
     patience: int = 50,
     hidden_dims: List[int] = [64, 32],

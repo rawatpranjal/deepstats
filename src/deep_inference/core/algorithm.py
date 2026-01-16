@@ -90,7 +90,7 @@ def structural_dml_core(
     theta_dim: int,
     n_folds: int = 50,
     hidden_dims: List[int] = [64, 32],
-    epochs: int = 100,
+    epochs: int = 200,
     lr: float = 0.01,
     three_way: Optional[bool] = None,
     gradient_fn: Optional[Callable] = None,

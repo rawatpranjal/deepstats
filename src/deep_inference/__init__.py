@@ -41,7 +41,7 @@ def structural_dml(
     theta_dim: Optional[int] = None,
     n_folds: int = 50,
     hidden_dims: List[int] = [64, 32],
-    epochs: int = 100,
+    epochs: int = 200,
     lr: float = 0.01,
     verbose: bool = False,
     store_data: bool = True,
@@ -320,7 +320,7 @@ def inference(
     n_folds: int = 50,
     # Network settings
     hidden_dims: List[int] = [64, 32],
-    epochs: int = 100,
+    epochs: int = 200,
     lr: float = 0.01,
     patience: int = 50,
     # Other

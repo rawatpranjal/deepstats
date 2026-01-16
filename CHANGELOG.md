@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-01-16 (Night - Late)
+
+### Package Defaults Updated to Match Validated Settings
+- **Fixed n_folds bug in `run_crossfit()`**: Default was 5, now 50 (matches all other APIs)
+- **Increased epochs default**: 100 → 200 across all APIs for safer convergence on complex DGPs
+- Files modified: `engine/crossfit.py`, `__init__.py`, `core/algorithm.py`
+- Verified with smoke test: `inference()` API works correctly with new defaults
+
 ## 2026-01-16 (Night)
 
 ### Next-Gen Requirements Document
