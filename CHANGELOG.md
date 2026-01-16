@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-01-16
+
+### Multimodal Gallery Tutorial Complete
+- **Added Jupyter notebook**: `tutorials/06_multimodal_gallery.ipynb` with structured cells and markdown explanations
+- **Added documentation**: `docs/tutorials/multimodal.md` (240 lines)
+- **3/3 models achieve valid CI coverage**:
+  - Linear (Wages/Experience): Corr=0.985, CI covers true μ
+  - Logit (Purchases/Discount): Corr=0.421, CI covers true μ
+  - Poisson (Citations/OA): Corr=0.709, CI covers true μ
+- **Validation report**: `evals/reports/multimodal_gallery_normalized_20260116_033012.txt`
+
+## 2026-01-15
+
+### Multimodal Gallery Tutorial
+- Added `tutorials/06_multimodal_gallery.py`: 3 examples with high-dim embeddings as X
+  - LINEAR: Wages ~ Experience | Job description embeddings (384-dim)
+  - LOGIT: Purchase ~ Discount | Product image embeddings (512-dim)
+  - POISSON: Citations ~ Open Access | Abstract embeddings (768-dim)
+- Added `docs/tutorials/multimodal.md`: ReadTheDocs tutorial with HTE distributions
+- Shows how to use BERT, ResNet, CLIP embeddings as covariates
+
+### Remove DML Terminology + E2E Test
+- **Removed "Double Machine Learning" references**: This package is NOT DML, it uses Influence Functions (FLM framework)
+  - `README.md`: Removed "(a form of Double Machine Learning)" phrase
+  - `docs/theory/influence_functions.md`: Retitled section to "Inference via Influence Functions"
+  - `prototypes/README.md`: Clarified FLM vs DML terminology
+- **Added E2E test**: `tutorials/05_john_minnesota_e2e.py` - Labor economics example with heterogeneous training effects
+  - Simulates PhD economist using package on worker training → wages data
+  - Shows valid CI coverage, heterogeneity capture, and policy insights
+
+### Documentation Surface Audit
+- Fixed `docs/api/inference.md`: Updated `lambda_method='aggregate'` → `'ridge'` in signature, replaced outdated method table
+- Fixed `src/deep_inference/__init__.py`: Updated docstring from `src2` → `deep_inference`
+- Updated 4 tutorials to remove outdated "MUST use aggregate" language:
+  - `tutorials/01_showcase.ipynb`
+  - `tutorials/02_logit_oracle.ipynb`
+  - `tutorials/03_pypi_e2e_test.ipynb`
+  - `tutorials/04_poisson_e2e_test.ipynb`
+- All code now uses `# lambda_method='ridge' is default (96% coverage)` comments
+
 ## 2026-01-14
 
 ### Eval 07: Enhanced Round G (3x More Signal, <5% More Compute)

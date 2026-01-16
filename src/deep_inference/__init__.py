@@ -1,12 +1,12 @@
 """
-src2: Clean Structural Deep Learning Implementation
+deep_inference: Structural Deep Learning with Valid Inference
 
 A from-scratch implementation of the Farrell-Liang-Misra framework
 for structural deep learning with valid inference.
 
 Usage:
     # Pre-built family
-    from src2 import structural_dml
+    from deep_inference import structural_dml
     result = structural_dml(Y, T, X, family='logit')
 
     # Custom loss function

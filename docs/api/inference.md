@@ -30,7 +30,7 @@ result = structural_dml(
     epochs=100,             # Training epochs
     n_folds=50,             # Cross-fitting folds
     lr=0.01,                # Learning rate
-    lambda_method='aggregate',  # Lambda estimation method
+    lambda_method='ridge',  # Lambda estimation: ridge (default), aggregate, lgbm
     verbose=False           # Print progress
 )
 ```
@@ -208,10 +208,12 @@ print(f"Regime: {result.diagnostics['regime']}")  # 'A'
 
 ### Lambda Method (for `structural_dml`)
 
-| Method | When to Use |
-|--------|-------------|
-| `'aggregate'` | Default for nonlinear models |
-| `'pointwise'` | When heterogeneity is smooth |
+| Method | Coverage | Default | Notes |
+|--------|----------|---------|-------|
+| `'ridge'` | 96% | **Yes** | Safe default, validated coverage |
+| `'aggregate'` | 95% | No | Ignores X-dependence |
+| `'lgbm'` | 96% | No | High accuracy alternative |
+| `'mlp'` | 67% | No | **AVOID** - invalid SEs |
 
 ---
 
