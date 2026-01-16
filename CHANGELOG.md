@@ -2,6 +2,13 @@
 
 ## 2026-01-16
 
+### Complete Eval Documentation
+- Added detailed documentation for Evals 04-06 in `evals/eval.md`
+- Eval 04: Target Jacobian H_θ - paper references, test matrix (9 parts), pass criteria
+- Eval 05: IF Assembly ψ - Theorem 2 formula, 5 test rounds, DGP details
+- Eval 06: Coverage - NON-NEGOTIABLE settings table, criteria, 96% result
+- Added summary table showing all 6 evals and their status
+
 ### Gallery Page for RTD
 - Added `docs/tutorials/gallery.md` - concise overview of 3 validated examples (Linear, Logit, Poisson)
 - Added to tutorials index as first item for visibility
